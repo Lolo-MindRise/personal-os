@@ -29,7 +29,7 @@ where Manuel clicks a shortcut and uses the browser.
 | Real instance (built from `main`) | `~/apps/personal-os` | Deploy script only |
 | Real data (`PERSONAL_OS_DATA_DIR`) | `~/.local/share/personal-os` | The real instance only |
 | Local backups | `~/.local/share/personal-os/backups` | The real instance only |
-| Windows mirror of backups | `/mnt/c/Users/<user>/Documents/personal-os-backups` | The real instance only |
+| Backup mirror on second SSD | `/mnt/g/apps_personales/personal_os/backups` (`G:\apps_personales\personal_os\backups`) | The real instance only |
 
 Agents never read, write or reference the last four locations.
 
@@ -59,7 +59,10 @@ jobs inside it are unreliable):
 - On every app start, and every 24 h while it runs.
 - Before every migration.
 - SQLite online backup API, so a backup is consistent while the app runs.
-- Rotation: keep 14 daily copies locally and the latest 7 in the Windows mirror.
+- Rotation: keep 14 daily copies locally and the latest 7 in the mirror on
+  the second SSD (`G:`), which is a separate physical disk.
+- The mirror path is configurable (`PERSONAL_OS_BACKUP_MIRROR_DIR`). If the
+  mirror is unreachable, the app logs a visible warning and keeps running.
 
 ### Power settings
 
@@ -87,12 +90,14 @@ scheduler (chosen: one place, runs whenever the app is used).
   physically separated from the development clone.
 - Harder: startup goes through a shortcut that calls WSL; updates are a
   deliberate manual step.
-- **Open:** all copies live on the same physical disk. Off-site backup
-  (external drive or encrypted cloud copy) is pending Manuel's decision.
+- Covered: failure of the main disk (mirror lives on a second physical SSD, `G:`).
+- **Open:** both disks are in the same PC, so theft, fire or an electrical
+  fault can still destroy every copy. Off-site backup (external drive or
+  encrypted cloud copy) remains pending Manuel's decision.
 
 ## Action Items
 
 1. [ ] Manuel: confirm WSL version and distro name (`wsl -l -v`).
 2. [ ] Agent task: `scripts/start.sh`, `scripts/deploy-local.sh`, in-app backups.
 3. [ ] Manuel: create the Windows shortcut and set power settings.
-4. [ ] Manuel: decide off-site backup.
+4. [ ] Manuel: decide off-site backup (outside the PC).
