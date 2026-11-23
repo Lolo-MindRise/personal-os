@@ -79,6 +79,6 @@ stage.
 
 1. [x] Create the repository and make it public.
 2. [x] Ruleset `protect-main`: PR required (0 approvals), block force pushes, restrict deletions, no bypass.
-3. [ ] Add the guard hook and verify it blocks a merge attempt in a real session.
+3. [x] Add the guard hook and verify it blocks a merge attempt in a real session.
 4. [ ] Add CI (task 0001) and set it as a required check in `protect-main`.
 5. [ ] Add a PR template matching the "Pull requests" section of `CLAUDE.md`.
