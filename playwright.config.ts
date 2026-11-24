@@ -24,7 +24,8 @@ export default defineConfig({
     },
     {
       name: 'prod',
-      testMatch: /(prod|recurring)\.spec\.ts/,
+      // Every spec except the dev-server one runs against the production server.
+      testIgnore: /dev\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], baseURL: PROD_URL },
     },
   ],

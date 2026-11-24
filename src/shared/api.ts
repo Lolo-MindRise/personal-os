@@ -8,6 +8,13 @@ export interface CategoryDto {
   kind: Kind;
 }
 
+/** A category with how many records point at it; any count above zero blocks deleting it. */
+export interface CategoryUsageDto extends CategoryDto {
+  movements: number;
+  recurringItems: number;
+  budgetLines: number;
+}
+
 export interface MovementDto {
   id: number;
   date: string;

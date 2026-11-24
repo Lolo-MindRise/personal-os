@@ -1,15 +1,17 @@
 import { useState } from 'react';
+import { CategoriesPage } from './CategoriesPage.js';
 import { MovementsPage } from './MovementsPage.js';
 import { RecurringPage } from './RecurringPage.js';
 
 export const VIEWS = [
   ['movements', 'Movimientos'],
   ['recurring', 'Fijos'],
+  ['categories', 'Categorías'],
 ] as const;
 
 export type View = (typeof VIEWS)[number][0];
 
-/** The two top-level sections, switched with a navigation bar. */
+/** The top-level sections, switched with a navigation bar. */
 export function Navigation({ view, onChange }: { view: View; onChange: (view: View) => void }) {
   return (
     <nav className="main-nav" aria-label="Secciones">
@@ -30,12 +32,23 @@ export function Navigation({ view, onChange }: { view: View; onChange: (view: Vi
   );
 }
 
+function Screen({ view }: { view: View }) {
+  switch (view) {
+    case 'movements':
+      return <MovementsPage />;
+    case 'recurring':
+      return <RecurringPage />;
+    case 'categories':
+      return <CategoriesPage />;
+  }
+}
+
 export function App() {
   const [view, setView] = useState<View>('movements');
   return (
     <>
       <Navigation view={view} onChange={setView} />
-      {view === 'movements' ? <MovementsPage /> : <RecurringPage />}
+      <Screen view={view} />
     </>
   );
 }

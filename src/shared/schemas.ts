@@ -34,6 +34,11 @@ export const categoryCreateSchema = z.strictObject({
   kind: kindSchema,
 });
 
+/** Renaming a category: the kind is fixed once movements may depend on it. */
+export const categoryUpdateSchema = z.strictObject({
+  name: text,
+});
+
 /** Base object of a movement, without the cross-field rule (so it can be made partial). */
 export const movementFieldsSchema = z.strictObject({
   date: isoDate,
@@ -117,6 +122,7 @@ export const milestoneCreateSchema = z.strictObject({
 });
 
 export type CategoryCreate = z.infer<typeof categoryCreateSchema>;
+export type CategoryUpdate = z.infer<typeof categoryUpdateSchema>;
 export type MovementUpdate = z.infer<typeof movementUpdateSchema>;
 export type MovementCreate = z.infer<typeof movementCreateSchema>;
 export type RecurringItemCreate = z.infer<typeof recurringItemCreateSchema>;

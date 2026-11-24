@@ -1,11 +1,13 @@
 import type {
   ApiErrorBody,
   CategoryDto,
+  CategoryUsageDto,
   MonthSummaryDto,
   MovementDto,
   PendingEntryDto,
   RecurringItemDto,
 } from '../shared/api.js';
+import type { Kind } from '../shared/constants.js';
 import type { ConfirmPayload, MovementPayload } from './movementForm.js';
 import type { RecurringPayload } from './recurringForm.js';
 
@@ -58,6 +60,13 @@ const itemMonth = (itemId: number, month: string) =>
 export function createApiClient(fetchFn: typeof fetch = fetch) {
   return {
     categories: () => request<CategoryDto[]>(fetchFn, '/api/categories'),
+    categoryUsage: () => request<CategoryUsageDto[]>(fetchFn, '/api/categories/usage'),
+    createCategory: (payload: { name: string; kind: Kind }) =>
+      request<CategoryDto>(fetchFn, '/api/categories', json('POST', payload)),
+    renameCategory: (id: number, name: string) =>
+      request<CategoryDto>(fetchFn, `/api/categories/${String(id)}`, json('PATCH', { name })),
+    deleteCategory: (id: number) =>
+      request<undefined>(fetchFn, `/api/categories/${String(id)}`, { method: 'DELETE' }),
     movements: (month: string) =>
       request<MovementDto[]>(fetchFn, `/api/movements?month=${enc(month)}`),
     summary: (month: string) =>
