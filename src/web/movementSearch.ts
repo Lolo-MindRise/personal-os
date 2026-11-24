@@ -29,7 +29,11 @@ export interface SearchQuery {
   maxAmountCents?: number;
 }
 
+/** The API's limit for the text filter. */
+export const MAX_TEXT_LENGTH = 100;
+
 export const FILTER_ERRORS = {
+  textLength: `El texto no puede superar los ${String(MAX_TEXT_LENGTH)} caracteres.`,
   date: 'La fecha no es válida.',
   dateOrder: 'La fecha final no puede ser anterior a la inicial.',
   amountOrder: 'El importe máximo no puede ser menor que el mínimo.',
@@ -63,7 +67,9 @@ export function validateFilters(values: FilterValues): FilterResult {
   const query: SearchQuery = {};
 
   const q = values.q.trim();
-  if (q !== '') {
+  if (q.length > MAX_TEXT_LENGTH) {
+    errors.q = FILTER_ERRORS.textLength;
+  } else if (q !== '') {
     query.q = q;
   }
   if (values.categoryId !== '') {

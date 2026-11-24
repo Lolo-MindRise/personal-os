@@ -1,22 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import type {
   CategoryDto,
   DebtDto,
   MonthSummaryDto,
   MovementDto,
-  MovementSearchDto,
   PendingEntryDto,
 } from '../shared/api.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
 import { MovementForm, type FieldErrors, type FormMode } from './MovementForm.js';
 import { MovementList } from './MovementList.js';
 import { MovementFilters, SearchResults, type FilterErrors } from './MovementSearch.js';
-import {
-  emptyFilters,
-  validateFilters,
-  type FilterValues,
-  type SearchQuery,
-} from './movementSearch.js';
+import { emptyFilters, validateFilters, type FilterValues } from './movementSearch.js';
+import { initialSearchState, searchReducer } from './searchState.js';
 import {
   emptyForm,
   formFromEntry,
@@ -62,12 +57,16 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
 
   const [filters, setFilters] = useState<FilterValues>(() => emptyFilters());
   const [filterErrors, setFilterErrors] = useState<FilterErrors>({});
-  const [showFilters, setShowFilters] = useState(false);
-  /** The active search, or undefined in the monthly view. */
-  const [search, setSearch] = useState<{ query: SearchQuery; page: number } | undefined>();
-  const [searchResult, setSearchResult] = useState<MovementSearchDto | undefined>();
-  const [searchError, setSearchError] = useState<string | undefined>();
-  const [searchBusy, setSearchBusy] = useState(false);
+  const [searchState, dispatch] = useReducer(searchReducer, initialSearchState);
+  const {
+    showFilters,
+    search,
+    result: searchResult,
+    error: searchError,
+    busy: searchBusy,
+  } = searchState;
+  /** Where focus goes when the button that was clicked disappears (open, leave, "Ver mes"). */
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   const mode: FormMode =
     confirmingId !== undefined ? 'confirm' : editingId !== undefined ? 'edit' : 'add';
@@ -123,15 +122,12 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     api.searchMovements(search.query, search.page).then(
       (result) => {
         if (active) {
-          setSearchResult(result);
-          setSearchError(undefined);
-          setSearchBusy(false);
+          dispatch({ type: 'loaded', result });
         }
       },
       (error: unknown) => {
         if (active) {
-          setSearchError(messageOf(error));
-          setSearchBusy(false);
+          dispatch({ type: 'failed', error: messageOf(error) });
         }
       },
     );
@@ -146,18 +142,13 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
       setFilterErrors(result.errors);
       return;
     }
-    // A new search starts on page 1 and drops the previous results while it loads.
-    setSearchResult(undefined);
-    setSearchError(undefined);
-    setSearchBusy(true);
-    setSearch({ query: result.query, page: 1 });
+    dispatch({ type: 'search', query: result.query });
   };
 
+  /** Back to the monthly view, with focus on the page heading (the clicked button disappears). */
   const leaveSearch = () => {
-    setSearch(undefined);
-    setSearchResult(undefined);
-    setSearchError(undefined);
-    setShowFilters(false);
+    dispatch({ type: 'leave' });
+    headingRef.current?.focus();
   };
 
   // If the entry being confirmed is no longer pending (skipped, or confirmed by
@@ -273,14 +264,16 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <h1>Movimientos</h1>
+      <h1 ref={headingRef} tabIndex={-1}>
+        Movimientos
+      </h1>
 
       {!showFilters && search === undefined && (
         <div className="form-actions">
           <button
             type="button"
             onClick={() => {
-              setShowFilters(true);
+              dispatch({ type: 'open' });
             }}
           >
             Buscar y filtrar
@@ -303,6 +296,10 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
             setFilters(emptyFilters());
             setFilterErrors({});
           }}
+          onClose={() => {
+            dispatch({ type: 'close' });
+            headingRef.current?.focus();
+          }}
         />
       )}
 
@@ -317,19 +314,23 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
           result={searchResult}
           query={search.query}
           categories={categories}
+          busy={searchBusy}
           onPage={(page) => {
-            setSearchBusy(true);
-            setSearch({ query: search.query, page });
+            dispatch({ type: 'page', page });
           }}
           onGoToMonth={(movement) => {
             leaveSearch();
+            // The month changes: an edit started earlier (hidden while searching) belongs to the old one.
+            resetForm();
             changeMonth(movement.date.slice(0, 7));
           }}
           onBack={leaveSearch}
         />
       )}
       {search !== undefined && searchResult === undefined && searchError === undefined && (
-        <p className="empty">Buscando…</p>
+        <p className="empty" role="status">
+          Buscando…
+        </p>
       )}
 
       {search === undefined && (

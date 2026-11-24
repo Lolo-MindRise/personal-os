@@ -81,6 +81,14 @@ describe('validateFilters', () => {
     }
   });
 
+  it('rejects a text longer than the API accepts, on its own field', () => {
+    expect(validateFilters({ ...emptyFilters(), q: 'x'.repeat(100) }).ok).toBe(true);
+    expect(validateFilters({ ...emptyFilters(), q: 'x'.repeat(101) })).toEqual({
+      ok: false,
+      errors: { q: FILTER_ERRORS.textLength },
+    });
+  });
+
   it('rejects inverted ranges', () => {
     expect(validateFilters({ ...emptyFilters(), from: '2026-03-01', to: '2026-01-01' })).toEqual({
       ok: false,
@@ -129,6 +137,7 @@ describe('MovementFilters', () => {
         onChange={noop}
         onSearch={noop}
         onClear={noop}
+        onClose={noop}
         {...over}
       />,
     );
@@ -148,6 +157,10 @@ describe('MovementFilters', () => {
     }
     expect(html).toContain('Supermercado');
     expect(html).toContain('Amortización');
+  });
+
+  it('can be closed without searching', () => {
+    expect(render()).toContain('Cerrar');
   });
 
   it('disables "Limpiar filtros" until something is filled in, and shows errors with links', () => {
@@ -240,6 +253,25 @@ describe('SearchResults', () => {
     expect(html).toContain('Ningún movimiento coincide con los filtros.');
     expect(html).toContain('Volver a la vista mensual');
     expect(html).not.toContain('Balance');
+  });
+
+  it('announces the totals in a live region and disables paging while a page loads', () => {
+    expect(render(result())).toMatch(
+      /<p[^>]*data-testid="search-totals"[^>]*role="status"|role="status"[^>]*data-testid="search-totals"/,
+    );
+    const html = renderToStaticMarkup(
+      <SearchResults
+        result={result({ page: 2, pageCount: 3 })}
+        query={{}}
+        categories={categories}
+        busy
+        onPage={noop}
+        onGoToMonth={noop}
+        onBack={noop}
+      />,
+    );
+    expect(html).toMatch(/<button type="button" disabled="">Anterior/);
+    expect(html).toMatch(/<button type="button" disabled="">Siguiente/);
   });
 
   it('shows pagination only with several pages, disabling the ends', () => {

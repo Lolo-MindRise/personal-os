@@ -100,7 +100,7 @@ stale preview, zero in both debit and credit, rule-reset warning. Left as known 
 
 ## Block 3: search and filter movements
 
-Branch `agent/session/03-movement-search` (from block 2). PR: _pending_.
+Branch `agent/session/03-movement-search` (from block 2). PR: _pending_ (see the end of this file).
 
 ### Done
 - `GET /api/movements/search`: text (concept or notes, ignoring case and accents), category, kind,
@@ -121,6 +121,18 @@ Branch `agent/session/03-movement-search` (from block 2). PR: _pending_.
   repayments, like savings elsewhere.
 - Results are read-only: editing or deleting happens in the monthly view ("Ver mes").
 - No filter at all is allowed and lists everything, paged.
+
+- The page's search state is a reducer (`src/web/searchState.ts`) so the transitions are tested
+  without a DOM library (none is installed, and no dependency may be added). A late answer after
+  leaving the search is ignored.
+- "Cerrar" closes the panel; focus moves to the panel, the results or the page heading when the
+  clicked button disappears; the totals and "Buscando…" are live regions; "Ver mes" drops an edit
+  started before the search; the text filter has the API's 100-character limit on the client too.
+
+### Review
+Reviewer: changes required (1 blocker, 2 majors, 5 minors). The blocker is the process breach about
+`sed -i` (cannot be undone; disclosed here and in the PR). Majors fixed: the busy flag stuck after
+leaving the search during a page load, and the missing page-level tests. All minors fixed.
 
 ### Open questions
 - Should results be editable in place, or exportable?
