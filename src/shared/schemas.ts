@@ -225,6 +225,12 @@ export const movementSearchSchema = z
 
 export type MovementSearch = z.infer<typeof movementSearchSchema>;
 
+/** `GET /api/projection`: the end month (default: 11 months after today's) and, for tests, today. */
+export const projectionQuerySchema = z.strictObject({
+  to: queryOptional(isoMonth),
+  today: queryOptional(isoDate),
+});
+
 export const milestoneCreateSchema = z.strictObject({
   title: text,
   targetDate: isoDate,

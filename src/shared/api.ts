@@ -47,6 +47,34 @@ export interface MovementSearchDto {
   };
 }
 
+/** One projected month (task 0013, block 4), in cents. */
+export interface ProjectionMonthDto {
+  month: string;
+  incomeCents: number;
+  expenseCents: number;
+  repaymentCents: number;
+  /** income − expenses − repayments; negative when the month is projected in deficit. */
+  savingsCents: number;
+  /** Accumulated savings at the end of the month: the baseline plus every month so far. */
+  accumulatedCents: number;
+  /** Projected total per category (only categories above zero), for scenarios on a category. */
+  byCategory: { categoryId: number; cents: number }[];
+}
+
+/** The base projection from the current month to a chosen end month. */
+export interface ProjectionDto {
+  /** The month of today: the first projected month. */
+  currentMonth: string;
+  endMonth: string;
+  /** Accumulated savings at the end of the previous month, where the projection starts. */
+  baselineCents: number;
+  months: ProjectionMonthDto[];
+  /** Every category, so the page can offer expense categories for scenarios and name them. */
+  categories: CategoryDto[];
+  /** Goals, to mark their targets and dates on the chart. */
+  goals: { id: number; name: string; targetAmountCents: number; targetDate: string }[];
+}
+
 /** A fixed income or expense, defined once (ADR-0005). */
 export interface RecurringItemDto {
   id: number;

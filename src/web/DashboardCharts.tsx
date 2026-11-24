@@ -43,12 +43,12 @@ export function shortMonth(month: string): string {
 
 const euros = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 });
 /** Axis ticks in whole euros (the exact amount is in the tooltip and the table). */
-const tickEuros = (cents: number) => `${euros.format(Math.round(cents / 100))} €`;
-const tooltipAmount = (value: unknown) =>
+export const tickEuros = (cents: number) => `${euros.format(Math.round(cents / 100))} €`;
+export const tooltipAmount = (value: unknown) =>
   typeof value === 'number' && Number.isSafeInteger(value) ? formatCents(value) : '—';
 
-const axisTick = { fill: 'var(--muted)', fontSize: 12 };
-const tooltipStyles = {
+export const axisTick = { fill: 'var(--muted)', fontSize: 12 };
+export const tooltipStyles = {
   contentStyle: {
     background: 'var(--surface)',
     border: '1px solid var(--border)',

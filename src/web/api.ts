@@ -17,6 +17,7 @@ import type {
   MovementDto,
   MovementSearchDto,
   PendingEntryDto,
+  ProjectionDto,
   RecurringItemDto,
 } from '../shared/api.js';
 import type { Kind } from '../shared/constants.js';
@@ -114,6 +115,8 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
       request<undefined>(fetchFn, `/api/categories/${String(id)}`, { method: 'DELETE' }),
     movements: (month: string) =>
       request<MovementDto[]>(fetchFn, `/api/movements?month=${enc(month)}`),
+    projection: (to: string, today: string) =>
+      request<ProjectionDto>(fetchFn, `/api/projection?to=${enc(to)}&today=${enc(today)}`),
     searchMovements: (query: SearchQuery, page: number) =>
       request<MovementSearchDto>(fetchFn, `/api/movements/search?${searchParams(query, page)}`),
     summary: (month: string) =>
