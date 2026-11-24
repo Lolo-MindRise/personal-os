@@ -37,6 +37,12 @@ export function monthLabel(month: string): string {
   return `${MONTH_NAMES[Number(mon) - 1] ?? month} de ${year ?? ''}`;
 }
 
+/** `'2026-06'` → `'06/2026'`. */
+export function formatMonth(month: string): string {
+  const [year, mon] = month.split('-');
+  return `${mon ?? ''}/${year ?? ''}`;
+}
+
 /** `'2026-01-05'` → `'05/01/2026'`. */
 export function formatDate(iso: string): string {
   const [year, mon, day] = iso.split('-');

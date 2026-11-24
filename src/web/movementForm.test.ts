@@ -97,6 +97,7 @@ describe('formFromMovement', () => {
       amountCents: 200_005,
       notes: null,
       debtId: null,
+      recurringItemId: null,
     });
     expect(form).toEqual({
       date: '2026-01-10',

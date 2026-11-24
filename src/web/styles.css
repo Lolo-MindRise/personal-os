@@ -119,11 +119,125 @@ select {
   color: var(--muted);
 }
 
+.main-nav {
+  display: flex;
+  gap: 0.25rem;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0.75rem 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-tab {
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.nav-tab.active {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.hint {
+  margin: -0.5rem 0 1rem;
+  color: var(--muted);
+}
+
 .summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: 0.75rem;
   margin: 0 0 1.5rem;
+}
+
+/* Pending amounts and the projection: lighter than the confirmed totals. */
+.summary.pending-summary {
+  margin-top: -0.75rem;
+}
+
+.pending-item {
+  padding: 0.5rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: transparent;
+}
+
+.pending-item dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.pending-item dd {
+  margin: 0.1rem 0 0;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pending-item.negative dd {
+  color: var(--danger);
+}
+
+.pending-section {
+  margin-bottom: 1.5rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+table.pending {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.pending th,
+.pending td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.pending th {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.pending .amount {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pending .actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.pending .actions button + button {
+  margin-left: 0.35rem;
+}
+
+.skipped-row td,
+.ended-row td {
+  color: var(--muted);
 }
 
 .summary-item {
