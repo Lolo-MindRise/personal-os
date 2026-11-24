@@ -15,6 +15,7 @@ export interface ClassifyInput {
 export interface ExistingMovement {
   date: string;
   concept: string;
+  kind: Kind;
   /** Positive, as stored. */
   amountCents: number;
 }
@@ -38,8 +39,8 @@ export function kindsForAmount(amountCents: number): Kind[] {
   return amountCents < 0 ? ['expense', 'repayment'] : ['income'];
 }
 
-const duplicateKey = (date: string, amountCents: number, concept: string) =>
-  `${date}|${String(Math.abs(amountCents))}|${normalizeText(concept)}`;
+const duplicateKey = (date: string, outgoing: boolean, amountCents: number, concept: string) =>
+  `${date}|${outgoing ? 'out' : 'in'}|${String(Math.abs(amountCents))}|${normalizeText(concept)}`;
 
 /** The day of a `YYYY-MM-DD` date, for choosing the pending entry closest to a row. */
 const dayOf = (date: string) => Number(date.slice(8, 10));
@@ -61,7 +62,7 @@ export function classifyRows(
 ): ImportPreviewRowDto[] {
   const stored = new Map<string, number>();
   for (const m of context.existing) {
-    const key = duplicateKey(m.date, m.amountCents, m.concept);
+    const key = duplicateKey(m.date, m.kind !== 'income', m.amountCents, m.concept);
     stored.set(key, (stored.get(key) ?? 0) + 1);
   }
   const rules = context.rules.map((rule) => ({ rule, pattern: normalizeText(rule.pattern) }));
@@ -86,7 +87,7 @@ export function classifyRows(
       recurringConcept: null,
     };
 
-    const key = duplicateKey(row.date, row.amountCents, row.concept);
+    const key = duplicateKey(row.date, row.amountCents < 0, row.amountCents, row.concept);
     const remaining = stored.get(key) ?? 0;
     if (remaining > 0) {
       stored.set(key, remaining - 1);

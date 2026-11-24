@@ -209,6 +209,7 @@ describe('POST /api/import/commit', () => {
         amountCents: 70_000,
         expectedDay: 5,
         startMonth: '2026-01',
+        notes: 'Contrato de ejemplo',
       })
     ).json<RecurringItemDto>();
 
@@ -241,6 +242,8 @@ describe('POST /api/import/commit', () => {
         ['RECIBO PISO', item.id],
       ]),
     );
+    // A confirmed fixed item carries the item's notes, as the normal confirmation does.
+    expect(stored.find((m) => m.recurringItemId === item.id)?.notes).toBe('Contrato de ejemplo');
     // The fixed item is no longer pending, and importing the same file again finds duplicates.
     expect((await call('GET', '/api/months/2026-02/pending')).json<PendingEntryDto[]>()).toEqual(
       [],

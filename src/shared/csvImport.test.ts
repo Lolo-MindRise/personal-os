@@ -237,6 +237,19 @@ describe('readRows', () => {
     expect(rows[6]).toMatchObject({ line: 8, date: '2026-02-01', amountCents: -100 });
   });
 
+  it('says a row with zero in both debit and credit has a zero amount', () => {
+    const mapping: ImportMapping = {
+      ...signed,
+      hasHeader: false,
+      amountMode: 'split',
+      amountColumn: null,
+      debitColumn: 2,
+      creditColumn: 3,
+    };
+    const rows = readRows(parseCsv('01/02/2026;Cero;0,00;0,00', ';'), mapping);
+    expect(rows[0]?.error).toBe('Importe cero.');
+  });
+
   it('flags a row with both debit and credit', () => {
     const mapping: ImportMapping = {
       ...signed,

@@ -283,7 +283,8 @@ export function RulesPanel(props: {
       <h2>Reglas de categoría</h2>
       <p className="hint">
         «Si el concepto contiene X, la categoría es Y». No distingue mayúsculas ni acentos; vale la
-        primera regla que encaje. Se aplican en la vista previa.
+        primera regla que encaje. Se aplican en la vista previa. Al añadir o quitar una regla se
+        recalcula la vista previa y se pierden las categorías y marcas que hayas cambiado a mano.
       </p>
       <form className="form-grid" onSubmit={submit} noValidate>
         <Field id="rule-pattern" label="El concepto contiene" error={undefined}>
@@ -553,8 +554,15 @@ export function ImportPage({ api = defaultApi }: { api?: ApiClient }) {
             delimiter={delimiter}
             sample={records.slice(0, 4)}
             problems={problems}
-            onMapping={setMapping}
-            onDelimiter={setDelimiter}
+            onMapping={(next) => {
+              // A preview made with another mapping must not be importable.
+              setLines(undefined);
+              setMapping(next);
+            }}
+            onDelimiter={(next) => {
+              setLines(undefined);
+              setDelimiter(next);
+            }}
           />
           <div className="form-actions">
             <button

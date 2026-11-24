@@ -249,6 +249,9 @@ function amountOf(record: CsvRecord, mapping: ImportMapping): SignedAmountResult
     if (c.ok && !d.ok && d.error === AMOUNT_ERRORS.zero) {
       return { ok: true, cents: Math.abs(c.cents) };
     }
+    if (!d.ok && !c.ok && d.error === AMOUNT_ERRORS.zero && c.error === AMOUNT_ERRORS.zero) {
+      return { ok: false, error: AMOUNT_ERRORS.zero };
+    }
     return { ok: false, error: 'La fila tiene cargo y abono a la vez.' };
   }
   if (debit === '' && credit === '') {

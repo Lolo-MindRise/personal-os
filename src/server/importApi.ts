@@ -79,6 +79,7 @@ function preview(db: Db, rows: { date: string; concept: string; amountCents: num
   const existing = db
     .select({
       date: movements.date,
+      kind: movements.kind,
       concept: movements.concept,
       amountCents: movements.amountCents,
     })
@@ -185,6 +186,8 @@ export function registerImportApi(app: FastifyInstance, db: Db): void {
             fail(problem.error);
           }
           const itemId = row.recurringItemId ?? null;
+          // Like the normal confirmation, a confirmed fixed item carries the item's notes.
+          const notes = itemId === null ? null : (getRecurringItem(db, itemId)?.notes ?? null);
           if (itemId !== null) {
             const month = monthOf(row.date);
             const item = getRecurringItem(db, itemId);
@@ -212,7 +215,7 @@ export function registerImportApi(app: FastifyInstance, db: Db): void {
               categoryId: row.categoryId,
               concept: row.concept,
               amountCents: row.amountCents,
-              notes: null,
+              notes,
               recurringItemId: itemId,
             })
             .run();

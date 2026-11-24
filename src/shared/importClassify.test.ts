@@ -129,7 +129,14 @@ describe('category rules', () => {
 });
 
 describe('duplicates', () => {
-  const existing = [{ date: '2026-02-01', concept: 'Compra Mercadona', amountCents: 2_550 }];
+  const existing = [
+    {
+      date: '2026-02-01',
+      kind: 'expense' as const,
+      concept: 'Compra Mercadona',
+      amountCents: 2_550,
+    },
+  ];
 
   it('flags a row with the same date, amount and concept (ignoring case and accents)', () => {
     const [row] = classifyRows(
@@ -149,6 +156,14 @@ describe('duplicates', () => {
       context({ existing }),
     );
     expect(rows.map((r) => r.status)).toEqual(['noCategory', 'noCategory', 'noCategory']);
+  });
+
+  it('does not mix an income with an expense of the same date, concept and amount', () => {
+    const [row] = classifyRows(
+      [{ date: '2026-02-01', concept: 'Compra Mercadona', amountCents: 2_550 }], // money in
+      context({ existing }), // the stored one is an expense
+    );
+    expect(row?.status).toBe('noCategory');
   });
 
   it('each stored movement covers one row: two identical rows against one stored flag only one', () => {
@@ -281,7 +296,14 @@ describe('recurring matches', () => {
     const [row] = classifyRows(
       [{ date: '2026-02-04', concept: 'Alquiler', amountCents: -70_000 }],
       context({
-        existing: [{ date: '2026-02-04', concept: 'Alquiler', amountCents: 70_000 }],
+        existing: [
+          {
+            date: '2026-02-04',
+            kind: 'expense' as const,
+            concept: 'Alquiler',
+            amountCents: 70_000,
+          },
+        ],
         pending: [pending({})],
       }),
     );

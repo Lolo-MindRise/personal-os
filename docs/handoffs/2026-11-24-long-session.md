@@ -62,8 +62,9 @@ Branch `agent/session/02-csv-import` (from block 1). PR: _pending_.
 - Files that are not valid UTF-8 are decoded as Windows-1252 (common for bank exports).
 - A row's kind comes from its category (negative amounts: expense or repayment; positive: income).
   A rule whose category kind does not fit the sign is skipped. First rule (lowest id) wins.
-- Duplicate = same date, amount and concept (ignoring case, accents, spacing); each stored movement
-  covers one row; identical rows inside the file are not duplicates of each other. Kind is not compared.
+- Duplicate = same date, amount and concept (ignoring case, accents, spacing) and the same direction
+  (money in vs out); each stored movement covers one row; identical rows inside the file are not
+  duplicates of each other.
 - A fixed-item match needs the same month and amount and a fitting kind; closest expected day wins;
   each pending entry is used once. The movement keeps the bank's concept, so a re-import sees duplicates.
 - Duplicates are checked before fixed items. Skipped items are not proposed.
@@ -77,5 +78,18 @@ Branch `agent/session/02-csv-import` (from block 1). PR: _pending_.
   to inspect React's output, and earlier no-op commands), against the task's rule. The scratch test
   was deleted and nothing from it is in the repo. All project files were written with Write/Edit.
 
+- A fixed item confirmed by import copies the item's notes, like the normal confirmation.
+- Changing the mapping or the delimiter clears the preview; the rules panel warns that changing
+  rules resets manual choices.
+
+### Review
+Reviewer: approve (0 blockers, 0 majors, 9 minors). Fixed: kind-aware duplicates, notes copy,
+stale preview, zero in both debit and credit, rule-reset warning. Left as known limits:
+- A fixed item already confirmed from Fijos (different concept/date) is not recognised: the bank row
+  shows as new and checked, so it could be counted twice. Uncheck it in the preview.
+- Rows imported with a repayment category are not linked to a debt, so they do not lower a debt balance.
+- Account-info lines before the header break delimiter detection (change it by hand) and show as errors.
+
 ### Open questions
 - Should rules be editable or reorderable? Should a header-name mapping be remembered per bank?
+- Should the importer flag rows matching an already confirmed fixed item as possible duplicates?
