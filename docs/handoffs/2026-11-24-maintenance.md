@@ -1,4 +1,4 @@
-# Handoff 2026-11-27: Maintenance (task 0010)
+# Handoff 2026-11-24: Maintenance (task 0010)
 
 Branch `agent/implementer/maintenance` (from `main`).
 
@@ -28,6 +28,16 @@ Branch `agent/implementer/maintenance` (from `main`).
 - Fixed clock instead of editing each test's dates: the page's "today" is the only moving part.
   Seeded items run from 2026-01 without end, so 2027-03 shows them all pending.
 - The dev e2e still uses `.dev-data` (same as a running `npm run dev`): it only reads.
+
+- Known gaps (reviewer minors, left as is): the dev e2e server and a running `npm run dev` open
+  the same `.dev-data` SQLite file (WAL mode, the e2e dev test only reads; the seed is not
+  re-run), and the data path is fixed in code, so a separate dir would be a feature change.
+  The fixed clock affects the browser only: the goals API uses the server's real
+  `localToday()`; the goals test does not assert on dates, so it cannot flake on this.
+
+## Review
+- Reviewer: changes required. Major: new sections were inserted inside the dependencies table
+  (fixed: moved after it). Minors: handoff date (fixed, 2026-11-24), the two gaps above.
 
 ## Open / next
 - CI must confirm `npm ci` with `allowScripts` on its npm version (an npm without the feature
