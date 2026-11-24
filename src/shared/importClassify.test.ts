@@ -421,6 +421,36 @@ describe('already confirmed as a fixed item (task 0014)', () => {
     expect(asRepayment).toMatchObject({ status: 'duplicate', reason: 'ya confirmado como fijo' });
   });
 
+  it('an exact duplicate later in the file still gets its stored movement (no double count)', () => {
+    // The stored rent was confirmed with the very concept and date the bank uses. An earlier row
+    // with the same amount must not use it up before the row that exactly duplicates it.
+    const stored = { ...confirmedRent, date: '2026-02-20', concept: 'RECIBO PISO' };
+    const rows = classifyRows(
+      [
+        { date: '2026-02-06', concept: 'Otro recibo', amountCents: -70_000 },
+        { date: '2026-02-20', concept: 'RECIBO PISO', amountCents: -70_000 },
+      ],
+      context({ existing: [stored] }),
+    );
+    expect(rows[1]).toMatchObject({ status: 'duplicate', reason: 'ya existe un movimiento igual' });
+    // The stored movement went to the exact match, so the other row is a genuinely new payment.
+    expect(rows[0]?.status).toBe('noCategory');
+    expect(rows[0]?.reason).toBeNull();
+  });
+
+  it('results keep the order of the file', () => {
+    const rows = classifyRows(
+      [
+        { date: '2026-02-06', concept: 'a', amountCents: -1_000 },
+        { date: '2026-02-20', concept: 'RECIBO PISO', amountCents: -70_000 },
+        { date: '2026-02-07', concept: 'b', amountCents: -2_000 },
+      ],
+      context({ existing: [{ ...confirmedRent, date: '2026-02-20', concept: 'RECIBO PISO' }] }),
+    );
+    expect(rows.map((r) => r.concept)).toEqual(['a', 'RECIBO PISO', 'b']);
+    expect(rows.map((r) => r.status)).toEqual(['noCategory', 'duplicate', 'noCategory']);
+  });
+
   it('works for income items too', () => {
     const [row] = classifyRows(
       [{ date: '2026-02-03', concept: 'INGRESO EMPRESA', amountCents: 200_000 }],

@@ -514,6 +514,17 @@ describe('Windows autostart scripts', () => {
     expect(install).toContain('.Count');
   });
 
+  it('install checks -Distribution before it reaches the task command line', () => {
+    expect(install).toContain("$Distribution -notmatch '^[\\w.-]+$'");
+    expect(install).toContain('throw');
+  });
+
+  it('install and the README warn about the brief console flash at logon', () => {
+    expect(install).toContain('flash a console window');
+    const readme = readFileSync(join(REPO_ROOT, 'README.md'), 'utf8');
+    expect(readme).toContain('console window may');
+  });
+
   it('uninstall removes the task without asking, and is safe when there is none', () => {
     expect(uninstall).toContain('Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false');
     expect(uninstall).toContain('-ErrorAction SilentlyContinue');

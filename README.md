@@ -229,7 +229,8 @@ offline use, and the app needs the server to be running.
    `scripts/start.sh` inside WSL at logon with no visible window, and prints what it did. Running
    it twice leaves one task. Options: `-Distribution <name>` to pin a WSL distribution, `-AppDir`
    if the instance is not in `$HOME/apps/personal-os` (keep the single quotes around the value).
-   The task only starts the server: open the installed app yourself.
+   The task only starts the server: open the installed app yourself. At logon a console window may
+   flash for a moment before it is hidden; that is normal.
 
    To try it without signing out: `Start-ScheduledTask -TaskName PersonalOS-Autostart`, then open
    the app. If it does not start, `Get-ScheduledTaskInfo -TaskName PersonalOS-Autostart` shows

@@ -6,6 +6,7 @@
   Registers a Task Scheduler task for the CURRENT user (no administrator rights) that runs the
   existing start script inside WSL at logon, with no visible window:
       wsl.exe -- bash -lc '$HOME/apps/personal-os/scripts/start.sh'
+  Windows may flash a console window for a moment at logon before it is hidden; that is normal.
   Running it again replaces the task, so there is always exactly one. It prints what it did.
   Undo it with uninstall-autostart.ps1. The task only starts the server; open the installed
   app (or http://localhost:<port>) yourself.
@@ -29,6 +30,11 @@ $ErrorActionPreference = 'Stop'
 $TaskName = 'PersonalOS-Autostart'
 
 try {
+    # The name ends up inside the task's command line: allow only what a distribution name has.
+    if ($Distribution -ne '' -and $Distribution -notmatch '^[\w.-]+$') {
+        throw "Invalid -Distribution '$Distribution': use the name shown by 'wsl -l -v' (letters, digits, dot, dash, underscore)."
+    }
+
     $user = "$env:USERDOMAIN\$env:USERNAME"
 
     # wsl.exe through a hidden PowerShell. The inner command uses single quotes so that bash,

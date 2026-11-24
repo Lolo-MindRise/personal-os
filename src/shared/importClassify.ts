@@ -65,6 +65,10 @@ const dayOf = (date: string) => Number(date.slice(8, 10));
  *   movement of the same month that confirms a fixed item with the same amount and a fitting kind
  *   flags the row as a duplicate ("ya confirmado como fijo"). It is only checked after the two
  *   rules above, so a pending item still wins, and each stored movement covers one row.
+ *
+ * Order: exact duplicates are resolved for the whole file first, then the other rules run in file
+ * order, so a stored movement is never claimed by a looser rule before the row that exactly
+ * duplicates it.
  */
 export function classifyRows(
   rows: ClassifyInput[],
@@ -79,14 +83,14 @@ export function classifyRows(
   const rules = context.rules.map((rule) => ({ rule, pattern: normalizeText(rule.pattern) }));
   const used = new Set<string>();
 
-  return rows.map((row): ImportPreviewRowDto => {
+  const prepared = rows.map((row) => {
     const kinds = kindsForAmount(row.amountCents);
     const concept = normalizeText(row.concept);
     const matched = rules.find(
       ({ rule, pattern }) =>
         pattern !== '' && kinds.includes(rule.kind) && concept.includes(pattern),
     )?.rule;
-    const base = {
+    const base: ImportPreviewRowDto = {
       date: row.date,
       concept: row.concept,
       amountCents: row.amountCents,
@@ -97,12 +101,25 @@ export function classifyRows(
       recurringItemId: null,
       recurringConcept: null,
       reason: null,
+      status: 'new',
     };
+    return { row, kinds, matched, base };
+  });
 
+  // Pass 1: exact duplicates for every row, before any other rule claims a stored movement. A
+  // row that exactly matches a stored movement must get it, whatever the order of the file.
+  const exact = prepared.map(({ row }) => {
     const key = duplicateKey(row.date, row.amountCents < 0, row.amountCents, row.concept);
     const same = stored.find((m) => !m.used && m.key === key);
     if (same !== undefined) {
       same.used = true;
+    }
+    return same !== undefined;
+  });
+
+  // Pass 2: the pending-item and already-confirmed-fixed-item rules, in file order.
+  return prepared.map(({ row, kinds, matched, base }, index): ImportPreviewRowDto => {
+    if (exact[index] === true) {
       return { ...base, status: 'duplicate', reason: DUPLICATE_REASON };
     }
 
