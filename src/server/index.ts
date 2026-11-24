@@ -12,6 +12,7 @@ const database = openDatabaseFromEnv(process.env);
 
 // In production the built frontend lives next to the built server: dist/web.
 const app = buildApp({
+  db: database.db,
   logger: true,
   webRoot: isProduction ? resolve(import.meta.dirname, '../web') : undefined,
 });

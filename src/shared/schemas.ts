@@ -29,20 +29,27 @@ export const categoryCreateSchema = z.strictObject({
   kind: kindSchema,
 });
 
-export const movementCreateSchema = z
-  .strictObject({
-    date: isoDate,
-    kind: kindSchema,
-    categoryId: z.number().int().positive(),
-    concept: text,
-    amountCents: cents,
-    notes: optionalNotes,
-    debtId: z.number().int().positive().nullish(),
-  })
-  .refine((m) => m.debtId == null || m.kind === 'repayment', {
+/** Base object of a movement, without the cross-field rule (so it can be made partial). */
+export const movementFieldsSchema = z.strictObject({
+  date: isoDate,
+  kind: kindSchema,
+  categoryId: z.number().int().positive(),
+  concept: text,
+  amountCents: cents,
+  notes: optionalNotes,
+  debtId: z.number().int().positive().nullish(),
+});
+
+export const movementCreateSchema = movementFieldsSchema.refine(
+  (m) => m.debtId == null || m.kind === 'repayment',
+  {
     path: ['debtId'],
     error: 'debtId is only allowed on repayment movements',
-  });
+  },
+);
+
+/** PATCH body: any subset of the fields. The merged result is re-validated with movementCreateSchema. */
+export const movementUpdateSchema = movementFieldsSchema.partial();
 
 export const budgetLineCreateSchema = z.strictObject({
   categoryId: z.number().int().positive(),
@@ -74,6 +81,7 @@ export const milestoneCreateSchema = z.strictObject({
 });
 
 export type CategoryCreate = z.infer<typeof categoryCreateSchema>;
+export type MovementUpdate = z.infer<typeof movementUpdateSchema>;
 export type MovementCreate = z.infer<typeof movementCreateSchema>;
 export type BudgetLineCreate = z.infer<typeof budgetLineCreateSchema>;
 export type DebtCreate = z.infer<typeof debtCreateSchema>;

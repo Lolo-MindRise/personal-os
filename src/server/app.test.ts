@@ -3,10 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from './app.js';
+import { openDatabase } from './db/index.js';
+
+const memoryDb = () => openDatabase(':memory:').db;
 
 describe('GET /api/health', () => {
   it('returns status ok', async () => {
-    const app = buildApp();
+    const app = buildApp({ db: memoryDb() });
     const response = await app.inject({ method: 'GET', url: '/api/health' });
 
     expect(response.statusCode).toBe(200);
@@ -17,7 +20,7 @@ describe('GET /api/health', () => {
 
 describe('without a web root (development)', () => {
   it('does not serve the frontend', async () => {
-    const app = buildApp();
+    const app = buildApp({ db: memoryDb() });
     const response = await app.inject({ method: 'GET', url: '/' });
 
     expect(response.statusCode).toBe(404);
@@ -38,7 +41,7 @@ describe('with a web root (production)', () => {
   });
 
   it('serves index.html at /', async () => {
-    const app = buildApp({ webRoot });
+    const app = buildApp({ db: memoryDb(), webRoot });
     const response = await app.inject({ method: 'GET', url: '/' });
 
     expect(response.statusCode).toBe(200);
@@ -47,7 +50,7 @@ describe('with a web root (production)', () => {
   });
 
   it('falls back to index.html for client-side routes', async () => {
-    const app = buildApp({ webRoot });
+    const app = buildApp({ db: memoryDb(), webRoot });
     const response = await app.inject({ method: 'GET', url: '/movimientos' });
 
     expect(response.statusCode).toBe(200);
@@ -56,7 +59,7 @@ describe('with a web root (production)', () => {
   });
 
   it('keeps the API working', async () => {
-    const app = buildApp({ webRoot });
+    const app = buildApp({ db: memoryDb(), webRoot });
     const response = await app.inject({ method: 'GET', url: '/api/health' });
 
     expect(response.json()).toEqual({ status: 'ok' });
@@ -64,7 +67,7 @@ describe('with a web root (production)', () => {
   });
 
   it('returns 404 for unknown API routes', async () => {
-    const app = buildApp({ webRoot });
+    const app = buildApp({ db: memoryDb(), webRoot });
     const response = await app.inject({ method: 'GET', url: '/api/unknown' });
 
     expect(response.statusCode).toBe(404);
