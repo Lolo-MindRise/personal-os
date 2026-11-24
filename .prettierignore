@@ -4,3 +4,5 @@ coverage/
 package-lock.json
 docs/
 CLAUDE.md
+drizzle/
+.claude/settings.local.json

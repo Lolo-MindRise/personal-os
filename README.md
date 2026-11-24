@@ -18,11 +18,13 @@ npm ci
 
 ## Run
 
-| Command         | What it does                                                                                   |
-| --------------- | ---------------------------------------------------------------------------------------------- |
-| `npm run dev`   | API with reload on `127.0.0.1:5310` + Vite dev server on `127.0.0.1:5173` (open this one).     |
-| `npm run build` | Builds the frontend to `dist/web` and the server to `dist/server`.                             |
-| `npm start`     | Production mode: serves the API and the built frontend on `127.0.0.1:5310`. Run `build` first. |
+| Command               | What it does                                                                                   |
+| --------------------- | ---------------------------------------------------------------------------------------------- |
+| `npm run dev`         | API with reload on `127.0.0.1:5310` + Vite dev server on `127.0.0.1:5173` (open this one).     |
+| `npm run build`       | Builds the frontend to `dist/web` and the server to `dist/server`.                             |
+| `npm run db:seed`     | Fills the development database (`.dev-data/`, gitignored) with an invented month.              |
+| `npm run db:generate` | Generates a SQL migration into `drizzle/` after a schema change.                               |
+| `npm start`           | Production mode: serves the API and the built frontend on `127.0.0.1:5310`. Run `build` first. |
 
 The port comes from the `PORT` environment variable (default `5310`).
 
