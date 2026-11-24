@@ -153,6 +153,9 @@ Branch `agent/overnight/04-debts`, stacked on block 3.
   another kind had no test; now a pure helper (`payloadForUpdate`) with unit tests plus an API
   test of the transition. Minors: handoff section order, API bounds for rate and installments.
 
+### Open questions
+- None.
+
 ### PR
 https://github.com/Lolo-MindRise/personal-os/pull/20 (both CI jobs green)
 
@@ -187,8 +190,10 @@ Branch `agent/overnight/05-summary-goals`, stacked on block 4.
   accepts `?today=` for tests only.
 - No delete for goals (not asked).
 
-### Open questions
-- None.
+### Review
+- Reviewer: approve, 3 minors, all fixed: handoff section order, the goals e2e test now sets the
+  initial balance itself (independent of the Resumen test), and a failed settings load is no
+  longer hidden by a successful summary load.
 
 ### Open questions
 - None.

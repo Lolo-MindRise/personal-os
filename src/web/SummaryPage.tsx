@@ -175,6 +175,8 @@ export function SummaryPage({ api = defaultApi }: { api?: ApiClient }) {
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [summary, setSummary] = useState<YearSummaryDto | undefined>();
   const [loadError, setLoadError] = useState<string | undefined>();
+  /** Kept apart from `loadError`: a good summary load must not hide a failed settings load. */
+  const [settingsError, setSettingsError] = useState<string | undefined>();
   const [reloads, setReloads] = useState(0);
 
   const [form, setForm] = useState<SettingsFormValues>({ balance: '', date: '' });
@@ -189,7 +191,7 @@ export function SummaryPage({ api = defaultApi }: { api?: ApiClient }) {
         setForm(formFromSettings(settings));
       },
       (error: unknown) => {
-        setLoadError(messageOf(error));
+        setSettingsError(messageOf(error));
       },
     );
   }, [api]);
@@ -268,10 +270,13 @@ export function SummaryPage({ api = defaultApi }: { api?: ApiClient }) {
         </button>
       </nav>
 
-      {loadError !== undefined && (
-        <p className="form-error" role="alert">
-          {loadError}
-        </p>
+      {[loadError, settingsError].map(
+        (message) =>
+          message !== undefined && (
+            <p key={message} className="form-error" role="alert">
+              {message}
+            </p>
+          ),
       )}
 
       {summary !== undefined && <YearTable summary={summary} />}

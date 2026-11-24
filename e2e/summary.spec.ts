@@ -55,7 +55,12 @@ test('the yearly summary accumulates savings from the initial balance', async ({
   });
 });
 
-test('goals: the seeded one, add one, and edit it', async ({ page }) => {
+test('goals: the seeded one, add one, and edit it', async ({ page, request }) => {
+  // Independent of the test above: it sets the initial balance itself.
+  const saved = await request.put('/api/settings', {
+    data: { initialSavingsCents: 500_000, initialSavingsDate: '2026-01-31' },
+  });
+  expect(saved.status()).toBe(200);
   await page.goto('/');
   await nav(page, 'Objetivos').click();
   await expect(page.getByRole('heading', { name: 'Objetivos', level: 1 })).toBeVisible();
