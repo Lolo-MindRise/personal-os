@@ -1,31 +1,32 @@
-## What and why
+## Risk: low | medium | high
 
-<!-- 3–5 lines. Task number and link to the brief. -->
+<!-- Set by the reviewer, with its one-line reason. -->
 
-## ADRs
+## What changes for Manuel
 
-<!-- ADRs this PR relies on or affects, and how. -->
+<!-- 2–4 lines, in user terms: what he will see or be able to do. -->
 
-## Checks run
+## Review guide
 
-<!-- Lint, typecheck, tests (and anything else) run locally, with results. -->
+**Look here:**
+<!-- The 2–3 places to read, as file:line, from the reviewer. -->
 
-- `npm run lint`:
-- `npm run typecheck`:
-- `npm test`:
+**Decisions that need your approval:**
+<!-- Choices taken without asking. "None" if none. -->
 
-## Reviewer
+**Not verified:**
+<!-- What could not be checked by tests or CI. "None" if none. -->
 
-<!-- Verdict of the `reviewer` subagent (ADR-0004) and how each blocker and
-major finding was addressed, or why not. -->
+## Manual test needed
 
-- Verdict:
-- Findings addressed:
+<!-- "None" for low risk. Otherwise, exact steps AND how to check each one:
+the command to run and the expected output or value. Say where each
+command runs (Ubuntu or PowerShell). -->
 
-## Risks and open questions
+## Details
 
-<!-- If none, say so. -->
-
-## Deviations
-
-<!-- "Deviation proposed" with reason and alternatives, or "None". -->
+- **What and why:**
+- **ADRs:**
+- **Checks run:** lint, typecheck, test, test:e2e, build
+- **Reviewer:** first verdict, fixes, final verdict
+- **Deviations:** none

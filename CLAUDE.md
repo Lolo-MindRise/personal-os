@@ -117,3 +117,5 @@ Shell output may only go to /tmp or /dev/null; the guard hook blocks shell write
 After fixing reviewer findings, run the reviewer again on the final diff before opening the PR, and record both verdicts in the PR.
 
 Review every generated migration before committing it: it must not contain DROP TABLE or rebuild an existing table. If the tool generates one, write an additive migration by hand and add a test that existing rows survive.
+
+Every PR follows .github/pull_request_template.md. The risk level is the one set by the reviewer; never lower it.

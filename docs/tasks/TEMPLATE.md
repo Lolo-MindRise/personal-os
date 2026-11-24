@@ -1,33 +1,33 @@
 # Task NNNN: Title
 
-**Branch:** `agent/<role>/<short-task>`
+**Branch:** `agent/implementer/<short-name>`
 **ADRs:** NNNN, NNNN
-
-## Context
-
-<!-- Optional. Only what the implementer cannot find in the ADRs or repo. -->
 
 ## Goal
 
-<!-- One or two sentences: the outcome, not the steps. -->
+Why this task exists, in two or three sentences.
 
 ## Scope
 
-1. <!-- Each item a concrete, checkable deliverable. -->
+Numbered items. Concrete enough that the reviewer can check each one.
 
 ## Out of scope
 
-<!-- What must not be touched or added, even if it looks related. -->
+What must not be touched.
+
+## Manual test
+
+"None" if everything is covered by CI. Otherwise, for each step: what to do,
+where (Ubuntu or PowerShell), and how to check the result (command and
+expected output). Required for anything Windows-only.
 
 ## Done when
 
-- Lint, typecheck and tests pass locally and in CI on the PR.
-- The `reviewer` subagent ran and its verdict is in the PR.
-- PR description follows `CLAUDE.md`; a row is added to
-  `docs/metrics/review-log.md`.
-- Handoff written in `docs/handoffs/`.
+- Both CI jobs pass on the PR.
+- Both reviewer verdicts are in the PR, with blockers and majors fixed or
+  explained.
+- Manual test, if any, run by Manuel.
 
 ## If something blocks you
 
-Do not work around an ADR or `CLAUDE.md`. Stop and write "Deviation
-proposed" in the PR or handoff with the reason and the alternatives.
+Stop and report it in the PR or handoff as "Deviation proposed".
