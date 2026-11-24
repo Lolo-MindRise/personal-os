@@ -26,6 +26,8 @@ Creation schemas (Zod, shared with the future API and frontend):
 | `debts` | `name`, `monthly_payment_cents`, `balance_cents`, `balance_as_of`, `remaining_installments`, `annual_rate_bps`, `notes?` | payment > 0; balance, installments, rate >= 0 |
 | `goals` | `name`, `target_amount_cents`, `target_date` | amount > 0 |
 | `milestones` | `title`, `target_date`, `status` (`pending`/`in_progress`/`done`), `notes?` | status defaults to `pending` |
+| `category_rules` | `pattern`, `category_id` | task 0013: "concept contains pattern → category" for the CSV import; pattern not blank; applied in id order; deleted with its category |
+| `import_settings` | `id` (always 1), `mapping` (JSON) | task 0013: the last CSV column mapping, one row |
 | `app_settings` | `id` (always 1), `initial_savings_cents`, `initial_savings_date` | one row, absent until first saved; balance >= 0; the balance is valid at the end of its date, so movements dated after it add to it |
 
 ## Budget lookup

@@ -131,6 +131,58 @@ export const settingsSchema = z.strictObject({
   initialSavingsDate: isoDate,
 });
 
+export const categoryRuleCreateSchema = z.strictObject({
+  pattern: z.string().trim().min(1).max(100),
+  categoryId: z.number().int().positive(),
+});
+
+const columnIndex = z.number().int().min(0).max(200);
+
+/** The remembered CSV column mapping (task 0013, block 2). */
+export const importMappingSchema = z.strictObject({
+  hasHeader: z.boolean(),
+  dateColumn: columnIndex,
+  conceptColumn: columnIndex,
+  amountMode: z.enum(['signed', 'split']),
+  amountColumn: columnIndex.nullable(),
+  debitColumn: columnIndex.nullable(),
+  creditColumn: columnIndex.nullable(),
+});
+
+/** Largest import the API accepts in one request. */
+export const MAX_IMPORT_ROWS = 5_000;
+
+const signedCents = z
+  .number()
+  .int()
+  .refine(
+    (n) => n !== 0 && Math.abs(n) <= Number.MAX_SAFE_INTEGER,
+    'El importe no puede ser cero.',
+  );
+
+export const importPreviewSchema = z.strictObject({
+  rows: z
+    .array(z.strictObject({ date: isoDate, concept: text, amountCents: signedCents }))
+    .max(MAX_IMPORT_ROWS),
+});
+
+/** The checked rows of the preview: each becomes a movement, or confirms a pending fixed item. */
+export const importCommitSchema = z.strictObject({
+  rows: z
+    .array(
+      z.strictObject({
+        date: isoDate,
+        concept: text,
+        amountCents: cents,
+        kind: kindSchema,
+        categoryId: z.number().int().positive(),
+        recurringItemId: z.number().int().positive().nullish(),
+      }),
+    )
+    .min(1)
+    .max(MAX_IMPORT_ROWS),
+});
+
 export const milestoneCreateSchema = z.strictObject({
   title: text,
   targetDate: isoDate,

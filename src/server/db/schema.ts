@@ -226,6 +226,36 @@ export const appSettings = sqliteTable(
   ],
 );
 
+/**
+ * "Concept contains `pattern`" → category, applied to the CSV import preview (task 0013).
+ * Rules apply in id order. Deleting a category deletes its rules.
+ */
+export const categoryRules = sqliteTable(
+  'category_rules',
+  {
+    id: id(),
+    pattern: text('pattern').notNull(),
+    categoryId: integer('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [check('category_rules_pattern_not_empty', sql`length(trim(${t.pattern})) > 0`)],
+);
+
+/** The last column mapping used by the CSV import, as JSON text. A single row (id 1). */
+export const importSettings = sqliteTable(
+  'import_settings',
+  {
+    id: integer('id').primaryKey(),
+    mapping: text('mapping').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [check('import_settings_single_row', sql`${t.id} = 1`)],
+);
+
 export const goals = sqliteTable(
   'goals',
   {

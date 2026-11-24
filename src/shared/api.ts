@@ -288,6 +288,43 @@ export interface DashboardDto {
   };
 }
 
+/** "Concept contains `pattern`" → category (task 0013, block 2). */
+export interface CategoryRuleDto {
+  id: number;
+  pattern: string;
+  categoryId: number;
+  categoryName: string;
+  kind: Kind;
+}
+
+/** One CSV row after classification, shown in the import preview. */
+export interface ImportPreviewRowDto {
+  date: string;
+  concept: string;
+  /** Signed, as in the file: negative is money out. */
+  amountCents: number;
+  /** The proposed kind (the category's, or from the sign when there is no category yet). */
+  kind: Kind;
+  categoryId: number | null;
+  categoryName: string | null;
+  /** The rule that proposed the category, if any. */
+  ruleId: number | null;
+  /**
+   * `new` (will become a movement), `duplicate` (same date, amount and concept already exist),
+   * `recurring` (confirms a pending fixed item) or `noCategory` (a category must be chosen).
+   */
+  status: 'new' | 'duplicate' | 'recurring' | 'noCategory';
+  recurringItemId: number | null;
+  recurringConcept: string | null;
+}
+
+export interface ImportSummaryDto {
+  /** New movements created. */
+  created: number;
+  /** Pending fixed items confirmed by a row. */
+  confirmedRecurring: number;
+}
+
 export interface BackupTiersDto {
   /** Last 48 hours. */
   recent: number;

@@ -681,3 +681,45 @@ table.movements {
   padding: 0.4rem 0;
   border-bottom: 1px solid var(--border);
 }
+
+/* CSV import (task 0013). Status is always written in words; colour only reinforces it. */
+.import-preview,
+.import-sample {
+  display: block;
+  overflow-x: auto;
+}
+
+.import-error-row {
+  background: var(--danger-bg);
+}
+
+.import-status.error,
+.import-status.noCategory {
+  color: var(--danger);
+}
+
+.import-status.recurring {
+  color: var(--repayment);
+}
+
+.import-row.import-duplicate td {
+  color: var(--muted);
+}
+
+.import-summary {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--income);
+  border-radius: 6px;
+  color: var(--income);
+}
+
+.rule-list {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rule-list li {
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+}

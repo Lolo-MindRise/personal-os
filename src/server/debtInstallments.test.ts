@@ -333,9 +333,11 @@ describe('migration 0004', () => {
         sqlite.exec(statement);
       }
     };
-    const last = journal.entries.at(-1)?.tag ?? '';
-    expect(last).toMatch(/^0004_/);
-    for (const entry of journal.entries.slice(0, -1)) {
+    // Migration 0004 is the one under test; later ones are not applied here.
+    const index = journal.entries.findIndex((entry) => entry.tag.startsWith('0004_'));
+    expect(index).toBeGreaterThan(0);
+    const last = journal.entries[index]?.tag ?? '';
+    for (const entry of journal.entries.slice(0, index)) {
       apply(entry.tag);
     }
     sqlite.exec(`
