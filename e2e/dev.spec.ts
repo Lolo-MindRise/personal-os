@@ -22,16 +22,20 @@ test('the dev page renders and no request fails', async ({ page }) => {
     }
   });
 
-  // The API is reached through the proxy, not just the static modules.
-  const categories = page.waitForResponse(
-    (response) => response.url().endsWith('/api/categories') && response.ok(),
-  );
-  await page.goto('/');
-  await categories;
+  // The API must be reached through the proxy, not just the static modules.
+  // Never throws: a missing answer is reported after the more telling checks.
+  const categories = page
+    .waitForResponse((response) => response.url().endsWith('/api/categories') && response.ok(), {
+      timeout: 10_000,
+    })
+    .catch(() => undefined);
 
-  await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Añadir movimiento' })).toBeVisible();
+  await page.goto('/');
   await page.waitForLoadState('networkidle');
 
-  expect(problems).toEqual([]);
+  // First, so a broken module (e.g. "404 .../api.ts") is named in the failure.
+  expect(problems, 'failed requests and errors').toEqual([]);
+  await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Añadir movimiento' })).toBeVisible();
+  expect(await categories, '/api/categories answered through the proxy').toBeDefined();
 });
