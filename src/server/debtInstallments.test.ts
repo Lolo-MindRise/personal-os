@@ -258,6 +258,41 @@ describe('estimated balance with installments', () => {
     expect((await debtOf(debt.id))?.estimatedBalanceCents).toBe(1_000_000);
   });
 
+  it('never counts an installment movement as an extra repayment, even of another debt', async () => {
+    const category = await repaymentCategory();
+    const debtA = await newDebt();
+    const debtB = await newDebt({ name: 'B' });
+    const item = await installmentItem(debtA.id, category);
+    const movement = (await confirm(item.id, '2026-02')).json<MovementDto>();
+    // The same movement also claims to be an extra repayment of debt B.
+    handle.sqlite
+      .prepare('UPDATE movements SET debt_id = ? WHERE id = ?')
+      .run(debtB.id, movement.id);
+    const a = await debtOf(debtA.id);
+    const b = await debtOf(debtB.id);
+    expect(a?.installments).toHaveLength(1);
+    expect(a?.repayments).toEqual([]);
+    expect(b?.repayments).toEqual([]);
+    expect(b?.estimatedBalanceCents).toBe(1_000_000);
+  });
+
+  it('reports extra repayments capped at what was owed, so the figures add up', async () => {
+    const debt = await newDebt({ balanceCents: 50_000 });
+    const category = await repaymentCategory();
+    await call('POST', '/api/movements', {
+      date: '2026-02-10',
+      kind: 'repayment',
+      categoryId: category,
+      concept: 'Extra grande',
+      amountCents: 80_000,
+      debtId: debt.id,
+    });
+    const after = await debtOf(debt.id);
+    expect(after?.estimatedBalanceCents).toBe(0);
+    expect(after?.repaidSinceCents).toBe(50_000);
+    expect(after?.repayments[0]?.amountCents).toBe(80_000); // the movement itself is unchanged
+  });
+
   it('feeds the dashboard: progress and interest include the installments', async () => {
     const category = await repaymentCategory();
     const debt = await newDebt();
@@ -322,6 +357,15 @@ describe('migration 0004', () => {
     expect(() => sqlite.exec('UPDATE recurring_items SET debt_id = 99 WHERE id = 1')).toThrow(
       /FOREIGN KEY/,
     );
+    sqlite.exec(
+      "INSERT INTO debts (id, name, monthly_payment_cents, balance_cents, balance_as_of, remaining_installments, annual_rate_bps) VALUES (1, 'D', 100, 100, '2026-01-01', 1, 0)",
+    );
+    sqlite.exec("INSERT INTO categories (id, name, kind) VALUES (2, 'Ocio', 'expense')");
+    expect(() =>
+      sqlite.exec(
+        "INSERT INTO recurring_items (kind, category_id, concept, amount_cents, expected_day, start_month, debt_id) VALUES ('expense', 2, 'x', 100, 1, '2026-01', 1)",
+      ),
+    ).toThrow(/recurring_items_debt_only_on_repayment/);
     sqlite.close();
   });
 });

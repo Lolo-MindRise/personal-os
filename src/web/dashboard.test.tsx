@@ -83,6 +83,12 @@ describe('DebtCard', () => {
     expect(html).toContain('31/01/2026');
   });
 
+  it('shows the interest paid in installments and no longer says installments are not deducted', () => {
+    const html = renderToStaticMarkup(<DebtCard debt={debt({ interestPaidCents: 5_000 })} />);
+    expect(html).toMatch(/Intereses pagados en cuotas: 50,00\s€/);
+    expect(html).not.toContain('no se descuentan');
+  });
+
   it('draws no progress bar without a real baseline', () => {
     const html = renderToStaticMarkup(
       <DebtCard debt={debt({ progressPercent: null, recordedBalanceCents: 0 })} />,

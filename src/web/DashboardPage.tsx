@@ -227,6 +227,9 @@ export function DebtCard({ debt }: { debt: DashboardDebtDto }) {
             {formatDate(debt.balanceAsOf)} ({formatCents(debt.repaidSinceCents)} de{' '}
             {formatCents(debt.recordedBalanceCents)})
           </p>
+          <p className="card-note" data-testid="debt-interest">
+            Intereses pagados en cuotas: {formatCents(debt.interestPaidCents)}
+          </p>
         </>
       )}
     </article>
@@ -280,8 +283,8 @@ export function DashboardView({ data, onNavigate }: { data: DashboardDto; onNavi
           ) : (
             <>
               <p className="card-note">
-                Total estimado: <strong>{formatCents(data.debts.totalEstimatedCents)}</strong>. Las
-                cuotas regulares no se descuentan solas.
+                Total estimado: <strong>{formatCents(data.debts.totalEstimatedCents)}</strong>. Cada
+                cuota confirmada de un fijo vinculado reduce la deuda en su parte de capital.
               </p>
               {data.debts.items.map((debt) => (
                 <DebtCard key={debt.id} debt={debt} />

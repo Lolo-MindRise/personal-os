@@ -98,7 +98,7 @@ export interface DebtDto {
   notes: string | null;
   /** Every extra repayment linked to the debt, newest first. */
   repayments: DebtRepaymentDto[];
-  /** Sum of the linked extra repayments dated after `balanceAsOf`. */
+  /** Linked extra repayments dated after `balanceAsOf` that reduced the balance (capped at what was owed). */
   repaidSinceCents: number;
   /**
    * Recorded balance minus the principal of the confirmed installments of linked recurring items

@@ -30,5 +30,12 @@ Branch `agent/session/01-debt-installments` (from `main`). PR: _pending_.
 - `remainingInstallments` stays as recorded (not decremented); noted as an open question.
 - Deleting an installment movement, or its recurring item, removes it from the estimate.
 
+- A movement of any debt-linked recurring item counts only as an installment, never as an extra
+  repayment of another debt. "Amortizado con extras" shows the capped amount actually applied.
+
+### Review
+Reviewer: changes required (1 blocker, 1 major, 3 minors), all fixed: dashboard notice and interest
+display, double-count guard, capped extras, CHECK assertion.
+
 ### Open questions
 - Should "cuotas restantes" count down with confirmed installments?
