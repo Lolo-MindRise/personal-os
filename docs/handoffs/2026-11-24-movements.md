@@ -30,25 +30,23 @@
 - Removed `src/web/health.ts` and its test: the screen replaced the health
   page and nothing used them. `GET /api/health` stays.
 
-## Defect found in manual testing (fixed)
+## Defect found in manual testing (fixed in a follow-up PR)
 - `npm run dev` showed a blank page: `GET /api.ts 404`. Cause: the Vite proxy
   key `'/api'` is a prefix match, so the module `src/web/api.ts` (served as
-  `/api.ts`) was forwarded to Fastify. Tests, typecheck and build cannot see
-  it: none of them go through the dev server. `npm start` was never affected.
-- Fix: `src/web/devProxy.ts` anchors the key to `^/api/`; `vite.config.ts` uses
-  it. `devProxy.test.ts` fails with the old key, with a literal `'/api'` in
-  `vite.config.ts`, and with a folder `src/web/api/` (each checked); it asserts
-  no file or folder under `src/web` matches the proxy.
-- Verified like a browser: with `npm run dev`, fetched `/` and every module it
-  imports (25 resources, parsed with `es-module-lexer`), none 404. Before the
-  fix `/api.ts` returned Fastify's 404 JSON. `npm run build` + `npm start`
-  (scratch data dir): page, JS, CSS and API all 200.
-- Not verified: no browser on this machine, so the page was never rendered.
-- My earlier "smoke through the dev proxy" only called the API; I did not
-  fetch the modules, so that check could not have caught this.
-- Process gap for Manuel to decide: "shows the screen working" has no
-  automated check. Options: a Playwright smoke test (brief 0005 put it out of
-  scope), or the module-crawl check as a `npm run` script.
+  `/api.ts`) went to Fastify. Tests, typecheck, build and `npm start` cannot
+  see it: none goes through the dev server.
+- PR #10 was merged before the fix, so `main` had the bug until the follow-up.
+- Fix: `src/web/devProxy.ts` anchors the key to `^/api/`. `devProxy.test.ts`
+  fails with the old key, with a literal `'/api'` in `vite.config.ts` and with
+  a folder `src/web/api/` (each checked).
+- Verified like a browser: with `npm run dev`, `/` and every module it imports
+  (25, via `es-module-lexer`) return 200; `/api.ts` was Fastify's 404 before.
+  `npm run build` + `npm start` (scratch data dir): page, JS, CSS, API all 200.
+- Not verified: no browser here, the page was never rendered. My earlier dev
+  smoke only called the API, not the modules.
+- For Manuel: "shows the screen working" has no automated check. Options: a
+  Playwright smoke test (out of scope in brief 0005) or the module crawl as an
+  `npm run` script.
 
 ## Notes
 - The seed is January 2026, the default month is the current one: pick
