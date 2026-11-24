@@ -128,6 +128,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
         await api.updateMovement(editingId, payload);
       }
       resetForm();
+      setActionError(undefined);
       reload();
     } catch (error) {
       setFieldErrors(error instanceof ApiError ? mapApiFieldErrors(error.fields) : {});
@@ -158,6 +159,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     setEditingId(undefined);
     setFieldErrors({});
     setFormError(undefined);
+    setActionError(undefined);
   };
 
   const remove = async (movement: MovementDto) => {

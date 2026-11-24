@@ -14,7 +14,7 @@
   section with Confirmar (opens the movement form pre-filled, kind and category
   locked), Saltar, Deshacer, Confirmar todos; pending amounts and "Ahorro previsto".
 - Seed: five fictional fixed items; January's salary and rent are their confirmations.
-- Tests: 374 unit (up from 197) and 9 e2e (up from 6). Lint, typecheck, build pass.
+- Tests: 375 unit (up from 197) and 9 e2e (up from 6). Lint, typecheck, build pass.
   Mutation checks: ignoring confirmations, ignoring the end month, a UI confirm
   that does not link, "confirm all" taking skipped entries, action errors cleared
   by a reload, and no cancel of a stale confirmation each fail tests.

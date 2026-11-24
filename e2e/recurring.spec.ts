@@ -287,6 +287,10 @@ test('a failed action keeps its error visible, and confirm all cancels a confirm
     await test.step('confirm all while confirming one cancels that confirmation, with a message', async () => {
       await pendingRow(page, 'Gimnasio').getByRole('button', { name: 'Confirmar' }).click();
       await expect(page.getByRole('heading', { name: 'Confirmar fijo' })).toBeVisible();
+      // Starting a new confirmation clears the previous action's error.
+      await expect(page.getByRole('alert').filter({ hasText: 'ya está confirmado' })).toHaveCount(
+        0,
+      );
 
       await page.getByRole('button', { name: 'Confirmar todos' }).click();
 
