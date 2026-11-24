@@ -71,15 +71,19 @@ export const recurringItemFieldsSchema = z.strictObject({
   startMonth: isoMonth,
   endMonth: isoMonth.nullish(),
   notes: optionalNotes,
+  /** The debt whose installments this item pays (task 0013); only for repayments. */
+  debtId: z.number().int().positive().nullish(),
 });
 
-export const recurringItemCreateSchema = recurringItemFieldsSchema.refine(
-  (item) => item.endMonth == null || item.endMonth >= item.startMonth,
-  {
+export const recurringItemCreateSchema = recurringItemFieldsSchema
+  .refine((item) => item.endMonth == null || item.endMonth >= item.startMonth, {
     path: ['endMonth'],
     error: 'El mes final no puede ser anterior al mes inicial.',
-  },
-);
+  })
+  .refine((item) => item.debtId == null || item.kind === 'repayment', {
+    path: ['debtId'],
+    error: 'Solo las amortizaciones pueden estar vinculadas a una deuda.',
+  });
 
 /** PATCH body: any subset. The merged result is re-validated with recurringItemCreateSchema. */
 export const recurringItemUpdateSchema = recurringItemFieldsSchema.partial();

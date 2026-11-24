@@ -69,6 +69,7 @@ const debt = (over: Partial<DashboardDebtDto> = {}): DashboardDebtDto => ({
   recordedBalanceCents: 300_000,
   balanceAsOf: '2026-01-31',
   repaidSinceCents: 75_000,
+  interestPaidCents: 0,
   progressPercent: 25,
   ...over,
 });
@@ -80,6 +81,12 @@ describe('DebtCard', () => {
     expect(html).toContain('18 cuotas restantes');
     expect(html).toContain('aria-valuenow="25"');
     expect(html).toContain('31/01/2026');
+  });
+
+  it('shows the interest paid in installments and no longer says installments are not deducted', () => {
+    const html = renderToStaticMarkup(<DebtCard debt={debt({ interestPaidCents: 5_000 })} />);
+    expect(html).toMatch(/Intereses pagados en cuotas: 50,00\s€/);
+    expect(html).not.toContain('no se descuentan');
   });
 
   it('draws no progress bar without a real baseline', () => {

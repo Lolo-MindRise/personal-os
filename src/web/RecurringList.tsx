@@ -1,17 +1,19 @@
-import type { RecurringItemDto } from '../shared/api.js';
+import type { DebtDto, RecurringItemDto } from '../shared/api.js';
 import { formatCents } from '../shared/money.js';
 import { KIND_LABELS } from './labels.js';
 import { currentMonth, formatMonth } from './months.js';
 
 interface Props {
   items: RecurringItemDto[];
+  /** To show which debt an installment item pays. */
+  debts?: Pick<DebtDto, 'id' | 'name'>[];
   /** Today's month, to tell which items have already ended. Defaults to the real one. */
   month?: string;
   onEdit: (item: RecurringItemDto) => void;
   onEnd: (item: RecurringItemDto) => void;
 }
 
-export function RecurringList({ items, month = currentMonth(), onEdit, onEnd }: Props) {
+export function RecurringList({ items, debts = [], month = currentMonth(), onEdit, onEnd }: Props) {
   if (items.length === 0) {
     return <p className="empty">Todavía no hay fijos. Añade el primero arriba.</p>;
   }
@@ -43,6 +45,11 @@ export function RecurringList({ items, month = currentMonth(), onEdit, onEnd }: 
               <td>
                 {item.concept}
                 {item.notes !== null && <span className="notes">{item.notes}</span>}
+                {item.debtId !== null && (
+                  <span className="notes">
+                    Cuota de la deuda «{debts.find((d) => d.id === item.debtId)?.name ?? '?'}»
+                  </span>
+                )}
               </td>
               <td>{item.expectedDay}</td>
               <td className="amount">{formatCents(item.amountCents)}</td>

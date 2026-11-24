@@ -31,6 +31,9 @@ const debt: DebtDto = {
   ],
   repaidSinceCents: 20_000,
   estimatedBalanceCents: 280_000,
+  principalPaidCents: 0,
+  interestPaidCents: 0,
+  installments: [],
 };
 
 describe('DebtList', () => {
@@ -52,6 +55,40 @@ describe('DebtList', () => {
     expect(html).toContain('10/02/2026 · Extra de febrero');
     expect(html).toContain('25/01/2026');
     expect(html.match(/no se descuenta/g)).toHaveLength(1);
+  });
+
+  it('shows principal and interest of the confirmed installments, and the old notice is gone', () => {
+    const withInstallments = renderToStaticMarkup(
+      <DebtList
+        debts={[
+          {
+            ...debt,
+            principalPaidCents: 81_066,
+            interestPaidCents: 5_000,
+            installments: [
+              {
+                movementId: 5,
+                date: '2026-02-01',
+                paidCents: 86_066,
+                interestCents: 5_000,
+                principalCents: 81_066,
+                balanceAfterCents: 218_934,
+              },
+            ],
+          },
+        ]}
+        onEdit={noop}
+      />,
+    );
+    expect(withInstallments).toMatch(/Intereses pagados en cuotas<\/dt><dd[^>]*>50,00\s€/);
+    expect(withInstallments).toMatch(/Capital amortizado en cuotas<\/dt><dd>810,66\s€/);
+    expect(withInstallments).toContain('Cuotas confirmadas (1)');
+    expect(withInstallments).toMatch(/intereses 50,00\s€, capital 810,66\s€/);
+    expect(html).toContain('Sin cuotas confirmadas desde esa fecha');
+    expect(html).not.toContain('no se descuentan automáticamente');
+    expect(renderToStaticMarkup(<DebtList debts={[debt]} onEdit={noop} />)).not.toContain(
+      'no se descuentan automáticamente',
+    );
   });
 
   it('says so when no repayment is linked, and when there are no debts', () => {

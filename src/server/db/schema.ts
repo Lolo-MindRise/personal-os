@@ -90,10 +90,17 @@ export const recurringItems = sqliteTable(
     startMonth: text('start_month').notNull(),
     endMonth: text('end_month'),
     notes: text('notes'),
+    // The debt this item pays the installments of (task 0013): confirming it reduces the debt's
+    // estimated balance by the principal part. Only for repayments.
+    debtId: integer('debt_id').references(() => debts.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
+    check(
+      'recurring_items_debt_only_on_repayment',
+      sql`${t.debtId} IS NULL OR ${t.kind} = 'repayment'`,
+    ),
     // Same rule as movements: the item's kind must match its category's kind.
     foreignKey({
       columns: [t.categoryId, t.kind],

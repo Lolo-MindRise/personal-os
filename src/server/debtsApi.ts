@@ -1,7 +1,7 @@
-import { asc, desc, eq } from 'drizzle-orm';
+import { asc, desc, eq, isNotNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { DebtDto, DebtRepaymentDto } from '../shared/api.js';
-import { estimateBalance, repaidSince } from '../shared/debts.js';
+import { estimateDebt, type InstallmentInput } from '../shared/debts.js';
 import { debtCreateSchema, debtUpdateSchema } from '../shared/schemas.js';
 import {
   badRequest,
@@ -11,7 +11,7 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
-import { debts, movements } from './db/schema.js';
+import { debts, movements, recurringItems } from './db/schema.js';
 
 const MESSAGES = {
   ...COMMON_MESSAGES,
@@ -22,7 +22,33 @@ const MESSAGES = {
 
 type DebtRow = typeof debts.$inferSelect;
 
+/** Confirmed installments (movements of recurring items linked to the debt), by date. */
+function installmentsOf(db: Db, debtId: number): InstallmentInput[] {
+  return db
+    .select({ movementId: movements.id, date: movements.date, amountCents: movements.amountCents })
+    .from(movements)
+    .innerJoin(recurringItems, eq(recurringItems.id, movements.recurringItemId))
+    .where(eq(recurringItems.debtId, debtId))
+    .orderBy(asc(movements.date), asc(movements.id))
+    .all();
+}
+
+/**
+ * Extra repayments: movements linked to the debt that are not installments (an installment
+ * movement is never counted twice, even if it also carries the debt id).
+ */
 function repaymentsOf(db: Db, debtId: number): DebtRepaymentDto[] {
+  // A movement of any debt-linked recurring item is an installment (of that item's debt), never
+  // an extra repayment of another debt, even if it also carries a debt id of its own.
+  const installmentIds = new Set(
+    db
+      .select({ id: movements.id })
+      .from(movements)
+      .innerJoin(recurringItems, eq(recurringItems.id, movements.recurringItemId))
+      .where(isNotNull(recurringItems.debtId))
+      .all()
+      .map((r) => r.id),
+  );
   return db
     .select({
       movementId: movements.id,
@@ -33,11 +59,20 @@ function repaymentsOf(db: Db, debtId: number): DebtRepaymentDto[] {
     .from(movements)
     .where(eq(movements.debtId, debtId))
     .orderBy(desc(movements.date), desc(movements.id))
-    .all();
+    .all()
+    .filter((r) => !installmentIds.has(r.movementId));
 }
 
 function toDto(db: Db, row: DebtRow): DebtDto {
+  const installments = installmentsOf(db, row.id);
   const repayments = repaymentsOf(db, row.id);
+  const estimate = estimateDebt(
+    row.balanceCents,
+    row.balanceAsOf,
+    row.annualRateBps,
+    installments,
+    repayments,
+  );
   return {
     id: row.id,
     name: row.name,
@@ -48,8 +83,11 @@ function toDto(db: Db, row: DebtRow): DebtDto {
     annualRateBps: row.annualRateBps,
     notes: row.notes,
     repayments,
-    repaidSinceCents: repaidSince(row.balanceAsOf, repayments),
-    estimatedBalanceCents: estimateBalance(row.balanceCents, row.balanceAsOf, repayments),
+    repaidSinceCents: estimate.extraRepaidCents,
+    estimatedBalanceCents: estimate.estimatedBalanceCents,
+    principalPaidCents: estimate.principalPaidCents,
+    interestPaidCents: estimate.interestPaidCents,
+    installments: estimate.installments,
   };
 }
 

@@ -18,6 +18,7 @@ const valid: RecurringFormValues = {
   startMonth: '2026-01',
   endMonth: '',
   notes: '',
+  debtId: '',
 };
 
 describe('emptyRecurringForm', () => {
@@ -45,6 +46,7 @@ describe('validateRecurringForm', () => {
         startMonth: '2026-01',
         endMonth: null,
         notes: null,
+        debtId: null,
       },
     });
   });
@@ -52,6 +54,15 @@ describe('validateRecurringForm', () => {
   it('keeps an end month and notes', () => {
     const result = validateRecurringForm({ ...valid, endMonth: '2026-12', notes: ' Contrato ' });
     expect(result.ok && result.payload).toMatchObject({ endMonth: '2026-12', notes: 'Contrato' });
+  });
+
+  it('sends the debt only for repayments', () => {
+    const repayment = validateRecurringForm({ ...valid, kind: 'repayment', debtId: '4' });
+    expect(repayment.ok && repayment.payload.debtId).toBe(4);
+    const expense = validateRecurringForm({ ...valid, kind: 'expense', debtId: '4' });
+    expect(expense.ok && expense.payload.debtId).toBeNull();
+    const none = validateRecurringForm({ ...valid, kind: 'repayment', debtId: '' });
+    expect(none.ok && none.payload.debtId).toBeNull();
   });
 
   it('accepts the end month equal to the start month', () => {
@@ -68,6 +79,7 @@ describe('validateRecurringForm', () => {
       startMonth: '',
       endMonth: '',
       notes: '',
+      debtId: '',
     });
     expect(result).toEqual({
       ok: false,
@@ -136,6 +148,7 @@ describe('formFromItem', () => {
       startMonth: '2026-01',
       endMonth: '2026-12',
       notes: null,
+      debtId: null,
     });
     expect(form).toEqual({
       kind: 'income',
@@ -146,6 +159,7 @@ describe('formFromItem', () => {
       startMonth: '2026-01',
       endMonth: '2026-12',
       notes: '',
+      debtId: '',
     });
     expect(validateRecurringForm(form).ok).toBe(true);
   });
@@ -162,6 +176,7 @@ describe('formFromItem', () => {
       startMonth: '2026-01',
       endMonth: null,
       notes: 'Contrato',
+      debtId: null,
     });
     expect(form.endMonth).toBe('');
     expect(form.notes).toBe('Contrato');

@@ -1,5 +1,5 @@
 import type { SubmitEvent } from 'react';
-import type { CategoryDto } from '../shared/api.js';
+import type { CategoryDto, DebtDto } from '../shared/api.js';
 import { KINDS, type Kind } from '../shared/constants.js';
 import { Field } from './Field.js';
 import { KIND_LABELS } from './labels.js';
@@ -15,6 +15,8 @@ export type RecurringErrors = Partial<Record<RecurringField, string>>;
 interface Props {
   values: RecurringFormValues;
   categories: CategoryDto[];
+  /** Debts an installment item can be linked to. */
+  debts?: Pick<DebtDto, 'id' | 'name'>[];
   errors: RecurringErrors;
   formError?: string | undefined;
   editing: boolean;
@@ -28,6 +30,9 @@ interface Props {
 export function RecurringForm(props: Props) {
   const { values, categories, errors, editing } = props;
   const options = categories.filter((c) => c.kind === values.kind);
+  const debts = props.debts ?? [];
+  // A repayment may pay the installments of a debt.
+  const showDebt = values.kind === 'repayment' && (debts.length > 0 || values.debtId !== '');
 
   const set = <K extends keyof RecurringFormValues>(key: K, value: RecurringFormValues[K]) => {
     props.onChange({ ...values, [key]: value });
@@ -55,7 +60,12 @@ export function RecurringForm(props: Props) {
             value={values.kind}
             aria-describedby={describe('kind')}
             onChange={(e) => {
-              props.onChange({ ...values, kind: e.target.value as Kind, categoryId: '' });
+              props.onChange({
+                ...values,
+                kind: e.target.value as Kind,
+                categoryId: '',
+                debtId: '',
+              });
             }}
           >
             {KINDS.map((kind) => (
@@ -82,6 +92,28 @@ export function RecurringForm(props: Props) {
             ))}
           </select>
         </Field>
+        {showDebt && (
+          <Field id="recurring-debtId" label="Deuda (opcional)" error={errors.debtId}>
+            <select
+              id="recurring-debtId"
+              value={values.debtId}
+              aria-describedby={describe('debtId')}
+              onChange={(e) => {
+                set('debtId', e.target.value);
+              }}
+            >
+              <option value="">Ninguna</option>
+              {debts.map((d) => (
+                <option key={d.id} value={String(d.id)}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            <span className="hint">
+              Al confirmar cada mes, la parte de capital de la cuota reduce el saldo de la deuda.
+            </span>
+          </Field>
+        )}
         <Field id="recurring-concept" label="Concepto" error={errors.concept}>
           <input
             id="recurring-concept"

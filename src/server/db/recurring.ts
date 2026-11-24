@@ -15,6 +15,7 @@ const itemColumns = {
   startMonth: recurringItems.startMonth,
   endMonth: recurringItems.endMonth,
   notes: recurringItems.notes,
+  debtId: recurringItems.debtId,
 };
 
 export function getRecurringItem(db: Db, id: number): RecurringItemDto | undefined {

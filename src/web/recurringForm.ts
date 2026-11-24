@@ -15,6 +15,8 @@ export interface RecurringFormValues {
   /** Empty means "no end month". */
   endMonth: string;
   notes: string;
+  /** The debt a repayment pays the installments of; '' means none. */
+  debtId: string;
 }
 
 export type RecurringField = keyof RecurringFormValues;
@@ -28,6 +30,7 @@ export interface RecurringPayload {
   startMonth: string;
   endMonth: string | null;
   notes: string | null;
+  debtId: number | null;
 }
 
 export type RecurringFormResult =
@@ -54,6 +57,7 @@ export function emptyRecurringForm(month: string = currentMonth()): RecurringFor
     startMonth: month,
     endMonth: '',
     notes: '',
+    debtId: '',
   };
 }
 
@@ -67,6 +71,7 @@ export function formFromItem(item: RecurringItemDto): RecurringFormValues {
     startMonth: item.startMonth,
     endMonth: item.endMonth ?? '',
     notes: item.notes ?? '',
+    debtId: item.debtId === null ? '' : String(item.debtId),
   };
 }
 
@@ -121,6 +126,8 @@ export function validateRecurringForm(values: RecurringFormValues): RecurringFor
       startMonth: values.startMonth,
       endMonth: endText === '' ? null : endText,
       notes: notes === '' ? null : notes,
+      // Only repayments carry a debt; the API rejects one on any other kind.
+      debtId: values.kind === 'repayment' && values.debtId !== '' ? Number(values.debtId) : null,
     },
   };
 }
@@ -134,6 +141,7 @@ const API_FIELD_TO_FORM: Record<string, RecurringField> = {
   startMonth: 'startMonth',
   endMonth: 'endMonth',
   notes: 'notes',
+  debtId: 'debtId',
 };
 
 /** Maps the `fields` of an API error to form fields; unknown keys are dropped. */

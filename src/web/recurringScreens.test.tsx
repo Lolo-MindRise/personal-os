@@ -102,6 +102,7 @@ describe('RecurringList', () => {
       startMonth: '2026-01',
       endMonth: null,
       notes: null,
+      debtId: null,
     },
     {
       id: 2,
@@ -114,6 +115,7 @@ describe('RecurringList', () => {
       startMonth: '2026-02',
       endMonth: '2026-05',
       notes: 'Solo hasta mayo',
+      debtId: null,
     },
   ];
   const render = (rows: RecurringItemDto[], month = '2026-08') =>
@@ -156,6 +158,23 @@ describe('RecurringForm', () => {
     { id: 2, name: 'Vivienda', kind: 'expense' },
     { id: 3, name: 'Amortización extra', kind: 'repayment' },
   ];
+  it('offers the debts for a repayment, "Ninguna" first, and not for other kinds', () => {
+    const debts = [{ id: 4, name: 'Préstamo de ejemplo' }];
+    const repayment = render({
+      values: { ...emptyRecurringForm('2026-03'), kind: 'repayment', debtId: '4' },
+      debts,
+    });
+    expect(repayment).toContain('Deuda (opcional)');
+    expect(repayment).toMatch(
+      /<option value="">Ninguna<\/option><option value="4" selected="">Préstamo de ejemplo/,
+    );
+    expect(render({ debts })).not.toContain('Deuda (opcional)');
+    // No debts at all: nothing to choose.
+    expect(
+      render({ values: { ...emptyRecurringForm('2026-03'), kind: 'repayment' }, debts: [] }),
+    ).not.toContain('Deuda (opcional)');
+  });
+
   const render = (props: Partial<Parameters<typeof RecurringForm>[0]> = {}) =>
     renderToStaticMarkup(
       <RecurringForm

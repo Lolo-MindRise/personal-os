@@ -10,17 +10,116 @@ export function repaidSince(balanceAsOf: string, repayments: RepaymentInput[]): 
   return repayments.filter((r) => r.date > balanceAsOf).reduce((sum, r) => sum + r.amountCents, 0);
 }
 
+/** A confirmed installment of a recurring item linked to the debt, as actually paid. */
+export interface InstallmentInput {
+  movementId: number;
+  date: string;
+  amountCents: number;
+}
+
+/** An extra repayment with the id of its movement (for a stable order on equal dates). */
+export interface ExtraRepaymentInput extends RepaymentInput {
+  movementId: number;
+}
+
+/** How one confirmed installment split into interest and principal. */
+export interface InstallmentBreakdown {
+  movementId: number;
+  date: string;
+  paidCents: number;
+  interestCents: number;
+  principalCents: number;
+  balanceAfterCents: number;
+}
+
+export interface DebtEstimate {
+  /** Recorded balance minus principal of installments and extra repayments after the as-of date. */
+  estimatedBalanceCents: number;
+  /** Principal repaid by the confirmed installments. */
+  principalPaidCents: number;
+  /** Interest paid inside those installments (not part of the balance reduction). */
+  interestPaidCents: number;
+  /** Extra repayments that actually reduced the balance (capped by what was left). */
+  extraRepaidCents: number;
+  /** The installments in date order, each with its split. */
+  installments: InstallmentBreakdown[];
+}
+
 /**
- * Estimated current balance: the recorded balance minus the extra repayments
- * linked to the debt after its as-of date. Never below zero. Regular monthly
- * installments are NOT deducted (out of scope for now).
+ * Interest of one month on a balance: balance × annual rate / 12, rounded half up to the cent.
+ * Pure integer arithmetic: basis points are 1/10 000, so interest = balance × bps / 120 000.
  */
-export function estimateBalance(
+export function monthlyInterest(balanceCents: number, annualRateBps: number): number {
+  return Math.floor((2 * balanceCents * annualRateBps + 120_000) / 240_000);
+}
+
+/**
+ * Estimated current balance (French amortization, task 0013). Starting from the recorded balance
+ * on its as-of date, every event dated strictly after it is applied in date order, whatever
+ * order the installments were confirmed in:
+ * - A confirmed installment of a linked recurring item: interest = monthlyInterest(balance, rate);
+ *   principal = amount paid − interest, never below 0 and never above the balance. When the
+ *   payment does not even cover the interest the whole payment counts as interest (the unpaid
+ *   interest is not capitalised). Only the principal reduces the balance.
+ * - An extra repayment: reduces the balance by its full amount, capped at the balance.
+ * On the same date an installment is applied before an extra repayment (interest accrues on the
+ * opening balance); remaining ties follow the movement id. The balance never goes below zero.
+ */
+export function estimateDebt(
   balanceCents: number,
   balanceAsOf: string,
-  repayments: RepaymentInput[],
-): number {
-  return Math.max(0, balanceCents - repaidSince(balanceAsOf, repayments));
+  annualRateBps: number,
+  installments: InstallmentInput[],
+  extras: ExtraRepaymentInput[],
+): DebtEstimate {
+  type Event =
+    { type: 'installment'; item: InstallmentInput } | { type: 'extra'; item: ExtraRepaymentInput };
+  const events: Event[] = [
+    ...installments
+      .filter((i) => i.date > balanceAsOf)
+      .map((item): Event => ({ type: 'installment', item })),
+    ...extras.filter((e) => e.date > balanceAsOf).map((item): Event => ({ type: 'extra', item })),
+  ].sort(
+    (a, b) =>
+      a.item.date.localeCompare(b.item.date) ||
+      (a.type === b.type ? 0 : a.type === 'installment' ? -1 : 1) ||
+      a.item.movementId - b.item.movementId,
+  );
+
+  let balance = balanceCents;
+  let principalPaid = 0;
+  let interestPaid = 0;
+  let extraRepaid = 0;
+  const breakdown: InstallmentBreakdown[] = [];
+  for (const event of events) {
+    if (event.type === 'extra') {
+      const applied = Math.min(balance, event.item.amountCents);
+      balance -= applied;
+      extraRepaid += applied;
+      continue;
+    }
+    const { movementId, date, amountCents } = event.item;
+    const interest = Math.min(amountCents, monthlyInterest(balance, annualRateBps));
+    const principal = Math.min(balance, amountCents - interest);
+    balance -= principal;
+    principalPaid += principal;
+    interestPaid += interest;
+    breakdown.push({
+      movementId,
+      date,
+      paidCents: amountCents,
+      interestCents: interest,
+      principalCents: principal,
+      balanceAfterCents: balance,
+    });
+  }
+  return {
+    estimatedBalanceCents: balance,
+    principalPaidCents: principalPaid,
+    interestPaidCents: interestPaid,
+    extraRepaidCents: extraRepaid,
+    installments: breakdown,
+  };
 }
 
 const RATE_ERRORS = {

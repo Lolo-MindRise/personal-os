@@ -35,7 +35,8 @@ test('add a debt, link a repayment from the movement form, and update the balanc
       await expect(seeded).toContainText('a fecha 31/01/2026');
       await expect(seeded).toContainText(/150,00\s€/);
       await expect(seeded).toContainText('6,50');
-      await expect(page.getByText(/no se descuentan automáticamente/)).toBeVisible();
+      await expect(seeded).toContainText('Sin cuotas confirmadas desde esa fecha');
+      await expect(page.getByText(/no se descuentan automáticamente/)).toHaveCount(0);
     });
 
     await test.step('add a debt', async () => {
@@ -72,7 +73,7 @@ test('add a debt, link a repayment from the movement form, and update the balanc
     await test.step('the estimated balance drops by the extra repayment', async () => {
       await nav(page, 'Deudas').click();
       await expect(seeded.locator('.debt-estimate')).toContainText(/2\.800,00\s€/);
-      await expect(seeded).toContainText(/Amortizado desde esa fecha\s*200,00\s€/);
+      await expect(seeded).toContainText(/Amortizado con extras\s*200,00\s€/);
       await expect(seeded).toContainText('Amortizaciones extra vinculadas (2)');
     });
 
@@ -85,9 +86,80 @@ test('add a debt, link a repayment from the movement form, and update the balanc
       await page.getByRole('button', { name: 'Guardar cambios' }).click();
       await expect(seeded).toContainText('a fecha 28/02/2026');
       await expect(seeded.locator('.debt-estimate')).toContainText(/2\.500,00\s€/);
-      await expect(seeded).toContainText(/Amortizado desde esa fecha\s*0,00\s€/);
+      await expect(seeded).toContainText(/Amortizado con extras\s*0,00\s€/);
     });
   } finally {
     await removeFebruaryMovements(request);
+  }
+});
+
+test('a fixed installment linked to a debt reduces its balance by the principal when confirmed', async ({
+  page,
+  request,
+}) => {
+  // A debt of its own: 3.000,00 on 2026-01-31 at 6,50 %, so the first installment of 150,00
+  // splits into 16,25 of interest (3.000 × 6,5 % / 12) and 133,75 of principal.
+  const created = await request.post('/api/debts', {
+    data: {
+      name: 'préstamo con cuota',
+      monthlyPaymentCents: 15_000,
+      balanceCents: 300_000,
+      balanceAsOf: '2026-01-31',
+      remainingInstallments: 20,
+      annualRateBps: 650,
+    },
+  });
+  expect(created.ok()).toBe(true);
+  try {
+    await page.goto('/');
+    await nav(page, 'Fijos').click();
+    await test.step('add the fixed installment, linked to the debt', async () => {
+      await page.getByLabel('Tipo').selectOption({ label: 'Amortización' });
+      await page.getByLabel('Categoría').selectOption({ label: 'Amortización extra' });
+      await page.getByLabel('Deuda (opcional)').selectOption({ label: 'préstamo con cuota' });
+      await page.getByLabel('Concepto').fill('cuota de prueba');
+      await page.getByLabel('Importe previsto (€)').fill('150');
+      await page.getByLabel('Día del mes').fill('5');
+      // Only February 2026: the current month's pending list must stay as other specs expect.
+      await page.getByLabel('Desde (mes)').fill('2026-02');
+      await page.getByLabel('Hasta (mes, opcional)').fill('2026-02');
+      await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+      await expect(page.getByText('Cuota de la deuda «préstamo con cuota»')).toBeVisible();
+    });
+
+    await test.step('the balance does not move before the installment is confirmed', async () => {
+      await nav(page, 'Deudas').click();
+      const debt = card(page, 'préstamo con cuota');
+      await expect(debt.locator('.debt-estimate')).toContainText(/3\.000,00\s€/);
+    });
+
+    await test.step('confirming it splits the installment into interest and principal', async () => {
+      const items = (await (await request.get('/api/recurring-items')).json()) as {
+        id: number;
+        concept: string;
+      }[];
+      const item = items.find((i) => i.concept === 'cuota de prueba');
+      expect(item).toBeDefined();
+      const confirmed = await request.post(
+        `/api/recurring-items/${String(item?.id ?? 0)}/months/2026-02/confirm`,
+        { data: {} },
+      );
+      expect(confirmed.status()).toBe(201);
+      await nav(page, 'Inicio').click();
+      await nav(page, 'Deudas').click();
+      const debt = card(page, 'préstamo con cuota');
+      await expect(debt.locator('.debt-estimate')).toContainText(/2\.866,25\s€/);
+      await expect(debt.getByTestId('interest-paid')).toContainText(/16,25\s€/);
+      await expect(debt).toContainText('Cuotas confirmadas (1)');
+    });
+  } finally {
+    await removeFebruaryMovements(request);
+    const items = (await (await request.get('/api/recurring-items')).json()) as {
+      id: number;
+      concept: string;
+    }[];
+    for (const item of items.filter((i) => i.concept === 'cuota de prueba')) {
+      await request.delete(`/api/recurring-items/${String(item.id)}`);
+    }
   }
 });
