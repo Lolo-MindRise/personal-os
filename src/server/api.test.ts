@@ -314,22 +314,43 @@ describe('GET /api/months/:month/summary', () => {
     const response = await get('/api/months/2026-01/summary');
     expect(response.statusCode).toBe(200);
     // Seed: income 200000; expenses 70000 + 8550 + 9120 + 2400; repayment 10000.
+    // Still pending in January: Internet 3500, Electricidad 6500, Gimnasio 3000
+    // (salary and rent are confirmed).
     expect(response.json<MonthSummaryDto>()).toEqual({
       month: '2026-01',
       incomeCents: 200_000,
       expenseCents: 90_070,
       repaymentCents: 10_000,
       savingsCents: 99_930,
+      pendingIncomeCents: 0,
+      pendingExpenseCents: 13_000,
+      pendingRepaymentCents: 0,
+      projectedSavingsCents: 86_930,
     });
   });
 
-  it('returns zeros for an empty month', async () => {
-    expect((await get('/api/months/2030-05/summary')).json<MonthSummaryDto>()).toEqual({
-      month: '2030-05',
+  it('returns zeros for a month before any recurring item starts', async () => {
+    expect((await get('/api/months/2025-12/summary')).json<MonthSummaryDto>()).toEqual({
+      month: '2025-12',
       incomeCents: 0,
       expenseCents: 0,
       repaymentCents: 0,
       savingsCents: 0,
+      pendingIncomeCents: 0,
+      pendingExpenseCents: 0,
+      pendingRepaymentCents: 0,
+      projectedSavingsCents: 0,
+    });
+  });
+
+  it('counts every fixed item as pending in a later month with nothing confirmed', async () => {
+    const summary = (await get('/api/months/2030-05/summary')).json<MonthSummaryDto>();
+    expect(summary).toMatchObject({
+      incomeCents: 0,
+      savingsCents: 0,
+      pendingIncomeCents: 200_000,
+      pendingExpenseCents: 70_000 + 3_500 + 6_500 + 3_000,
+      projectedSavingsCents: 200_000 - 83_000,
     });
   });
 

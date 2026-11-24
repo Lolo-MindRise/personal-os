@@ -7,9 +7,18 @@ import {
   goalCreateSchema,
   milestoneCreateSchema,
   movementCreateSchema,
+  recurringItemCreateSchema,
 } from '../../shared/schemas.js';
 import { openDatabaseFromEnv, type Db } from './index.js';
-import { budgetLines, categories, debts, goals, milestones, movements } from './schema.js';
+import {
+  budgetLines,
+  categories,
+  debts,
+  goals,
+  milestones,
+  movements,
+  recurringItems,
+} from './schema.js';
 
 /**
  * Development seed: one INVENTED month. Nothing here comes from real figures
@@ -25,6 +34,7 @@ export function seed(db: Db): void {
     const housing = cat('Vivienda', 'expense');
     const groceries = cat('Supermercado', 'expense');
     const leisure = cat('Ocio', 'expense');
+    const utilities = cat('Suministros', 'expense');
     const loanRepayment = cat('Amortización extra', 'repayment');
 
     const debtId = tx
@@ -42,6 +52,34 @@ export function seed(db: Db): void {
       )
       .returning()
       .get().id;
+
+    // Fictional fixed items (ADR-0005), all starting in January 2026 with no end month.
+    const item = (
+      kind: 'income' | 'expense' | 'repayment',
+      categoryId: number,
+      concept: string,
+      amountCents: number,
+      expectedDay: number,
+    ) =>
+      tx
+        .insert(recurringItems)
+        .values(
+          recurringItemCreateSchema.parse({
+            kind,
+            categoryId,
+            concept,
+            amountCents,
+            expectedDay,
+            startMonth: '2026-01',
+          }),
+        )
+        .returning()
+        .get().id;
+    const salaryItem = item('income', salary, 'Nómina', 200_000, 1);
+    const rentItem = item('expense', housing, 'Alquiler', 70_000, 2);
+    item('expense', utilities, 'Internet', 3_500, 10);
+    item('expense', utilities, 'Electricidad', 6_500, 12);
+    item('expense', leisure, 'Gimnasio', 3_000, 15);
 
     const rows = [
       {
@@ -89,8 +127,16 @@ export function seed(db: Db): void {
         debtId,
       },
     ] as const;
+    // January's salary and rent are the confirmations of the matching recurring items;
+    // the other fixed items are still pending in January and in every later month.
+    const confirmed: Record<string, number> = { Nómina: salaryItem, Alquiler: rentItem };
     for (const row of rows) {
-      tx.insert(movements).values(movementCreateSchema.parse(row)).run();
+      tx.insert(movements)
+        .values({
+          ...movementCreateSchema.parse(row),
+          recurringItemId: confirmed[row.concept] ?? null,
+        })
+        .run();
     }
 
     for (const [categoryId, amountCents] of [

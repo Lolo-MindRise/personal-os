@@ -8,6 +8,20 @@
       "when": 1795479360418,
       "tag": "0000_thin_stepford_cuckoos",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795483567922,
+      "tag": "0001_parched_red_skull",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795483573138,
+      "tag": "0002_recurring_confirmation_unique",
+      "breakpoints": true
     }
   ]
 }

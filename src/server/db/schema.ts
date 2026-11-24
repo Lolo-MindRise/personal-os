@@ -74,6 +74,68 @@ export const debts = sqliteTable(
   ],
 );
 
+/**
+ * Fixed income and expenses, defined once (ADR-0005). A month's pending entries
+ * are computed from these rows; they are never stored.
+ */
+export const recurringItems = sqliteTable(
+  'recurring_items',
+  {
+    id: id(),
+    kind: text('kind', { enum: KINDS }).notNull(),
+    categoryId: integer('category_id').notNull(),
+    concept: text('concept').notNull(),
+    amountCents: integer('amount_cents').notNull(),
+    expectedDay: integer('expected_day').notNull(),
+    startMonth: text('start_month').notNull(),
+    endMonth: text('end_month'),
+    notes: text('notes'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    // Same rule as movements: the item's kind must match its category's kind.
+    foreignKey({
+      columns: [t.categoryId, t.kind],
+      foreignColumns: [categories.id, categories.kind],
+      name: 'recurring_items_category_kind_fk',
+    }),
+    check('recurring_items_kind_valid', sql`${t.kind} IN (${kindList})`),
+    check('recurring_items_concept_not_empty', sql`length(trim(${t.concept})) > 0`),
+    check('recurring_items_amount_integer', isInteger(t.amountCents)),
+    check('recurring_items_amount_positive', sql`${t.amountCents} > 0`),
+    check('recurring_items_day_integer', isInteger(t.expectedDay)),
+    check('recurring_items_day_range', sql`${t.expectedDay} BETWEEN 1 AND 31`),
+    check('recurring_items_start_month_format', sql`${t.startMonth} GLOB ${MONTH_GLOB}`),
+    check(
+      'recurring_items_end_month_format',
+      sql`${t.endMonth} IS NULL OR ${t.endMonth} GLOB ${MONTH_GLOB}`,
+    ),
+    check(
+      'recurring_items_end_not_before_start',
+      sql`${t.endMonth} IS NULL OR ${t.endMonth} >= ${t.startMonth}`,
+    ),
+  ],
+);
+
+/** An item marked as not applicable for one month. Can be undone by deleting the row. */
+export const recurringSkips = sqliteTable(
+  'recurring_skips',
+  {
+    id: id(),
+    recurringItemId: integer('recurring_item_id')
+      .notNull()
+      .references(() => recurringItems.id, { onDelete: 'cascade' }),
+    month: text('month').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique('recurring_skips_item_month_unique').on(t.recurringItemId, t.month),
+    check('recurring_skips_month_format', sql`${t.month} GLOB ${MONTH_GLOB}`),
+  ],
+);
+
 export const movements = sqliteTable(
   'movements',
   {
@@ -85,10 +147,18 @@ export const movements = sqliteTable(
     amountCents: integer('amount_cents').notNull(),
     notes: text('notes'),
     debtId: integer('debt_id').references(() => debts.id),
+    // The recurring item this movement confirms. Deleting the item keeps the movement.
+    recurringItemId: integer('recurring_item_id').references(() => recurringItems.id, {
+      onDelete: 'set null',
+    }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
+    // Also in the migrations, written by hand because drizzle-kit mangles expression
+    // indexes: UNIQUE INDEX movements_recurring_item_month_unique
+    //   ON movements (recurring_item_id, substr(date, 1, 7))
+    // = at most one confirmed movement per recurring item and month (NULLs never collide).
     // A movement's kind must match its category's kind.
     foreignKey({
       columns: [t.categoryId, t.kind],

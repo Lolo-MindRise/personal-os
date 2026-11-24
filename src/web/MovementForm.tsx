@@ -1,6 +1,7 @@
 import type { SubmitEvent } from 'react';
 import type { CategoryDto } from '../shared/api.js';
 import { KINDS, type Kind } from '../shared/constants.js';
+import { Field } from './Field.js';
 import { KIND_LABELS } from './labels.js';
 import {
   validateMovementForm,
@@ -11,6 +12,26 @@ import {
 
 export type FieldErrors = Partial<Record<MovementField, string>>;
 
+/**
+ * - add: a new free movement.
+ * - edit: changing a saved movement.
+ * - confirm: confirming a pending fixed item; kind and category come from the
+ *   item, so they cannot be changed here.
+ */
+export type FormMode = 'add' | 'edit' | 'confirm';
+
+const TITLES: Record<FormMode, string> = {
+  add: 'Añadir movimiento',
+  edit: 'Editar movimiento',
+  confirm: 'Confirmar fijo',
+};
+
+const SUBMIT_LABELS: Record<FormMode, string> = {
+  add: 'Añadir',
+  edit: 'Guardar cambios',
+  confirm: 'Confirmar',
+};
+
 interface Props {
   values: MovementFormValues;
   categories: CategoryDto[];
@@ -18,7 +39,7 @@ interface Props {
   errors: FieldErrors;
   /** Message not tied to a field (for example a network failure). */
   formError?: string | undefined;
-  editing: boolean;
+  mode: FormMode;
   busy?: boolean;
   onChange: (values: MovementFormValues) => void;
   onSubmit: (payload: MovementPayload) => void;
@@ -26,33 +47,10 @@ interface Props {
   onCancel: () => void;
 }
 
-function Field({
-  id,
-  label,
-  error,
-  children,
-}: {
-  id: string;
-  label: string;
-  error: string | undefined;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={error === undefined ? 'field' : 'field has-error'}>
-      <label htmlFor={id}>{label}</label>
-      {children}
-      {error !== undefined && (
-        <p className="field-error" id={`${id}-error`} role="alert">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
 export function MovementForm(props: Props) {
-  const { values, categories, errors, editing } = props;
+  const { values, categories, errors, mode } = props;
   const options = categories.filter((c) => c.kind === values.kind);
+  const locked = mode === 'confirm';
 
   const set = <K extends keyof MovementFormValues>(key: K, value: MovementFormValues[K]) => {
     props.onChange({ ...values, [key]: value });
@@ -72,7 +70,7 @@ export function MovementForm(props: Props) {
 
   return (
     <form className="movement-form" onSubmit={submit} noValidate>
-      <h2>{editing ? 'Editar movimiento' : 'Añadir movimiento'}</h2>
+      <h2>{TITLES[mode]}</h2>
       <div className="form-grid">
         <Field id="movement-date" label="Fecha" error={errors.date}>
           <input
@@ -89,6 +87,7 @@ export function MovementForm(props: Props) {
           <select
             id="movement-kind"
             value={values.kind}
+            disabled={locked}
             aria-describedby={describe('kind')}
             onChange={(e) => {
               // The category list depends on the kind, so a stale category is cleared.
@@ -106,6 +105,7 @@ export function MovementForm(props: Props) {
           <select
             id="movement-categoryId"
             value={values.categoryId}
+            disabled={locked}
             aria-describedby={describe('categoryId')}
             onChange={(e) => {
               set('categoryId', e.target.value);
@@ -162,9 +162,9 @@ export function MovementForm(props: Props) {
       )}
       <div className="form-actions">
         <button type="submit" className="primary" disabled={props.busy ?? false}>
-          {editing ? 'Guardar cambios' : 'Añadir'}
+          {SUBMIT_LABELS[mode]}
         </button>
-        {editing && (
+        {mode !== 'add' && (
           <button type="button" onClick={props.onCancel}>
             Cancelar
           </button>

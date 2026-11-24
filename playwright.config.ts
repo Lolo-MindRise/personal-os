@@ -24,7 +24,7 @@ export default defineConfig({
     },
     {
       name: 'prod',
-      testMatch: /prod\.spec\.ts/,
+      testMatch: /(prod|recurring)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], baseURL: PROD_URL },
     },
   ],

@@ -1,6 +1,6 @@
 import type { Kind } from '../shared/constants.js';
 import { centsToInput, parseMoney } from '../shared/money.js';
-import type { MovementDto } from '../shared/api.js';
+import type { MovementDto, PendingEntryDto } from '../shared/api.js';
 import { isoDate, kindSchema } from '../shared/schemas.js';
 import { todayISO } from './months.js';
 
@@ -29,6 +29,26 @@ export type FormResult =
   | { ok: true; payload: MovementPayload }
   | { ok: false; errors: Partial<Record<MovementField, string>> };
 
+/**
+ * What may be overridden when confirming a pending entry. Kind and category
+ * always come from the recurring item, so they are not sent.
+ */
+export interface ConfirmPayload {
+  date: string;
+  amountCents: number;
+  concept: string;
+  notes: string | null;
+}
+
+export function toConfirmPayload(payload: MovementPayload): ConfirmPayload {
+  return {
+    date: payload.date,
+    amountCents: payload.amountCents,
+    concept: payload.concept,
+    notes: payload.notes,
+  };
+}
+
 export const FORM_ERRORS = {
   date: 'Introduce una fecha válida.',
   kind: 'Elige un tipo.',
@@ -48,6 +68,18 @@ export function formFromMovement(movement: MovementDto): MovementFormValues {
     concept: movement.concept,
     amount: centsToInput(movement.amountCents),
     notes: movement.notes ?? '',
+  };
+}
+
+/** Pre-fills the movement form with a pending entry's expected values. */
+export function formFromEntry(entry: PendingEntryDto): MovementFormValues {
+  return {
+    date: entry.date,
+    kind: entry.kind,
+    categoryId: String(entry.categoryId),
+    concept: entry.concept,
+    amount: centsToInput(entry.amountCents),
+    notes: entry.notes ?? '',
   };
 }
 

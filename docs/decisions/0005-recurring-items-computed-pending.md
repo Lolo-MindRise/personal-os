@@ -63,4 +63,4 @@ Manuel opens it, so the job would be missed.
 
 ## Action Items
 
-1. [ ] Task 0007: recurring items, pending entries, screens and tests.
+1. [x] Task 0007: recurring items, pending entries, screens and tests.

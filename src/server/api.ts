@@ -1,76 +1,43 @@
 import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
-import type { FastifyInstance, FastifyReply } from 'fastify';
-import type { ZodError } from 'zod';
-import type { ApiErrorBody, CategoryDto, MonthSummaryDto, MovementDto } from '../shared/api.js';
+import type { FastifyInstance } from 'fastify';
+import type { CategoryDto, MonthSummaryDto, MovementDto } from '../shared/api.js';
+import { monthOf } from '../shared/recurring.js';
 import {
   isoMonth,
   kindSchema,
   movementCreateSchema,
   movementUpdateSchema,
 } from '../shared/schemas.js';
+import {
+  badRequest,
+  categoryError,
+  fieldErrors,
+  getMovement,
+  MESSAGES as COMMON_MESSAGES,
+  movementColumns,
+  notFound,
+  parseId,
+} from './apiCommon.js';
 import type { Db } from './db/index.js';
+import { dueEntries } from './db/recurring.js';
 import { categories, debts, movements } from './db/schema.js';
+import { registerRecurringApi } from './recurringApi.js';
 
 const MESSAGES = {
-  invalid: 'Datos no válidos.',
-  invalidMonth: 'El mes debe tener el formato AAAA-MM.',
-  invalidKind: 'El tipo debe ser income, expense o repayment.',
+  ...COMMON_MESSAGES,
   notFound: 'No se ha encontrado el movimiento.',
-  noCategory: 'La categoría no existe.',
-  kindMismatch: 'El tipo del movimiento no coincide con el de la categoría.',
   noDebt: 'La deuda no existe.',
+  linkedMonth: 'Un movimiento de un fijo debe quedarse en el mes que confirma.',
 } as const;
-
-function badRequest(reply: FastifyReply, error: string, fields?: Record<string, string>) {
-  const body: ApiErrorBody = fields === undefined ? { error } : { error, fields };
-  return reply.code(400).send(body);
-}
-
-function fieldErrors(error: ZodError): Record<string, string> {
-  const fields: Record<string, string> = {};
-  for (const issue of error.issues) {
-    const key = issue.path.join('.') || '_';
-    fields[key] ??= issue.message;
-  }
-  return fields;
-}
-
-function parseId(raw: string): number | undefined {
-  return /^[1-9]\d*$/.test(raw) && Number.isSafeInteger(Number(raw)) ? Number(raw) : undefined;
-}
-
-const movementColumns = {
-  id: movements.id,
-  date: movements.date,
-  kind: movements.kind,
-  categoryId: movements.categoryId,
-  categoryName: categories.name,
-  concept: movements.concept,
-  amountCents: movements.amountCents,
-  notes: movements.notes,
-  debtId: movements.debtId,
-};
-
-function getMovement(db: Db, id: number): MovementDto | undefined {
-  return db
-    .select(movementColumns)
-    .from(movements)
-    .innerJoin(categories, eq(categories.id, movements.categoryId))
-    .where(eq(movements.id, id))
-    .get();
-}
 
 /** Checks the references of a validated movement; returns an error message or undefined. */
 function referenceError(
   db: Db,
   m: { kind: string; categoryId: number; debtId?: number | null | undefined },
 ): { error: string; field: string } | undefined {
-  const category = db.select().from(categories).where(eq(categories.id, m.categoryId)).get();
-  if (category === undefined) {
-    return { error: MESSAGES.noCategory, field: 'categoryId' };
-  }
-  if (category.kind !== m.kind) {
-    return { error: MESSAGES.kindMismatch, field: 'kind' };
+  const problem = categoryError(db, m.kind, m.categoryId);
+  if (problem !== undefined) {
+    return problem;
   }
   if (
     m.debtId != null &&
@@ -141,7 +108,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     const current =
       id === undefined ? undefined : db.select().from(movements).where(eq(movements.id, id)).get();
     if (id === undefined || current === undefined) {
-      return reply.code(404).send({ error: MESSAGES.notFound } satisfies ApiErrorBody);
+      return notFound(reply, MESSAGES.notFound);
     }
     const patch = movementUpdateSchema.safeParse(request.body);
     if (!patch.success) {
@@ -161,6 +128,10 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     });
     if (!merged.success) {
       return badRequest(reply, MESSAGES.invalid, fieldErrors(merged.error));
+    }
+    // A movement that confirms a recurring item belongs to that item's month.
+    if (current.recurringItemId !== null && monthOf(merged.data.date) !== monthOf(current.date)) {
+      return badRequest(reply, MESSAGES.linkedMonth, { date: MESSAGES.linkedMonth });
     }
     const refError = referenceError(db, merged.data);
     if (refError !== undefined) {
@@ -184,7 +155,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
         ? []
         : db.delete(movements).where(eq(movements.id, id)).returning({ id: movements.id }).all();
     if (deleted.length === 0) {
-      return reply.code(404).send({ error: MESSAGES.notFound } satisfies ApiErrorBody);
+      return notFound(reply, MESSAGES.notFound);
     }
     return reply.code(204).send();
   });
@@ -194,6 +165,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     if (!parsed.success) {
       return badRequest(reply, MESSAGES.invalidMonth, { month: MESSAGES.invalidMonth });
     }
+    // Totals count confirmed movements only; pending items are reported apart (ADR-0005).
     const totals = db
       .select({
         kind: movements.kind,
@@ -209,13 +181,29 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     const incomeCents = sumOf('income');
     const expenseCents = sumOf('expense');
     const repaymentCents = sumOf('repayment');
+    const savingsCents = incomeCents - expenseCents - repaymentCents;
+
+    const pending = dueEntries(db, parsed.data).pending;
+    const pendingOf = (kind: string) =>
+      pending.filter((e) => e.kind === kind).reduce((sum, e) => sum + e.amountCents, 0);
+    const pendingIncomeCents = pendingOf('income');
+    const pendingExpenseCents = pendingOf('expense');
+    const pendingRepaymentCents = pendingOf('repayment');
+
     const summary: MonthSummaryDto = {
       month: parsed.data,
       incomeCents,
       expenseCents,
       repaymentCents,
-      savingsCents: incomeCents - expenseCents - repaymentCents,
+      savingsCents,
+      pendingIncomeCents,
+      pendingExpenseCents,
+      pendingRepaymentCents,
+      projectedSavingsCents:
+        savingsCents + pendingIncomeCents - pendingExpenseCents - pendingRepaymentCents,
     };
     return summary;
   });
+
+  registerRecurringApi(app, db);
 }
