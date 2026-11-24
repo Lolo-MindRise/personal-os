@@ -19,6 +19,9 @@ if [[ -z "$pid" ]]; then
     info "removing stale PID file $PID_FILE"
     rm -f "$PID_FILE"
   fi
+  if command -v node >/dev/null 2>&1 && health_ok; then
+    die "no live PID file, but something still answers on port $PORT (started another way?). Stop that process yourself."
+  fi
   info "not running"
   exit 0
 fi

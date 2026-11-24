@@ -29,10 +29,23 @@ Branch `agent/implementer/real-instance-ops` (from `main`).
 - Deploy requires branch `main` and a clean tree (`git status --porcelain`); ignored files
   (`dist/`, `node_modules/`) do not count.
 
+- Failed deploy (reviewer major): `dist/` is kept as `dist.previous` during the build and the
+  previous commit is restored on a failed `npm ci` / build. **Partial deviation from ADR-0003**
+  ("previous build remains"): `node_modules` is not preserved (`npm ci` replaces it), so after a
+  failed deploy the app may not start until a deploy succeeds; the script says so.
+- The instance path default (`~/apps/personal-os`) is in `deploy-local.sh` and the `.cmd` files
+  because a script needs some default; tests always override it with a temp dir.
+- `stop.sh` fails (instead of "not running") when no PID file exists but the port still answers.
+
+## Review
+- Reviewer: changes required. Majors: false "nothing changed" deploy message (fixed as above);
+  the guard-block incident below. Minors: default path (kept, see above), `.cmd` port parsing
+  (now filtered to digits only), stop vs. health (fixed).
+
 ## Not verified here
 - The `.cmd` files cannot run on Linux; tests only check their structure. First real use is
   Manuel's.
-- Nothing was run against the real instance, its data or backups (guard hook respected). The guard
+- Nothing was run against the real instance, its data or backups (guard hook respected). **Manuel to confirm:** the guard
   blocked one shell command of mine whose text contained the instance path; I redid that edit
   with the file tools instead, as CLAUDE.md asks.
 

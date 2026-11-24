@@ -288,6 +288,16 @@ describe('stop.sh', () => {
     expect(result.out).toContain('not running');
   });
 
+  it('fails when nothing is in the PID file but the port still answers', () => {
+    expect(start().status).toBe(0);
+    const orphan = readPid();
+    rmSync(pidFile());
+    const result = stop();
+    spawnSync('kill', ['-TERM', orphan]);
+    expect(result.status).toBe(1);
+    expect(result.out).toContain('still answers');
+  });
+
   it('stops a running app and removes the PID file', async () => {
     expect(start().status).toBe(0);
     const pid = readPid();
@@ -424,6 +434,24 @@ describe('deploy-local.sh', () => {
     const result = runDeploy();
     expect(result.status).toBe(1);
     expect(result.out).toContain('step failed: npm run build');
+  });
+
+  it('a failed update restores the previous commit and build', () => {
+    expect(runDeploy().status).toBe(0);
+    writeFileSync(
+      join(work, 'package.json'),
+      JSON.stringify({ name: 'fixture', version: '1.0.0', scripts: { build: 'exit 3' } }),
+    );
+    git(work, 'add', '.');
+    git(work, 'commit', '-q', '-m', 'broken build');
+    git(work, 'push', '-q', 'origin', 'main');
+    const before = git(target, 'rev-parse', 'HEAD');
+    const result = runDeploy();
+    expect(result.status).toBe(1);
+    expect(result.out).toContain('restored the previous code and build');
+    expect(git(target, 'rev-parse', 'HEAD')).toBe(before);
+    expect(readFileSync(join(target, 'dist/built-version.txt'), 'utf8').trim()).toBe('one');
+    expect(existsSync(join(target, 'dist.previous'))).toBe(false);
   });
 });
 

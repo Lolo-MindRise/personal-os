@@ -18,7 +18,25 @@ step() {
   local name="$1"
   shift
   info "$name"
-  "$@" || die "step failed: $name. Nothing else was changed after it."
+  "$@" || die "step failed: $name."
+}
+
+# A failed install or build must not leave new code with a broken build:
+# put back the previous commit and the previous dist/ (ADR-0003).
+rollback() {
+  local failed="$1"
+  trap - ERR
+  cd "$DEPLOY_DIR"
+  if [[ -n "${PREVIOUS_COMMIT:-}" ]]; then
+    git reset --hard --quiet "$PREVIOUS_COMMIT" || true
+  fi
+  if [[ -d "$DEPLOY_DIR/dist.previous" ]]; then
+    rm -rf "$DEPLOY_DIR/dist"
+    mv "$DEPLOY_DIR/dist.previous" "$DEPLOY_DIR/dist"
+    echo "personal-os: restored the previous code and build." >&2
+  fi
+  echo "personal-os: node_modules may be incomplete; fix the problem and run deploy-local.sh again before starting the app." >&2
+  die "step failed: $failed."
 }
 
 # 1. Refuse while the app runs (it would be serving files we are replacing).
@@ -41,6 +59,7 @@ else
   branch="$(git rev-parse --abbrev-ref HEAD)"
   [[ "$branch" == "main" ]] || die "the instance is on branch \"$branch\", expected main. Fix it by hand."
   [[ -z "$(git status --porcelain)" ]] || die "the instance directory has local changes. The instance must stay a pristine copy of main; inspect with: git -C $DEPLOY_DIR status"
+  PREVIOUS_COMMIT="$(git rev-parse HEAD)"
   step "fetching origin" git fetch --quiet origin main
   step "fast-forwarding to origin/main" git merge --ff-only --quiet origin/main
 fi
@@ -48,7 +67,12 @@ cd "$DEPLOY_DIR"
 
 # 3. Build.
 FNM_INSTALL=1 ensure_node "$DEPLOY_DIR"
-step "npm ci" npm ci
-step "npm run build" npm run build
+rm -rf dist.previous
+[[ -d dist ]] && mv dist dist.previous
+info "npm ci"
+npm ci || rollback "npm ci"
+info "npm run build"
+npm run build || rollback "npm run build"
+rm -rf dist.previous
 
 info "done at $(git rev-parse --short HEAD). Start it with scripts/start.sh; it migrates (after a backup) on start."
