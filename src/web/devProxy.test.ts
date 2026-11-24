@@ -28,12 +28,25 @@ describe('dev proxy', () => {
     expect(apiProxy('5399')).toEqual({ [API_PROXY_KEY]: 'http://127.0.0.1:5399' });
   });
 
-  it('keeps every module of the web app clear of the proxy', () => {
-    // Lazy glob: only the file names are read, nothing is imported.
-    const files = Object.keys(import.meta.glob('./*.{ts,tsx,css}')).map((f) => f.slice(1));
+  it('keeps every file and folder of the web app clear of the proxy', () => {
+    // Lazy glob over the Vite root, including subfolders (a future `src/web/api/`
+    // would be served as `/api/...`). Only file names are read, nothing is imported.
+    const files = Object.keys(import.meta.glob('./**/*')).map((f) => f.slice(1));
     expect(files).toContain('/api.ts');
     for (const file of files) {
       expect(proxied(file), file).toBe(false);
     }
+  });
+
+  it('is what vite.config.ts actually uses (not a literal /api key)', () => {
+    const config = Object.values(
+      import.meta.glob<string>('../../vite.config.ts', {
+        query: '?raw',
+        import: 'default',
+        eager: true,
+      }),
+    ).join('');
+    expect(config).toContain('proxy: apiProxy(');
+    expect(config).not.toMatch(/['"`]\/api['"`]\s*:/);
   });
 });

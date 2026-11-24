@@ -36,8 +36,9 @@
   `/api.ts`) was forwarded to Fastify. Tests, typecheck and build cannot see
   it: none of them go through the dev server. `npm start` was never affected.
 - Fix: `src/web/devProxy.ts` anchors the key to `^/api/`; `vite.config.ts` uses
-  it. `devProxy.test.ts` fails with the old key (checked) and also asserts that
-  no module file in `src/web` matches the proxy.
+  it. `devProxy.test.ts` fails with the old key, with a literal `'/api'` in
+  `vite.config.ts`, and with a folder `src/web/api/` (each checked); it asserts
+  no file or folder under `src/web` matches the proxy.
 - Verified like a browser: with `npm run dev`, fetched `/` and every module it
   imports (25 resources, parsed with `es-module-lexer`), none 404. Before the
   fix `/api.ts` returned Fastify's 404 JSON. `npm run build` + `npm start`
