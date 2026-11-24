@@ -103,3 +103,7 @@ SQLite (better-sqlite3 + Drizzle), Zod, Vitest, Playwright. Server binds to
 - Never edit a migration already committed to `main`; add a new one.
 - Never touch the directory in `PERSONAL_OS_DATA_DIR`: that is Manuel's real
   data. Use fixtures only.
+
+## Files
+
+Create and edit files with the file tools (Write, Edit), not with shell redirection or heredocs.
