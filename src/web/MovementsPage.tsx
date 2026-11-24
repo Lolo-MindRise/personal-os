@@ -7,6 +7,7 @@ import {
   emptyForm,
   formFromMovement,
   mapApiFieldErrors,
+  unmappedApiMessage,
   type MovementFormValues,
   type MovementPayload,
 } from './movementForm.js';
@@ -83,7 +84,10 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
       reload();
     } catch (error) {
       setFieldErrors(error instanceof ApiError ? mapApiFieldErrors(error.fields) : {});
-      setFormError(messageOf(error));
+      setFormError(
+        (error instanceof ApiError ? unmappedApiMessage(error.fields) : undefined) ??
+          messageOf(error),
+      );
     } finally {
       setBusy(false);
     }

@@ -16,7 +16,7 @@
 - Screen (`src/web`): month picker (default current month), totals, list,
   add/edit form with per-field Spanish errors, delete with `confirm`, plain CSS.
 - `CLAUDE.md`: two rules (no permission edits; no editing committed migrations).
-- Tests: 181 total (health tests removed with the helper): money, API (in-memory DB), form validation,
+- Tests: 185 total (health tests removed with the helper): money, API (in-memory DB), form validation,
   list/summary/form rendering, API client, month helpers.
 
 ## Decisions taken
@@ -26,6 +26,7 @@
   a DOM test library (jsdom, Testing Library). The interactive page wiring
   (`MovementsPage`) is therefore not unit-tested; checked by hand through the
   dev proxy. Playwright is out of scope; propose it as its own task.
+- Validation messages are Spanish (Zod `es` locale set in `src/shared/schemas.ts`, a global side effect of importing it).
 - Removed `src/web/health.ts` and its test: the screen replaced the health
   page and nothing used them. `GET /api/health` stays.
 

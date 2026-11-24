@@ -113,3 +113,11 @@ export function mapApiFieldErrors(
   }
   return errors;
 }
+
+/**
+ * A message for API errors on fields the form does not have (for example
+ * `debtId`), so the user still learns why a save was rejected.
+ */
+export function unmappedApiMessage(fields: Record<string, string>): string | undefined {
+  return Object.entries(fields).find(([key]) => !(key in API_FIELD_TO_FORM))?.[1];
+}

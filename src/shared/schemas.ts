@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { KINDS, MILESTONE_STATUSES } from './constants.js';
 
+// Messages reach the UI, which is in Spanish (es-ES): Zod's Spanish locale covers the defaults.
+z.config(z.locales.es());
+
 // Creation schemas shared by the API and the frontend (task 0004).
 // Money is integer cents and always positive; the kind gives the direction.
 // Dates are YYYY-MM-DD, months YYYY-MM, rates integer basis points (12.5 % = 1250).
@@ -9,13 +12,15 @@ import { KINDS, MILESTONE_STATUSES } from './constants.js';
 
 export const isoDate = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD')
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'La fecha debe tener el formato AAAA-MM-DD.')
   .refine((value) => {
     const parsed = new Date(`${value}T00:00:00Z`);
     return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value);
-  }, 'Not a real calendar date');
+  }, 'La fecha no existe en el calendario.');
 
-export const isoMonth = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Expected YYYY-MM');
+export const isoMonth = z
+  .string()
+  .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'El mes debe tener el formato AAAA-MM.');
 
 export const cents = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 
@@ -44,7 +49,7 @@ export const movementCreateSchema = movementFieldsSchema.refine(
   (m) => m.debtId == null || m.kind === 'repayment',
   {
     path: ['debtId'],
-    error: 'debtId is only allowed on repayment movements',
+    error: 'Solo las amortizaciones pueden estar vinculadas a una deuda.',
   },
 );
 

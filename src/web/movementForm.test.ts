@@ -5,6 +5,7 @@ import {
   FORM_ERRORS,
   formFromMovement,
   mapApiFieldErrors,
+  unmappedApiMessage,
   validateMovementForm,
   type MovementFormValues,
 } from './movementForm.js';
@@ -114,5 +115,18 @@ describe('mapApiFieldErrors', () => {
     expect(
       mapApiFieldErrors({ amountCents: 'mal', kind: 'no coincide', debtId: 'x', _: 'y' }),
     ).toEqual({ amount: 'mal', kind: 'no coincide' });
+  });
+});
+
+describe('unmappedApiMessage', () => {
+  it('returns the message of a field the form does not have, e.g. debtId', () => {
+    expect(unmappedApiMessage({ amountCents: 'mal', debtId: 'Solo las amortizaciones.' })).toBe(
+      'Solo las amortizaciones.',
+    );
+  });
+
+  it('returns nothing when every field is on the form', () => {
+    expect(unmappedApiMessage({ amountCents: 'mal', kind: 'no coincide' })).toBeUndefined();
+    expect(unmappedApiMessage({})).toBeUndefined();
   });
 });

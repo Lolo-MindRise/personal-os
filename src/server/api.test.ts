@@ -177,6 +177,33 @@ describe('POST /api/movements', () => {
   });
 });
 
+describe('error messages', () => {
+  it('are in Spanish, including those that come from Zod', async () => {
+    const body = (
+      await send('POST', '/api/movements', {
+        ...(await validMovement()),
+        date: '2026-02-30',
+        amountCents: '12',
+        surprise: 1,
+      })
+    ).json<{ fields: Record<string, string> }>();
+    expect(body.fields.date).toBe('La fecha no existe en el calendario.');
+    expect(body.fields.amountCents).toMatch(/se esperaba/);
+    expect(body.fields._).toMatch(/Llave desconocida/);
+    expect(Object.values(body.fields).join(' ')).not.toMatch(/Expected|Invalid|expected/);
+  });
+
+  it('explain a debt on a non-repayment movement in Spanish', async () => {
+    const response = await send('POST', '/api/movements', {
+      ...(await validMovement()),
+      debtId: 1,
+    });
+    expect(response.json<{ fields: Record<string, string> }>().fields.debtId).toBe(
+      'Solo las amortizaciones pueden estar vinculadas a una deuda.',
+    );
+  });
+});
+
 describe('PATCH /api/movements/:id', () => {
   it('updates only the given fields', async () => {
     const created = (
