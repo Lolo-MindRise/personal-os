@@ -1,9 +1,8 @@
 import { mkdirSync, readFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { join } from 'node:path';
 import { MIGRATIONS_DIR, resolveDbPath } from './config.js';
 import * as schema from './schema.js';
 
@@ -26,9 +25,9 @@ function openSqlite(path: string): Database.Database {
   return sqlite;
 }
 
-function handleOf(sqlite: Database.Database): DbHandle {
+function handleOf(sqlite: Database.Database, migrationsDir: string): DbHandle {
   const db = drizzle(sqlite, { schema });
-  migrate(db, { migrationsFolder: MIGRATIONS_DIR });
+  migrate(db, { migrationsFolder: migrationsDir });
   return { db, sqlite, close: () => sqlite.close() };
 }
 
@@ -37,16 +36,19 @@ function handleOf(sqlite: Database.Database): DbHandle {
  * Pass ':memory:' for tests; otherwise the file's directory is created.
  */
 export function openDatabase(path: string): DbHandle {
-  return handleOf(openSqlite(path));
+  return handleOf(openSqlite(path), MIGRATIONS_DIR);
 }
 
 /**
  * How many migrations the folder has and how many the database has applied.
  * A brand-new database has applied none.
  */
-export function migrationStatus(sqlite: Database.Database): { total: number; applied: number } {
+export function migrationStatus(
+  sqlite: Database.Database,
+  migrationsDir: string = MIGRATIONS_DIR,
+): { total: number; applied: number } {
   const journal = JSON.parse(
-    readFileSync(join(MIGRATIONS_DIR, 'meta', '_journal.json'), 'utf8'),
+    readFileSync(join(migrationsDir, 'meta', '_journal.json'), 'utf8'),
   ) as {
     entries: unknown[];
   };
@@ -71,14 +73,16 @@ export function migrationStatus(sqlite: Database.Database): { total: number; app
 export async function openDatabaseGuarded(
   path: string,
   beforeMigrate: (sqlite: Database.Database) => Promise<void>,
+  /** Only tests pass another folder. */
+  migrationsDir: string = MIGRATIONS_DIR,
 ): Promise<DbHandle> {
   const sqlite = openSqlite(path);
   try {
-    const { total, applied } = migrationStatus(sqlite);
+    const { total, applied } = migrationStatus(sqlite, migrationsDir);
     if (applied > 0 && applied < total) {
       await beforeMigrate(sqlite);
     }
-    return handleOf(sqlite);
+    return handleOf(sqlite, migrationsDir);
   } catch (error) {
     sqlite.close();
     throw error;

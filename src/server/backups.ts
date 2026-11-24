@@ -1,5 +1,5 @@
 import { copyFile, mkdir, readdir, rename, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import type Database from 'better-sqlite3';
 import type { BackupStatusDto } from '../shared/api.js';
 
@@ -81,6 +81,8 @@ export interface BackupService {
   /** Starts the 24-hour timer. */
   start: () => void;
   stop: () => void;
+  /** Resolves when no backup is running or queued (await before closing the database). */
+  whenIdle: () => Promise<void>;
   status: () => Promise<BackupStatusDto>;
 }
 
@@ -119,7 +121,18 @@ export function createBackupService(options: BackupServiceOptions): BackupServic
       return;
     }
     try {
-      await mkdir(mirrorDir, { recursive: true });
+      if (resolve(mirrorDir) === resolve(dir)) {
+        // Pruning the mirror would delete local backups below the required count.
+        throw new Error('el espejo no puede ser el mismo directorio que las copias locales');
+      }
+      // Only the last directory is created, never its parents: if the second disk is not
+      // mounted, its mount point may exist as an empty folder on the main disk, and creating
+      // the path below it would silently put the "mirror" on the wrong disk.
+      await mkdir(mirrorDir).catch((error: unknown) => {
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+          throw error;
+        }
+      });
       const target = join(mirrorDir, name);
       await copyFile(join(dir, name), `${target}.partial`);
       await rename(`${target}.partial`, target);
@@ -175,6 +188,7 @@ export function createBackupService(options: BackupServiceOptions): BackupServic
       timer?.clear();
       timer = undefined;
     },
+    whenIdle: () => queue.then(() => undefined),
     async status() {
       const local = await listBackups(dir);
       const newest = local[0];

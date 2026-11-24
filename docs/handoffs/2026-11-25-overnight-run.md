@@ -61,7 +61,18 @@ Branch `agent/overnight/02-backups`, stacked on block 1.
 - All backup reasons share the same 14-file rotation (a migration backup can push out the
   oldest daily copy).
 - No "stale backup" warning beyond: none yet, last attempt failed, mirror unreachable.
-- Interrupted `.partial` files are not counted and not cleaned up automatically.
+- The mirror directory is created one level only, never its parents: an unmounted second disk
+  whose mount point exists as an empty folder must show as unreachable, not silently fill the
+  main disk. A mirror equal to the local directory is refused (it would prune local backups).
+- Shutdown waits for a backup in flight before closing the database. A `.partial` left by a
+  hard kill is not counted and not cleaned up automatically.
+- Migration tests use their own tiny migrations folder (`openDatabaseGuarded` takes an optional
+  folder), so later blocks adding migrations cannot break them.
+
+### Review
+- Reviewer: changes required, all fixed. Major: mirror `mkdir` recursive (above, with a test
+  proven by mutation). Minors: mirror = local dir, shutdown race, tests tied to the newest
+  migration, duplicate import, missing review-log row.
 - Drizzle's `__drizzle_migrations.id` is not filled in; migrations are counted by rows and
   ordered by `created_at`.
 

@@ -56,7 +56,8 @@ try {
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.on(signal, () => {
     backups?.stop();
-    void app.close().finally(() => {
+    // Let a backup in flight finish before the database closes under it.
+    void Promise.all([app.close(), backups?.whenIdle()]).finally(() => {
       database.close();
       process.exit(0);
     });

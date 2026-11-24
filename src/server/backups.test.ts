@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
@@ -15,7 +15,6 @@ import {
 } from './backups.js';
 import { resolveBackupConfig } from './db/config.js';
 import { migrationStatus, openDatabase, openDatabaseGuarded } from './db/index.js';
-import { seed } from './db/seed.js';
 
 let root: string;
 let sqlite: Database.Database;
@@ -115,6 +114,41 @@ describe('runBackup', () => {
     const fixed = await backups.status();
     expect(fixed.mirror.state).toBe('ok');
     expect(fixed.warnings).toEqual([]);
+  });
+
+  it('does not create missing parents of the mirror: an unmounted disk must not fall back to the main one', async () => {
+    const mirror = join(root, 'not-mounted', 'backups');
+    const backups = service({ mirrorDir: mirror });
+    expect((await backups.runBackup('startup')).ok).toBe(true);
+    expect(existsSync(join(root, 'not-mounted'))).toBe(false);
+    expect((await backups.status()).mirror.state).toBe('error');
+  });
+
+  it('creates only the last directory of the mirror when its parent exists', async () => {
+    mkdirSync(join(root, 'disk'));
+    const backups = service({ mirrorDir: join(root, 'disk', 'backups') });
+    await backups.runBackup('startup');
+    expect(await listBackups(join(root, 'disk', 'backups'))).toHaveLength(1);
+    expect((await backups.status()).mirror.state).toBe('ok');
+  });
+
+  it('refuses a mirror that is the local directory, so pruning cannot eat local backups', async () => {
+    const backups = service({ mirrorDir: dirs().local, keepMirror: 1 });
+    for (let i = 0; i < 3; i++) {
+      await backups.runBackup('daily');
+    }
+    expect(await listBackups(dirs().local)).toHaveLength(3);
+    const status = await backups.status();
+    expect(status.mirror.state).toBe('error');
+    expect(status.warnings[0]).toMatch(/mismo directorio/);
+  });
+
+  it('whenIdle waits for a running backup', async () => {
+    const backups = service();
+    const running = backups.runBackup('startup');
+    await backups.whenIdle();
+    expect(await listBackups(dirs().local)).toHaveLength(1);
+    await running;
   });
 
   it('reports a failed local backup without throwing, and clears it on the next success', async () => {
@@ -252,28 +286,46 @@ describe('resolveBackupConfig', () => {
 });
 
 describe('backup before migrations', () => {
-  const INDEX = 'movements_recurring_item_month_unique';
-  const hasIndex = (db: Database.Database) =>
-    db.prepare('SELECT 1 FROM sqlite_master WHERE name = ?').get(INDEX) !== undefined;
+  const ENTRY = (idx: number, tag: string) =>
+    `{"idx":${String(idx)},"version":"6","when":${String(1_700_000_000_000 + idx)},"tag":"${tag}","breakpoints":true}`;
 
-  /** An existing database that is one migration behind (the last one, an index, is undone). */
-  function makeBehind(path: string) {
-    const handle = openDatabase(path);
-    seed(handle.db);
-    handle.sqlite.exec(`DROP INDEX ${INDEX}`);
-    // Drizzle's `id` column is not filled in; the migrations are ordered by created_at.
-    handle.sqlite.exec(
-      'DELETE FROM __drizzle_migrations WHERE created_at = (SELECT max(created_at) FROM __drizzle_migrations)',
+  /** A tiny migrations folder of its own, so these tests never depend on the real migrations. */
+  function migrationsFolder(name: string, steps: { tag: string; sql: string }[]): string {
+    const folder = join(root, name);
+    mkdirSync(join(folder, 'meta'), { recursive: true });
+    const entries = steps.map((step, idx) => ENTRY(idx, step.tag)).join(',');
+    writeFileSync(
+      join(folder, 'meta', '_journal.json'),
+      `{"version":"7","dialect":"sqlite","entries":[${entries}]}`,
     );
-    handle.close();
+    for (const step of steps) {
+      writeFileSync(join(folder, `${step.tag}.sql`), step.sql);
+    }
+    return folder;
+  }
+
+  const FIRST = {
+    tag: '0000_first',
+    // Drizzle runs one statement at a time, split on this marker.
+    sql: "CREATE TABLE t (v TEXT);\n--> statement-breakpoint\nINSERT INTO t VALUES ('kept');",
+  };
+  const SECOND = { tag: '0001_second', sql: 'CREATE TABLE u (v TEXT);' };
+  const hasTable = (db: Database.Database, table: string) =>
+    db.prepare('SELECT 1 FROM sqlite_master WHERE name = ?').get(table) !== undefined;
+  const never = () => Promise.reject(new Error('the hook must not run'));
+
+  /** A database that already applied the first migration, with the second one pending. */
+  async function behind(path: string) {
+    (await openDatabaseGuarded(path, never, migrationsFolder('m1', [FIRST]))).close();
+    return migrationsFolder('m2', [FIRST, SECOND]);
   }
 
   it('counts applied and total migrations', () => {
-    const handle = openDatabase(':memory:');
-    const { total, applied } = migrationStatus(handle.sqlite);
+    const real = openDatabase(':memory:');
+    const { total, applied } = migrationStatus(real.sqlite);
     expect(total).toBeGreaterThan(0);
     expect(applied).toBe(total);
-    handle.close();
+    real.close();
     const fresh = new Database(':memory:');
     expect(migrationStatus(fresh).applied).toBe(0);
     fresh.close();
@@ -281,60 +333,63 @@ describe('backup before migrations', () => {
 
   it('calls the hook before migrating an existing database that is behind', async () => {
     const path = join(root, 'behind.sqlite');
-    makeBehind(path);
-    let seenIndex: boolean | undefined;
+    const folder = await behind(path);
+    let tableUSeenByHook: boolean | undefined;
     let calls = 0;
-    const handle = await openDatabaseGuarded(path, (db) => {
-      calls += 1;
-      seenIndex = hasIndex(db);
-      return Promise.resolve();
-    });
+    const handle = await openDatabaseGuarded(
+      path,
+      (db) => {
+        calls += 1;
+        tableUSeenByHook = hasTable(db, 'u');
+        return Promise.resolve();
+      },
+      folder,
+    );
     expect(calls).toBe(1);
-    expect(seenIndex).toBe(false); // the hook ran before the migration
-    expect(hasIndex(handle.sqlite)).toBe(true); // and the migration ran afterwards
+    expect(tableUSeenByHook).toBe(false); // the hook ran before the migration
+    expect(hasTable(handle.sqlite, 'u')).toBe(true); // and the migration ran afterwards
     handle.close();
   });
 
   it('the pre-migration backup holds the old schema and the data', async () => {
     const path = join(root, 'behind.sqlite');
-    makeBehind(path);
-    const handle = await openDatabaseGuarded(path, async (db) => {
-      const result = await createBackupService({
-        sqlite: db,
-        dir: dirs().local,
-        now: tick,
-      }).runBackup('pre-migration');
-      expect(result.ok).toBe(true);
-    });
+    const folder = await behind(path);
+    const handle = await openDatabaseGuarded(
+      path,
+      async (db) => {
+        const result = await createBackupService({
+          sqlite: db,
+          dir: dirs().local,
+          now: tick,
+        }).runBackup('pre-migration');
+        expect(result.ok).toBe(true);
+      },
+      folder,
+    );
     handle.close();
     const [name] = await listBackups(dirs().local);
     expect(name).toMatch(/-pre-migration\.sqlite$/);
     const copy = new Database(join(dirs().local, name ?? ''), { readonly: true });
-    expect(hasIndex(copy)).toBe(false);
-    expect(copy.prepare('SELECT count(*) AS n FROM movements').get()).toEqual({ n: 6 });
+    expect(hasTable(copy, 'u')).toBe(false);
+    expect(copy.prepare('SELECT v FROM t').all()).toEqual([{ v: 'kept' }]);
     copy.close();
   });
 
   it('does not migrate, and closes the database, when the hook throws', async () => {
     const path = join(root, 'behind.sqlite');
-    makeBehind(path);
+    const folder = await behind(path);
     await expect(
-      openDatabaseGuarded(path, () => Promise.reject(new Error('no backup'))),
+      openDatabaseGuarded(path, () => Promise.reject(new Error('no backup')), folder),
     ).rejects.toThrow('no backup');
     const check = new Database(path);
-    expect(hasIndex(check)).toBe(false);
+    expect(hasTable(check, 'u')).toBe(false);
     check.close();
   });
 
   it('skips the hook for a new or fully migrated database', async () => {
-    let calls = 0;
-    const hook = () => {
-      calls += 1;
-      return Promise.resolve();
-    };
+    const folder = migrationsFolder('m3', [FIRST, SECOND]);
     const path = join(root, 'new.sqlite');
-    (await openDatabaseGuarded(path, hook)).close();
-    (await openDatabaseGuarded(path, hook)).close();
-    expect(calls).toBe(0);
+    (await openDatabaseGuarded(path, never, folder)).close();
+    (await openDatabaseGuarded(path, never, folder)).close();
   });
 });
