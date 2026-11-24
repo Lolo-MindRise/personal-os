@@ -5,6 +5,9 @@ import type {
   CategoryDto,
   CategoryUsageDto,
   DebtDto,
+  GoalDto,
+  SettingsDto,
+  YearSummaryDto,
   MonthSummaryDto,
   MovementDto,
   PendingEntryDto,
@@ -14,6 +17,7 @@ import type { Kind } from '../shared/constants.js';
 import type { BudgetPayload } from './budgetForm.js';
 import type { DebtPayload } from './debtForm.js';
 import type { ConfirmPayload, MovementPayload } from './movementForm.js';
+import type { GoalPayload, SettingsPayload } from './summaryForms.js';
 import type { RecurringPayload } from './recurringForm.js';
 
 /** An error answer from the API: a readable message plus per-field messages. */
@@ -74,6 +78,16 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
       request<DebtDto>(fetchFn, '/api/debts', json('POST', payload)),
     updateDebt: (id: number, payload: Partial<DebtPayload>) =>
       request<DebtDto>(fetchFn, `/api/debts/${String(id)}`, json('PATCH', payload)),
+    settings: () => request<SettingsDto>(fetchFn, '/api/settings'),
+    saveSettings: (payload: SettingsPayload) =>
+      request<SettingsDto>(fetchFn, '/api/settings', json('PUT', payload)),
+    yearSummary: (year: number) =>
+      request<YearSummaryDto>(fetchFn, `/api/years/${String(year)}/summary`),
+    goals: () => request<GoalDto[]>(fetchFn, '/api/goals'),
+    createGoal: (payload: GoalPayload) =>
+      request<GoalDto>(fetchFn, '/api/goals', json('POST', payload)),
+    updateGoal: (id: number, payload: Partial<GoalPayload>) =>
+      request<GoalDto>(fetchFn, `/api/goals/${String(id)}`, json('PATCH', payload)),
     categoryUsage: () => request<CategoryUsageDto[]>(fetchFn, '/api/categories/usage'),
     createCategory: (payload: { name: string; kind: Kind }) =>
       request<CategoryDto>(fetchFn, '/api/categories', json('POST', payload)),

@@ -102,6 +102,59 @@ export interface DebtDto {
   estimatedBalanceCents: number;
 }
 
+/** App settings (block 5). Without a saved date, savings accumulate from the first movement. */
+export interface SettingsDto {
+  initialSavingsCents: number;
+  /** The date the initial balance is valid on (`YYYY-MM-DD`), or null when not set. */
+  initialSavingsDate: string | null;
+}
+
+export interface YearSummaryRowDto {
+  month: string;
+  incomeCents: number;
+  expenseCents: number;
+  repaymentCents: number;
+  /** income − expenses − repayments of the whole month (negative in deficit). */
+  savingsCents: number;
+  /**
+   * Initial balance plus the savings of every movement after the initial date, up to the end of
+   * the month. Null for months that end before the initial date.
+   */
+  accumulatedCents: number | null;
+}
+
+export interface YearSummaryDto {
+  year: number;
+  settings: SettingsDto;
+  rows: YearSummaryRowDto[];
+  totals: {
+    incomeCents: number;
+    expenseCents: number;
+    repaymentCents: number;
+    savingsCents: number;
+  };
+}
+
+/** A savings goal with its progress against the accumulated savings. */
+export interface GoalDto {
+  id: number;
+  name: string;
+  targetAmountCents: number;
+  targetDate: string;
+  /** Accumulated savings today (shared by all goals: they are not split between goals). */
+  accumulatedCents: number;
+  /** Whole percent reached, 0 to 100. */
+  progressPercent: number;
+  /** target − accumulated, never below zero. */
+  remainingCents: number;
+  /** `reached` (nothing left), `overdue` (target date passed, goal not reached) or `open`. */
+  status: 'reached' | 'overdue' | 'open';
+  /** Months left including the current one; null unless the goal is open. */
+  monthsLeft: number | null;
+  /** remaining / months left, rounded up; null unless the goal is open. */
+  monthlyRequiredCents: number | null;
+}
+
 /** One category's row in a month's budget (task 0008, block 3). */
 export interface BudgetRowDto {
   categoryId: number;

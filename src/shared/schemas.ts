@@ -118,6 +118,15 @@ export const goalCreateSchema = z.strictObject({
   targetDate: isoDate,
 });
 
+/** PATCH body: any subset of the goal's fields. */
+export const goalUpdateSchema = goalCreateSchema.partial();
+
+/** The initial savings balance and the date it is valid on; replaces any previous value. */
+export const settingsSchema = z.strictObject({
+  initialSavingsCents: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  initialSavingsDate: isoDate,
+});
+
 export const milestoneCreateSchema = z.strictObject({
   title: text,
   targetDate: isoDate,
@@ -136,4 +145,6 @@ export type BudgetLineCreate = z.infer<typeof budgetLineCreateSchema>;
 export type DebtCreate = z.infer<typeof debtCreateSchema>;
 export type DebtUpdate = z.infer<typeof debtUpdateSchema>;
 export type GoalCreate = z.infer<typeof goalCreateSchema>;
+export type GoalUpdate = z.infer<typeof goalUpdateSchema>;
+export type SettingsInput = z.infer<typeof settingsSchema>;
 export type MilestoneCreate = z.infer<typeof milestoneCreateSchema>;
