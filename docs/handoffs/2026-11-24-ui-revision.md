@@ -1,4 +1,4 @@
-# Handoff 2026-11-28: UI revision (task 0015)
+# Handoff 2026-11-24: UI revision (task 0015)
 
 Three stacked blocks: `agent/ui/01-foundation` → `02-connected` → `03-forms-and-states`.
 This file accumulates across the blocks.

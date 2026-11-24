@@ -73,6 +73,18 @@ test('the selected month follows you across monthly screens and lives in the URL
   await expect(page.locator('.month-label')).toHaveText('diciembre de 2025');
 });
 
+test('the Resumen year lives in the URL and survives a reload', async ({ page }) => {
+  await page.goto('/#/summary');
+  await expect(page.locator('.year-label')).toHaveText('2026');
+  await page.getByRole('button', { name: 'Año anterior' }).click();
+  await expect(page).toHaveURL(/#\/summary\?year=2025/);
+  await page.reload();
+  await expect(page.locator('.year-label')).toHaveText('2025');
+  // An invalid year falls back to the current one.
+  await page.goto('/#/summary?year=abc');
+  await expect(page.locator('.year-label')).toHaveText('2026');
+});
+
 test('the theme toggle switches dark and light and is remembered after a reload', async ({
   page,
 }) => {
