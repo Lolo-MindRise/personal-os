@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -14,28 +14,21 @@ import { seed } from '../src/server/db/seed.js';
  */
 const dataDir = mkdtempSync(join(tmpdir(), 'personal-os-e2e-'));
 
-const handle = openDatabase(join(dataDir, DB_FILENAME));
-seed(handle.db);
-handle.close();
-
-const server = spawn('npm', ['start'], {
-  // New process group, so the whole `npm -> sh -> node` chain can be stopped.
-  detached: true,
-  stdio: 'inherit',
-  env: { ...process.env, PERSONAL_OS_DATA_DIR: dataDir },
-});
-
+// Filled once the server is spawned; cleanup may run before that (seed failure).
+const servers: ChildProcess[] = [];
 let cleaned = false;
 function cleanUp(): void {
   if (cleaned) {
     return;
   }
   cleaned = true;
-  if (server.pid !== undefined) {
-    try {
-      process.kill(-server.pid, 'SIGTERM');
-    } catch {
-      // Already gone.
+  for (const server of servers) {
+    if (server.pid !== undefined) {
+      try {
+        process.kill(-server.pid, 'SIGTERM');
+      } catch {
+        // Already gone.
+      }
     }
   }
   rmSync(dataDir, { recursive: true, force: true });
@@ -48,6 +41,22 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   });
 }
 process.on('exit', cleanUp);
+
+// Cleanup is registered first: if seeding throws, the temp directory still goes.
+const handle = openDatabase(join(dataDir, DB_FILENAME));
+try {
+  seed(handle.db);
+} finally {
+  handle.close();
+}
+
+const server = spawn('npm', ['start'], {
+  // New process group, so the whole `npm -> sh -> node` chain can be stopped.
+  detached: true,
+  stdio: 'inherit',
+  env: { ...process.env, PERSONAL_OS_DATA_DIR: dataDir },
+});
+servers.push(server);
 server.on('exit', (code) => {
   cleanUp();
   process.exit(code ?? 1);

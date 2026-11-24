@@ -13,8 +13,9 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   forbidOnly: process.env.CI !== undefined,
-  reporter: process.env.CI === undefined ? 'list' : [['list'], ['html', { open: 'never' }]],
-  use: { trace: 'retain-on-failure' },
+  reporter: 'list',
+  // Traces help locally; CI does not upload artifacts, so it would only lose them.
+  use: { trace: process.env.CI === undefined ? 'retain-on-failure' : 'off' },
   projects: [
     {
       name: 'dev',

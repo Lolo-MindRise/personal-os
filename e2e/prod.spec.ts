@@ -75,13 +75,17 @@ test('add, edit and delete a movement, with the totals following', async ({ page
   });
 
   await test.step('delete it, accepting the confirmation', async () => {
+    // Accept first, assert afterwards: a failing assert inside the handler would
+    // leave the dialog open and the test would only time out.
+    let confirmation = '';
     page.once('dialog', (dialog) => {
-      expect(dialog.message()).toContain('compra editada');
+      confirmation = dialog.message();
       void dialog.accept();
     });
     await rows(page).first().getByRole('button', { name: 'Eliminar' }).click();
 
     await expect(page.getByText('No hay movimientos este mes.')).toBeVisible();
+    expect(confirmation).toContain('compra editada');
     await expect(summaryItem(page, 'Gastos')).toContainText(/0,00\s€/);
     await expect(summaryItem(page, 'Ahorro')).toContainText(/0,00\s€/);
   });
