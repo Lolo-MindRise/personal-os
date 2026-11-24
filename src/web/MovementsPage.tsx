@@ -46,6 +46,25 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   const categoryFilter = /^\d+$/.test(params.category ?? '') ? Number(params.category) : undefined;
   const debtParam = /^\d+$/.test(params.debt ?? '') ? Number(params.debt) : undefined;
   const fixedParam = /^\d+$/.test(params.fixed ?? '') ? Number(params.fixed) : undefined;
+  const [fixedName, setFixedName] = useState<string | undefined>();
+  useEffect(() => {
+    if (fixedParam === undefined) {
+      return;
+    }
+    let active = true;
+    api.recurringItems().then(
+      (items) => {
+        if (active) {
+          setFixedName(items.find((i) => i.id === fixedParam)?.concept);
+        }
+      },
+      // The name is a nicety: the filter works without it.
+      () => undefined,
+    );
+    return () => {
+      active = false;
+    };
+  }, [api, fixedParam]);
   const linkedQuery = useMemo<SearchQuery | undefined>(
     () =>
       debtParam !== undefined
@@ -289,11 +308,16 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
           label={
             debtParam !== undefined
               ? `deuda ${debts.find((d) => d.id === debtParam)?.name ?? String(debtParam)}`
-              : 'confirmados desde un fijo'
+              : `fijo ${fixedName ?? String(fixedParam)}`
           }
           clearHref={hrefFor('movements')}
         />
-        <LinkedMovements api={api} query={linkedQuery} categories={categories} />
+        <LinkedMovements
+          key={JSON.stringify(linkedQuery)}
+          api={api}
+          query={linkedQuery}
+          categories={categories}
+        />
       </main>
     );
   }
@@ -399,6 +423,9 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
             </p>
           )}
 
+          {categoryFilter !== undefined && (
+            <p className="hint">Los totales y los pendientes son los de todo el mes.</p>
+          )}
           {summary !== undefined && <SummaryBar summary={summary} />}
 
           <PendingList

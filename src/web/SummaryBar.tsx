@@ -32,7 +32,7 @@ export function SummaryBar({ summary }: { summary: MonthSummaryDto }) {
           </div>
         ))}
       </dl>
-      <dl className="summary pending-summary" aria-label="Pendiente y previsión">
+      <dl className="summary pending-summary" aria-label="Pendientes y ahorro previsto">
         {pending.map(([label, cents, tone]) => (
           <div key={label} className={`pending-item ${tone}`}>
             <dt>{label}</dt>

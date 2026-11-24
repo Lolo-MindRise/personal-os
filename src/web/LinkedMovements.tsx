@@ -55,7 +55,7 @@ export function LinkedMovements({
           query={query}
           categories={categories}
           busy={loaded.key !== key}
-          backLabel="Ver movimientos del mes"
+          compact
           onPage={setPage}
           onGoToMonth={(movement) => {
             navigate('movements', { month: movement.date.slice(0, 7) });

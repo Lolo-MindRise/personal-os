@@ -75,5 +75,10 @@ Build no longer warns about chunks over 500 kB.
 - The `fixed` link keeps the selected month in the URL only so "clear filter" returns to it.
 - The dashboard no longer takes an `onNavigate` prop: plain links replace it.
 
+- Reviewer first pass (block 2): the debt filter also matches installments (fixed items linked to
+  the debt), tested; filtered debt view opens its lists and says when the debt no longer exists;
+  linked view names the fixed item and has one clear control; category filter says totals are the
+  month's; `SummaryBar` label follows the glossary.
+
 ## Next
 Block 3: side-panel forms, button names, empty states, error messages.

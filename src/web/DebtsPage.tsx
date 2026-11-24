@@ -24,7 +24,16 @@ const messageOf = (error: unknown) => (error instanceof ApiError ? error.message
 
 type Errors = Partial<Record<DebtField, string>>;
 
-export function DebtList({ debts, onEdit }: { debts: DebtDto[]; onEdit: (debt: DebtDto) => void }) {
+export function DebtList({
+  debts,
+  onEdit,
+  expanded = false,
+}: {
+  debts: DebtDto[];
+  onEdit: (debt: DebtDto) => void;
+  /** Open the installments and extra repayments (when a single debt was asked for). */
+  expanded?: boolean;
+}) {
   if (debts.length === 0) {
     return <p className="empty">Todavía no hay deudas. Añade la primera arriba.</p>;
   }
@@ -88,7 +97,7 @@ export function DebtList({ debts, onEdit }: { debts: DebtDto[]; onEdit: (debt: D
               deuda en «Fijos» y confírmalo cada mes.
             </p>
           ) : (
-            <details>
+            <details open={expanded}>
               <summary>Cuotas confirmadas ({debt.installments.length})</summary>
               <ul className="debt-repayments">
                 {debt.installments.map((i) => (
@@ -104,7 +113,7 @@ export function DebtList({ debts, onEdit }: { debts: DebtDto[]; onEdit: (debt: D
           {debt.repayments.length === 0 ? (
             <p className="notes">Sin amortizaciones extra vinculadas.</p>
           ) : (
-            <details>
+            <details open={expanded}>
               <summary>Amortizaciones extra vinculadas ({debt.repayments.length})</summary>
               <ul className="debt-repayments">
                 {debt.repayments.map((r) => (
@@ -214,6 +223,7 @@ export function DebtsPage({ api = defaultApi }: { api?: ApiClient }) {
   // `#/debts?debt=3` shows only that debt (opened from the dashboard).
   const { params } = useRoute();
   const onlyDebt = debts.find((d) => String(d.id) === params.debt);
+  const [loaded, setLoaded] = useState(false);
 
   const [form, setForm] = useState<DebtFormValues>(() => emptyDebtForm());
   const [editing, setEditing] = useState<DebtDto | undefined>();
@@ -227,6 +237,7 @@ export function DebtsPage({ api = defaultApi }: { api?: ApiClient }) {
       (rows) => {
         if (active) {
           setDebts(rows);
+          setLoaded(true);
           setLoadError(undefined);
         }
       },
@@ -312,6 +323,13 @@ export function DebtsPage({ api = defaultApi }: { api?: ApiClient }) {
         onCancel={resetForm}
       />
 
+      {onlyDebt === undefined && params.debt !== undefined && loaded && (
+        <FilterBar
+          label="esa deuda ya no existe"
+          clearHref={hrefFor('debts')}
+          clearLabel="Ver todas las deudas"
+        />
+      )}
       {onlyDebt !== undefined && (
         <FilterBar
           label={`deuda ${onlyDebt.name}`}
@@ -322,6 +340,7 @@ export function DebtsPage({ api = defaultApi }: { api?: ApiClient }) {
 
       <DebtList
         debts={onlyDebt === undefined ? debts : [onlyDebt]}
+        expanded={onlyDebt !== undefined}
         onEdit={(debt) => {
           setForm(formFromDebt(debt));
           setEditing(debt);

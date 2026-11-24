@@ -246,6 +246,33 @@ describe('GET /api/movements/search', () => {
     }
 
     expect(concepts(await run(`?debtId=${String(debt.id)}`))).toEqual(['Extra tarjeta']);
+
+    // An installment: a fixed item linked to the debt, confirmed in a month.
+    const installment = (
+      await app.inject({
+        method: 'POST',
+        url: '/api/recurring-items',
+        payload: {
+          kind: 'repayment',
+          categoryId: loan,
+          concept: 'Cuota tarjeta',
+          amountCents: 5_000,
+          expectedDay: 3,
+          startMonth: '2026-03',
+          debtId: debt.id,
+        },
+      })
+    ).json<{ id: number }>();
+    const confirmedInstallment = await app.inject({
+      method: 'POST',
+      url: `/api/recurring-items/${String(installment.id)}/months/2026-03/confirm`,
+      payload: {},
+    });
+    expect(confirmedInstallment.statusCode).toBe(201);
+    expect(concepts(await run(`?debtId=${String(debt.id)}`))).toEqual([
+      'Cuota tarjeta',
+      'Extra tarjeta',
+    ]);
     const fixed = await run(`?recurringItemId=${String(item.id)}`);
     expect(fixed.count).toBe(2);
     expect(fixed.rows.map((m) => m.date.slice(0, 7)).sort()).toEqual(['2026-01', '2026-02']);

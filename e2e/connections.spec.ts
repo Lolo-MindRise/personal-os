@@ -62,6 +62,18 @@ test('a debt in the dashboard opens its detail, and the filter can be cleared', 
   await expect(page.getByText('Cuotas confirmadas')).toBeVisible();
   await expect(page.getByText('Amortizaciones extra vinculadas').first()).toBeVisible();
 
+  // Filtered to one debt, its lists are open.
+  await expect(page.locator('details[open]')).toHaveCount(1);
+
+  // From the debt to the movements behind it, and back to the dashboard-opened view.
+  await page.getByRole('link', { name: 'Ver movimientos vinculados' }).click();
+  await expect(page).toHaveURL(/#\/movements\?month=\d{4}-\d{2}&debt=\d+/);
+  await expect(filterBar(page)).toContainText('deuda Préstamo personal de ejemplo');
+  await expect(page.getByTestId('search-totals')).toContainText('1 movimiento');
+  await expect(page.locator('table.movements')).toContainText('Amortización extra');
+  await page.goBack();
+  await expect(filterBar(page)).toContainText('deuda Préstamo personal de ejemplo');
+
   await filterBar(page).getByRole('link', { name: 'Ver todas las deudas' }).click();
   await expect(filterBar(page)).toHaveCount(0);
   await expect(page).toHaveURL(/#\/debts$/);
@@ -108,7 +120,7 @@ test('a fixed item opens the movements it confirmed, across months', async ({ pa
   await page.goto('/#/recurring');
   await page.locator('table.recurring').getByRole('link', { name: 'Alquiler' }).click();
   await expect(page).toHaveURL(/#\/movements\?month=\d{4}-\d{2}&fixed=\d+/);
-  await expect(filterBar(page)).toContainText('confirmados desde un fijo');
+  await expect(filterBar(page)).toContainText('fijo Alquiler');
   await expect(page.getByTestId('search-totals')).toContainText('1 movimiento');
   await expect(page.locator('table.movements')).toContainText('Alquiler');
 
