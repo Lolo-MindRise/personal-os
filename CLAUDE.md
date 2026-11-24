@@ -57,6 +57,10 @@ implement the deviation, and describe it in the PR or the handoff as
 Lint, typecheck and tests pass locally. New logic has tests. The handoff is
 updated.
 
+Before opening the PR (ADR-0004): run the `reviewer` subagent with the task
+brief path, fix every blocker and major (or explain in the PR why not), put
+its verdict in the PR, and append a row to `docs/metrics/review-log.md`.
+
 ## Data and secrets
 
 - Never use real personal or financial data. Fixtures and seed data only.
