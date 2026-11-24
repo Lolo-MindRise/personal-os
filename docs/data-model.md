@@ -20,7 +20,7 @@ Creation schemas (Zod, shared with the future API and frontend):
 |-------|--------|-------|
 | `categories` | `name`, `kind` (`income`/`expense`/`repayment`) | `name` unique, not blank |
 | `movements` | `date`, `kind`, `category_id`, `concept`, `amount_cents`, `notes?`, `debt_id?`, `recurring_item_id?` | amount > 0; kind must equal the category's kind (composite FK `(category_id, kind)`); `debt_id` only when kind is `repayment`; at most one movement per `(recurring_item_id, month of date)`; deleting the item sets `recurring_item_id` to null |
-| `recurring_items` | `kind`, `category_id`, `concept`, `amount_cents`, `expected_day`, `start_month`, `end_month?`, `notes?` | amount > 0; kind must equal the category's kind (composite FK); day 1–31; `end_month` not before `start_month` |
+| `recurring_items` | `kind`, `category_id`, `concept`, `amount_cents`, `expected_day`, `start_month`, `end_month?`, `notes?`, `debt_id?` | `debt_id` (task 0013) only when kind is `repayment`; confirming a linked item reduces the debt's estimated balance by the principal part (French amortization, computed on read, never stored); amount > 0; kind must equal the category's kind (composite FK); day 1–31; `end_month` not before `start_month` |
 | `recurring_skips` | `recurring_item_id`, `month` | unique `(recurring_item_id, month)`; deleted with the item |
 | `budget_lines` | `category_id`, `amount_cents`, `valid_from` (month) | amount > 0; unique `(category_id, valid_from)` |
 | `debts` | `name`, `monthly_payment_cents`, `balance_cents`, `balance_as_of`, `remaining_installments`, `annual_rate_bps`, `notes?` | payment > 0; balance, installments, rate >= 0 |

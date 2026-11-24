@@ -27,7 +27,7 @@ import {
   skippedItemIds,
   toEntry,
 } from './db/recurring.js';
-import { movements, recurringItems, recurringSkips } from './db/schema.js';
+import { debts, movements, recurringItems, recurringSkips } from './db/schema.js';
 
 const MESSAGES = {
   ...COMMON_MESSAGES,
@@ -38,7 +38,16 @@ const MESSAGES = {
   alreadySkipped: 'Este fijo ya está saltado en ese mes.',
   skippedBlocksConfirm: 'Este fijo está saltado en ese mes. Deshaz el salto para confirmarlo.',
   dateOutsideMonth: (month: string) => `La fecha debe estar dentro del mes ${month}.`,
+  noDebt: 'La deuda no existe.',
 } as const;
+
+/** True when no debt is given, or the given debt exists. */
+function debtExists(db: Db, debtId: number | null | undefined): boolean {
+  return (
+    debtId == null ||
+    db.select({ id: debts.id }).from(debts).where(eq(debts.id, debtId)).get() !== undefined
+  );
+}
 
 type Lookup =
   | { ok: true; item: RecurringItemDto; month: string }
@@ -93,9 +102,16 @@ export function registerRecurringApi(app: FastifyInstance, db: Db): void {
     if (problem !== undefined) {
       return badRequest(reply, problem.error, { [problem.field]: problem.error });
     }
+    if (!debtExists(db, parsed.data.debtId)) {
+      return badRequest(reply, MESSAGES.noDebt, { debtId: MESSAGES.noDebt });
+    }
     const created = db
       .insert(recurringItems)
-      .values({ ...parsed.data, endMonth: parsed.data.endMonth ?? null })
+      .values({
+        ...parsed.data,
+        endMonth: parsed.data.endMonth ?? null,
+        debtId: parsed.data.debtId ?? null,
+      })
       .returning({ id: recurringItems.id })
       .get();
     return reply.code(201).send(getRecurringItem(db, created.id));
@@ -122,6 +138,7 @@ export function registerRecurringApi(app: FastifyInstance, db: Db): void {
       startMonth: current.startMonth,
       endMonth: current.endMonth,
       notes: current.notes,
+      debtId: current.debtId,
       ...patch.data,
     });
     if (!merged.success) {
@@ -131,11 +148,15 @@ export function registerRecurringApi(app: FastifyInstance, db: Db): void {
     if (problem !== undefined) {
       return badRequest(reply, problem.error, { [problem.field]: problem.error });
     }
+    if (!debtExists(db, merged.data.debtId)) {
+      return badRequest(reply, MESSAGES.noDebt, { debtId: MESSAGES.noDebt });
+    }
     db.update(recurringItems)
       .set({
         ...merged.data,
         endMonth: merged.data.endMonth ?? null,
         notes: merged.data.notes ?? null,
+        debtId: merged.data.debtId ?? null,
       })
       .where(eq(recurringItems.id, id))
       .run();

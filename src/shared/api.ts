@@ -42,6 +42,8 @@ export interface RecurringItemDto {
   startMonth: string;
   endMonth: string | null;
   notes: string | null;
+  /** The debt whose installments this item pays, if any: confirming it reduces the debt. */
+  debtId: number | null;
 }
 
 /** An item due in a month and not yet confirmed (computed, never stored). */
@@ -96,10 +98,28 @@ export interface DebtDto {
   notes: string | null;
   /** Every extra repayment linked to the debt, newest first. */
   repayments: DebtRepaymentDto[];
-  /** Sum of the linked repayments dated after `balanceAsOf`. */
+  /** Sum of the linked extra repayments dated after `balanceAsOf`. */
   repaidSinceCents: number;
-  /** balance − repaid since the as-of date, never below zero. Regular installments are not deducted. */
+  /**
+   * Recorded balance minus the principal of the confirmed installments of linked recurring items
+   * and the extra repayments after `balanceAsOf` (French amortization), never below zero.
+   */
   estimatedBalanceCents: number;
+  /** Principal repaid by those installments (the part that reduced the balance). */
+  principalPaidCents: number;
+  /** Interest paid inside those installments. */
+  interestPaidCents: number;
+  /** Confirmed installments after `balanceAsOf`, oldest first, split into interest and principal. */
+  installments: DebtInstallmentDto[];
+}
+
+export interface DebtInstallmentDto {
+  movementId: number;
+  date: string;
+  paidCents: number;
+  interestCents: number;
+  principalCents: number;
+  balanceAfterCents: number;
 }
 
 /** A milestone: a dated step towards a goal, with a status. */
@@ -216,9 +236,12 @@ export interface DashboardDebtDto {
   /** The balance as last recorded and its date: the baseline of the progress. */
   recordedBalanceCents: number;
   balanceAsOf: string;
+  /** Capital repaid since the as-of date: recorded balance − estimated balance. */
   repaidSinceCents: number;
+  /** Interest paid in the confirmed installments since the as-of date. */
+  interestPaidCents: number;
   /**
-   * Whole percent of the recorded balance repaid by linked extra repayments since its date.
+   * Whole percent of the recorded balance repaid (installment principal and extra repayments) since its date.
    * Null when the recorded balance is zero (there is no baseline). The original amount of the
    * loan is not stored, so progress is never measured against it.
    */

@@ -54,8 +54,10 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
     monthlyPaymentCents: d.monthlyPaymentCents,
     recordedBalanceCents: d.balanceCents,
     balanceAsOf: d.balanceAsOf,
-    repaidSinceCents: d.repaidSinceCents,
-    progressPercent: debtProgressPercent(d.balanceCents, d.repaidSinceCents),
+    // Capital repaid: installment principal plus extra repayments (capped at what was owed).
+    repaidSinceCents: d.balanceCents - d.estimatedBalanceCents,
+    interestPaidCents: d.interestPaidCents,
+    progressPercent: debtProgressPercent(d.balanceCents, d.balanceCents - d.estimatedBalanceCents),
   }));
   const totalEstimatedCents = debtItems.reduce((sum, d) => sum + d.estimatedBalanceCents, 0);
 

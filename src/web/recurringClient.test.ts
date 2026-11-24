@@ -22,6 +22,7 @@ const recurring = {
   startMonth: '2026-01',
   endMonth: null,
   notes: null,
+  debtId: null,
 };
 
 describe('api client: recurring items', () => {

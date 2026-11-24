@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { CategoryDto, RecurringItemDto } from '../shared/api.js';
+import type { CategoryDto, DebtDto, RecurringItemDto } from '../shared/api.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
 import { currentMonth, monthLabel } from './months.js';
 import { RecurringForm, type RecurringErrors } from './RecurringForm.js';
@@ -19,6 +19,7 @@ const messageOf = (error: unknown) => (error instanceof ApiError ? error.message
 /** The "Fijos" screen: define fixed income and expenses once (ADR-0005). */
 export function RecurringPage({ api = defaultApi }: { api?: ApiClient }) {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const [debts, setDebts] = useState<DebtDto[]>([]);
   const [items, setItems] = useState<RecurringItemDto[]>([]);
   const [loadError, setLoadError] = useState<string | undefined>();
   const [reloads, setReloads] = useState(0);
@@ -31,6 +32,9 @@ export function RecurringPage({ api = defaultApi }: { api?: ApiClient }) {
 
   useEffect(() => {
     api.categories().then(setCategories, (error: unknown) => {
+      setLoadError(messageOf(error));
+    });
+    api.debts().then(setDebts, (error: unknown) => {
       setLoadError(messageOf(error));
     });
   }, [api]);
@@ -128,6 +132,7 @@ export function RecurringPage({ api = defaultApi }: { api?: ApiClient }) {
       <RecurringForm
         values={form}
         categories={categories}
+        debts={debts}
         errors={errors}
         formError={formError}
         editing={editingId !== undefined}
@@ -141,7 +146,7 @@ export function RecurringPage({ api = defaultApi }: { api?: ApiClient }) {
         onCancel={resetForm}
       />
 
-      <RecurringList items={items} onEdit={edit} onEnd={(item) => void end(item)} />
+      <RecurringList items={items} debts={debts} onEdit={edit} onEnd={(item) => void end(item)} />
     </main>
   );
 }

@@ -69,6 +69,7 @@ const debt = (over: Partial<DashboardDebtDto> = {}): DashboardDebtDto => ({
   recordedBalanceCents: 300_000,
   balanceAsOf: '2026-01-31',
   repaidSinceCents: 75_000,
+  interestPaidCents: 0,
   progressPercent: 25,
   ...over,
 });

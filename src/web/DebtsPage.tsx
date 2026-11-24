@@ -65,11 +65,38 @@ export function DebtList({ debts, onEdit }: { debts: DebtDto[]; onEdit: (debt: D
               <dd>{formatRate(debt.annualRateBps)}</dd>
             </div>
             <div>
-              <dt>Amortizado desde esa fecha</dt>
+              <dt>Capital amortizado en cuotas</dt>
+              <dd>{formatCents(debt.principalPaidCents)}</dd>
+            </div>
+            <div>
+              <dt>Intereses pagados en cuotas</dt>
+              <dd data-testid="interest-paid">{formatCents(debt.interestPaidCents)}</dd>
+            </div>
+            <div>
+              <dt>Amortizado con extras</dt>
               <dd>{formatCents(debt.repaidSinceCents)}</dd>
             </div>
           </dl>
           {debt.notes !== null && <p className="notes">{debt.notes}</p>}
+          {debt.installments.length === 0 ? (
+            <p className="notes">
+              Sin cuotas confirmadas desde esa fecha. Vincula un fijo de tipo «Amortización» a esta
+              deuda en «Fijos» y confírmalo cada mes.
+            </p>
+          ) : (
+            <details>
+              <summary>Cuotas confirmadas ({debt.installments.length})</summary>
+              <ul className="debt-repayments">
+                {debt.installments.map((i) => (
+                  <li key={i.movementId}>
+                    {formatDate(i.date)} · {formatCents(i.paidCents)}: intereses{' '}
+                    {formatCents(i.interestCents)}, capital {formatCents(i.principalCents)} · saldo{' '}
+                    {formatCents(i.balanceAfterCents)}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           {debt.repayments.length === 0 ? (
             <p className="notes">Sin amortizaciones extra vinculadas.</p>
           ) : (
@@ -244,10 +271,11 @@ export function DebtsPage({ api = defaultApi }: { api?: ApiClient }) {
     <main className="page">
       <h1>Deudas</h1>
       <p className="hint">
-        El saldo estimado es el saldo registrado menos las amortizaciones extra vinculadas a la
-        deuda con fecha posterior a la del saldo. Las cuotas regulares no se descuentan
-        automáticamente: actualiza el saldo cuando lo conozcas. Para vincular una amortización,
-        elige la deuda al añadir el movimiento de tipo «Amortización».
+        El saldo estimado parte del saldo registrado y descuenta, por orden de fecha y solo desde la
+        fecha del saldo, la parte de capital de cada cuota confirmada (cuota menos intereses, con el
+        interés anual de la deuda) y las amortizaciones extra vinculadas. Para que una cuota cuente,
+        vincula el fijo a la deuda en «Fijos»; para una extra, elige la deuda al añadir el
+        movimiento de tipo «Amortización». Actualiza el saldo cuando conozcas el real.
       </p>
 
       {loadError !== undefined && (
