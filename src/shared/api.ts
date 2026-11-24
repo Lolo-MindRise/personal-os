@@ -1,4 +1,4 @@
-import type { Kind } from './constants.js';
+import type { Kind, MilestoneStatus } from './constants.js';
 
 // Response shapes of the HTTP API, shared with the frontend.
 
@@ -100,6 +100,15 @@ export interface DebtDto {
   repaidSinceCents: number;
   /** balance − repaid since the as-of date, never below zero. Regular installments are not deducted. */
   estimatedBalanceCents: number;
+}
+
+/** A milestone: a dated step towards a goal, with a status. */
+export interface MilestoneDto {
+  id: number;
+  title: string;
+  targetDate: string;
+  status: MilestoneStatus;
+  notes: string | null;
 }
 
 /** App settings (block 5). Without a saved date, savings accumulate from the first movement. */

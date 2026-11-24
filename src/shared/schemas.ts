@@ -134,6 +134,14 @@ export const milestoneCreateSchema = z.strictObject({
   notes: optionalNotes,
 });
 
+/** PATCH body: any subset of the milestone's fields (status has no default here). */
+export const milestoneUpdateSchema = z.strictObject({
+  title: text.optional(),
+  targetDate: isoDate.optional(),
+  status: z.enum(MILESTONE_STATUSES).optional(),
+  notes: optionalNotes,
+});
+
 export type CategoryCreate = z.infer<typeof categoryCreateSchema>;
 export type CategoryUpdate = z.infer<typeof categoryUpdateSchema>;
 export type MovementUpdate = z.infer<typeof movementUpdateSchema>;
@@ -148,3 +156,4 @@ export type GoalCreate = z.infer<typeof goalCreateSchema>;
 export type GoalUpdate = z.infer<typeof goalUpdateSchema>;
 export type SettingsInput = z.infer<typeof settingsSchema>;
 export type MilestoneCreate = z.infer<typeof milestoneCreateSchema>;
+export type MilestoneUpdate = z.infer<typeof milestoneUpdateSchema>;

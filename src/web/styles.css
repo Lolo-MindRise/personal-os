@@ -498,6 +498,42 @@ table.movements {
   color: var(--text);
 }
 
+.milestones .overdue-row td {
+  background: #fef3f2;
+}
+
+.milestones .overdue-row td:first-child {
+  border-left: 3px solid var(--danger);
+}
+
+.overdue-flag {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--danger);
+  border-radius: 4px;
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-pending {
+  color: var(--muted);
+}
+
+.status-in_progress {
+  color: var(--accent);
+}
+
+.status-done {
+  color: var(--income);
+}
+
 .backup-warning {
   max-width: 64rem;
   margin: 0 auto;

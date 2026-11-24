@@ -6,6 +6,7 @@ import type {
   CategoryUsageDto,
   DebtDto,
   GoalDto,
+  MilestoneDto,
   SettingsDto,
   YearSummaryDto,
   MonthSummaryDto,
@@ -16,6 +17,7 @@ import type {
 import type { Kind } from '../shared/constants.js';
 import type { BudgetPayload } from './budgetForm.js';
 import type { DebtPayload } from './debtForm.js';
+import type { MilestonePayload } from './milestoneForm.js';
 import type { ConfirmPayload, MovementPayload } from './movementForm.js';
 import type { GoalPayload, SettingsPayload } from './summaryForms.js';
 import type { RecurringPayload } from './recurringForm.js';
@@ -88,6 +90,11 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
       request<GoalDto>(fetchFn, '/api/goals', json('POST', payload)),
     updateGoal: (id: number, payload: Partial<GoalPayload>) =>
       request<GoalDto>(fetchFn, `/api/goals/${String(id)}`, json('PATCH', payload)),
+    milestones: () => request<MilestoneDto[]>(fetchFn, '/api/milestones'),
+    createMilestone: (payload: MilestonePayload) =>
+      request<MilestoneDto>(fetchFn, '/api/milestones', json('POST', payload)),
+    updateMilestone: (id: number, payload: Partial<MilestonePayload>) =>
+      request<MilestoneDto>(fetchFn, `/api/milestones/${String(id)}`, json('PATCH', payload)),
     categoryUsage: () => request<CategoryUsageDto[]>(fetchFn, '/api/categories/usage'),
     createCategory: (payload: { name: string; kind: Kind }) =>
       request<CategoryDto>(fetchFn, '/api/categories', json('POST', payload)),
