@@ -25,3 +25,8 @@ entry here must not be merged.
 | `globals` (dev) | 17.14.0 | Task 0001 | Browser/Node global definitions for ESLint flat config. | Listing globals by hand. |
 | `prettier` (dev) | 3.10.1 | Task 0001 | Code formatting (task 0001). | Biome formatter (see ESLint row). |
 | `eslint-config-prettier` (dev) | 10.1.8 | Task 0001 | Turns off ESLint rules that conflict with Prettier. | None. |
+| `better-sqlite3` | 13.2.0 | Task 0004 | SQLite driver (ADR-0002): synchronous, fast, has the online backup API planned in ADR-0003. Ships a prebuilt binary; works on Node 26. | `node:sqlite` (built in, but ADR-0002 chose `better-sqlite3` and Drizzle's driver targets it), `sql.js` (in-memory WASM, wrong fit for a file DB). |
+| `drizzle-orm` | 0.45.4 | Task 0004 | Typed schema and queries, migration runner (ADR-0002). | Kysely (no schema/migration generator), raw SQL (no types). Chosen in ADR-0002. |
+| `zod` | 4.6.7 | Task 0004 | Validation schemas shared by API and frontend (ADR-0002). | Valibot (smaller, but ADR-0002 chose Zod). |
+| `drizzle-kit` (dev) | 0.31.11 | Task 0004 | Generates SQL migrations from the schema. Not used at runtime. | Hand-written migrations (error-prone, no schema diff). Pulls extra `esbuild` copies, dev only. |
+| `@types/better-sqlite3` (dev) | 9.6.0 | Task 0004 | Type definitions for `better-sqlite3`. | None. |
