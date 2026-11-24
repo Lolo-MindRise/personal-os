@@ -35,6 +35,11 @@ try {
         throw "Invalid -Distribution '$Distribution': use the name shown by 'wsl -l -v' (letters, digits, dot, dash, underscore)."
     }
 
+    # Same for the directory: no spaces or quotes, which would break the task's command line.
+    if ($AppDir -notmatch '^[\w$./-]+$') {
+        throw "Invalid -AppDir '$AppDir': use a path inside WSL without spaces or quotes, for example '`$HOME/apps/personal-os'."
+    }
+
     $user = "$env:USERDOMAIN\$env:USERNAME"
 
     # wsl.exe through a hidden PowerShell. The inner command uses single quotes so that bash,

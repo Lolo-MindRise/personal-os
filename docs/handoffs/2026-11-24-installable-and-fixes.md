@@ -28,6 +28,14 @@ Branch `agent/implementer/installable-and-fixes` (from `main`, which includes th
 - No service worker: Chromium no longer needs one to offer "Install" on localhost (checked by the e2e).
 - Task name `PersonalOS-Autostart`; `$HOME` stays unexpanded in single quotes so bash resolves it.
 
+## Review (twice, as CLAUDE.md asks)
+- First pass: changes required (0 blockers, 1 major, 4 minors). Major: the "already confirmed fixed
+  item" rule could use up a stored movement before a later row that exactly duplicates it, so the real
+  row stayed new and checked. Fixed with two passes (exact duplicates for the whole file first) and a
+  regression test. Minors fixed: console flash documented, `-Distribution` validated, dev icon e2e.
+- Second pass on the final diff: approve (0 blockers, 0 majors, 2 minors: review log row and
+  `-AppDir` validation, both done afterwards; that last small change was not re-reviewed).
+
 ## Not verified here
 - The `.ps1` files and the browser's Install button: Windows only, WSL interop is off here. The PR has
   the manual test; the task is not done until Manuel has run it.

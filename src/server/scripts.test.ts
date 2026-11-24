@@ -519,6 +519,13 @@ describe('Windows autostart scripts', () => {
     expect(install).toContain('throw');
   });
 
+  it('install also checks -AppDir: no spaces or quotes in the task command line', () => {
+    expect(install).toContain("$AppDir -notmatch '^[\\w$./-]+$'");
+    // The documented default passes its own check.
+    expect(/^[\w$./-]+$/.test('$HOME/apps/personal-os')).toBe(true);
+    expect(/^[\w$./-]+$/.test("$HOME/my apps/x'y")).toBe(false);
+  });
+
   it('install and the README warn about the brief console flash at logon', () => {
     expect(install).toContain('flash a console window');
     const readme = readFileSync(join(REPO_ROOT, 'README.md'), 'utf8');
