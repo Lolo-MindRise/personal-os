@@ -6,6 +6,11 @@ import { expect, test, type Page } from '@playwright/test';
 
 const summaryItem = (page: Page, label: string) =>
   page.locator('.summary-item').filter({ hasText: label });
+const goToMovements = (page: Page) =>
+  page
+    .getByRole('navigation', { name: 'Secciones' })
+    .getByRole('button', { name: 'Movimientos' })
+    .click();
 const rows = (page: Page) => page.locator('table.movements tbody tr');
 
 test.describe.configure({ mode: 'serial' });
@@ -15,6 +20,8 @@ test.beforeEach(async ({ page }) => {
   // day or month it runs (2027-03 has no seeded movements).
   await page.clock.setFixedTime('2027-03-15T12:00:00');
   await page.goto('/');
+  // "Inicio" is the default screen; these tests work on Movimientos.
+  await goToMovements(page);
   await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeVisible();
 });
 

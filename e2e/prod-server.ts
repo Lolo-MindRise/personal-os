@@ -43,11 +43,15 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
 process.on('exit', cleanUp);
 
 // Cleanup is registered first: if seeding throws, the temp directory still goes.
-const handle = openDatabase(join(dataDir, DB_FILENAME));
-try {
-  seed(handle.db);
-} finally {
-  handle.close();
+// E2E_EMPTY=1: no seed, a fresh database (the server migrates it on start): the dashboard's
+// empty states.
+if (process.env.E2E_EMPTY !== '1') {
+  const handle = openDatabase(join(dataDir, DB_FILENAME));
+  try {
+    seed(handle.db);
+  } finally {
+    handle.close();
+  }
 }
 
 // A regular file where the backup mirror directory should be: the mirror is unreachable, which

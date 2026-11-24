@@ -25,7 +25,7 @@ const MESSAGES = {
 } as const;
 
 /** Today in the server's local calendar (the same machine as the browser). */
-function localToday(now: Date = new Date()): string {
+export function localToday(now: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${String(now.getFullYear())}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
@@ -37,14 +37,14 @@ export function readSettings(db: Db): SettingsDto {
     : { initialSavingsCents: row.initialSavingsCents, initialSavingsDate: row.initialSavingsDate };
 }
 
-function allMovements(db: Db): SummaryMovement[] {
+export function allMovements(db: Db): SummaryMovement[] {
   return db
     .select({ date: movements.date, kind: movements.kind, amountCents: movements.amountCents })
     .from(movements)
     .all();
 }
 
-function goalDtos(db: Db, today: string): GoalDto[] {
+export function goalDtos(db: Db, today: string): GoalDto[] {
   const accumulated = accumulatedAt(readSettings(db), allMovements(db), today);
   return db
     .select()

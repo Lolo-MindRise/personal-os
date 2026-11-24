@@ -1,6 +1,6 @@
-import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import type { CategoryDto, MonthSummaryDto, MovementDto } from '../shared/api.js';
+import type { CategoryDto, MovementDto } from '../shared/api.js';
 import { monthOf } from '../shared/recurring.js';
 import {
   isoMonth,
@@ -19,9 +19,10 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
-import { dueEntries } from './db/recurring.js';
 import { categories, debts, movements } from './db/schema.js';
 import { registerBudgetApi } from './budgetApi.js';
+import { registerDashboardApi } from './dashboardApi.js';
+import { monthSummary } from './monthSummary.js';
 import { registerCategoriesApi } from './categoriesApi.js';
 import { registerDebtsApi } from './debtsApi.js';
 import { registerMilestonesApi } from './milestonesApi.js';
@@ -170,48 +171,12 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     if (!parsed.success) {
       return badRequest(reply, MESSAGES.invalidMonth, { month: MESSAGES.invalidMonth });
     }
-    // Totals count confirmed movements only; pending items are reported apart (ADR-0005).
-    const totals = db
-      .select({
-        kind: movements.kind,
-        total: sql<number>`coalesce(sum(${movements.amountCents}), 0)`,
-      })
-      .from(movements)
-      .where(
-        and(gte(movements.date, `${parsed.data}-01`), lte(movements.date, `${parsed.data}-31`)),
-      )
-      .groupBy(movements.kind)
-      .all();
-    const sumOf = (kind: string) => totals.find((row) => row.kind === kind)?.total ?? 0;
-    const incomeCents = sumOf('income');
-    const expenseCents = sumOf('expense');
-    const repaymentCents = sumOf('repayment');
-    const savingsCents = incomeCents - expenseCents - repaymentCents;
-
-    const pending = dueEntries(db, parsed.data).pending;
-    const pendingOf = (kind: string) =>
-      pending.filter((e) => e.kind === kind).reduce((sum, e) => sum + e.amountCents, 0);
-    const pendingIncomeCents = pendingOf('income');
-    const pendingExpenseCents = pendingOf('expense');
-    const pendingRepaymentCents = pendingOf('repayment');
-
-    const summary: MonthSummaryDto = {
-      month: parsed.data,
-      incomeCents,
-      expenseCents,
-      repaymentCents,
-      savingsCents,
-      pendingIncomeCents,
-      pendingExpenseCents,
-      pendingRepaymentCents,
-      projectedSavingsCents:
-        savingsCents + pendingIncomeCents - pendingExpenseCents - pendingRepaymentCents,
-    };
-    return summary;
+    return monthSummary(db, parsed.data);
   });
 
   registerBudgetApi(app, db);
   registerCategoriesApi(app, db);
+  registerDashboardApi(app, db);
   registerDebtsApi(app, db);
   registerMilestonesApi(app, db);
   registerRecurringApi(app, db);

@@ -53,15 +53,17 @@ function toDto(db: Db, row: DebtRow): DebtDto {
   };
 }
 
+export function listDebts(db: Db): DebtDto[] {
+  return db
+    .select()
+    .from(debts)
+    .orderBy(asc(debts.name), asc(debts.id))
+    .all()
+    .map((row) => toDto(db, row));
+}
+
 export function registerDebtsApi(app: FastifyInstance, db: Db): void {
-  app.get('/api/debts', () =>
-    db
-      .select()
-      .from(debts)
-      .orderBy(asc(debts.name), asc(debts.id))
-      .all()
-      .map((row) => toDto(db, row)),
-  );
+  app.get('/api/debts', () => listDebts(db));
 
   app.post('/api/debts', (request, reply) => {
     const parsed = debtCreateSchema.safeParse(request.body);

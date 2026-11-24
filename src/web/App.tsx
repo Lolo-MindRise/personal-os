@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BackupBanner } from './BackupBanner.js';
 import { BudgetPage } from './BudgetPage.js';
 import { CategoriesPage } from './CategoriesPage.js';
+import { DashboardPage } from './DashboardPage.js';
 import { DebtsPage } from './DebtsPage.js';
 import { GoalsPage } from './GoalsPage.js';
 import { MilestonesPage } from './MilestonesPage.js';
@@ -10,6 +11,7 @@ import { RecurringPage } from './RecurringPage.js';
 import { SummaryPage } from './SummaryPage.js';
 
 export const VIEWS = [
+  ['dashboard', 'Inicio'],
   ['movements', 'Movimientos'],
   ['recurring', 'Fijos'],
   ['budget', 'Presupuesto'],
@@ -43,8 +45,10 @@ export function Navigation({ view, onChange }: { view: View; onChange: (view: Vi
   );
 }
 
-function Screen({ view }: { view: View }) {
+function Screen({ view, onNavigate }: { view: View; onNavigate: (view: View) => void }) {
   switch (view) {
+    case 'dashboard':
+      return <DashboardPage onNavigate={onNavigate} />;
     case 'movements':
       return <MovementsPage />;
     case 'recurring':
@@ -65,12 +69,12 @@ function Screen({ view }: { view: View }) {
 }
 
 export function App() {
-  const [view, setView] = useState<View>('movements');
+  const [view, setView] = useState<View>('dashboard');
   return (
     <>
       <BackupBanner />
       <Navigation view={view} onChange={setView} />
-      <Screen view={view} />
+      <Screen view={view} onNavigate={setView} />
     </>
   );
 }

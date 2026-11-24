@@ -10,7 +10,25 @@
   --income: #067647;
   --expense: #b54708;
   --repayment: #5b3cc4;
-  color-scheme: light;
+  --danger-bg: #fef3f2;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12161c;
+    --surface: #1b212a;
+    --text: #e6eaef;
+    --muted: #9aa7b5;
+    --border: #333c48;
+    --accent: #5b9bff;
+    --accent-text: #0b1220;
+    --danger: #ff8a80;
+    --danger-bg: #3a1c1a;
+    --income: #4cc38a;
+    --expense: #f0a050;
+    --repayment: #a995f5;
+  }
 }
 
 * {
@@ -499,7 +517,7 @@ table.movements {
 }
 
 .milestones .overdue-row td {
-  background: #fef3f2;
+  background: var(--danger-bg);
 }
 
 .milestones .overdue-row td:first-child {
@@ -540,7 +558,7 @@ table.movements {
   padding: 0.75rem 1rem;
   border: 1px solid var(--danger);
   border-radius: 6px;
-  background: #fef3f2;
+  background: var(--danger-bg);
   color: var(--danger);
 }
 
@@ -550,4 +568,116 @@ table.movements {
 
 .backup-warning p + p {
   margin-top: 0.25rem;
+}
+
+/* Home dashboard (task 0011) */
+.key-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.key-figures .summary-item {
+  margin: 0;
+}
+
+.key-figures dd {
+  margin: 0.15rem 0 0;
+}
+
+.key-figures .card-small {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.negative-text {
+  color: var(--danger);
+}
+
+.summary-item dd.card-note {
+  font-size: 0.85rem;
+  font-variant-numeric: normal;
+}
+
+.card-note {
+  display: block;
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.card-big {
+  margin: 0.25rem 0;
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-section {
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1.5rem;
+}
+
+.dashboard-empty {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.chart {
+  margin: 0;
+}
+
+.chart figcaption {
+  margin-bottom: 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.chart-box {
+  width: 100%;
+  height: 300px;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.chart-data {
+  margin-top: 0.5rem;
+}
+
+.chart-data summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.progress {
+  height: 8px;
+  margin: 0.5rem 0;
+  border-radius: 4px;
+}
+
+.upcoming {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.upcoming li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
 }

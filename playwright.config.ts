@@ -7,6 +7,8 @@ const DEV_URL = `http://127.0.0.1:${DEV_WEB_PORT}`;
 const DEV_API_PORT = '5322';
 const PROD_PORT = '5323';
 const PROD_URL = `http://127.0.0.1:${PROD_PORT}`;
+const EMPTY_PORT = '5324';
+const EMPTY_URL = `http://127.0.0.1:${EMPTY_PORT}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -26,8 +28,14 @@ export default defineConfig({
     {
       name: 'prod',
       // Every spec except the dev-server one runs against the production server.
-      testIgnore: /dev\.spec\.ts/,
+      testIgnore: /dev\.spec\.ts|dashboard-empty\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], baseURL: PROD_URL },
+    },
+    {
+      // A production server on a fresh, unseeded database.
+      name: 'empty',
+      testMatch: /dashboard-empty\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], baseURL: EMPTY_URL },
     },
   ],
   webServer: [
@@ -45,6 +53,14 @@ export default defineConfig({
       command: 'npx tsx e2e/prod-server.ts',
       url: `${PROD_URL}/api/health`,
       env: { PORT: PROD_PORT },
+      reuseExistingServer: false,
+      timeout: 60_000,
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
+    },
+    {
+      command: 'npx tsx e2e/prod-server.ts',
+      url: `${EMPTY_URL}/api/health`,
+      env: { PORT: EMPTY_PORT, E2E_EMPTY: '1' },
       reuseExistingServer: false,
       timeout: 60_000,
       gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
