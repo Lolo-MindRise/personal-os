@@ -121,6 +121,7 @@ select {
 
 .main-nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
   max-width: 64rem;
   margin: 0 auto;
@@ -422,6 +423,79 @@ table.movements {
 .debt-repayments {
   margin: 0.5rem 0 0;
   padding-left: 1.25rem;
+}
+
+/* Simple CSS bars (no chart library): decoration under a figure that carries the meaning. */
+.bar-track {
+  display: block;
+  height: 4px;
+  margin-top: 3px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.bar {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.bar-income {
+  background: var(--income);
+}
+
+.bar-expense {
+  background: var(--expense);
+}
+
+.bar-repayment {
+  background: var(--repayment);
+}
+
+.bar-accent {
+  background: var(--accent);
+}
+
+.bar-negative {
+  background: var(--danger);
+}
+
+.summary-year .negative {
+  color: var(--danger);
+}
+
+.summary-year th[scope='row'] {
+  text-align: left;
+}
+
+.summary-year tfoot th,
+.summary-year tfoot td {
+  border-top: 2px solid var(--border);
+  font-weight: 600;
+}
+
+.goal-progress {
+  height: 10px;
+  margin-bottom: 0.75rem;
+  border-radius: 5px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.goal-status {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+}
+
+.saved-note {
+  align-self: center;
+  color: var(--income);
+}
+
+.year-label {
+  margin-left: 0;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .backup-warning {

@@ -198,6 +198,27 @@ export const budgetLines = sqliteTable(
   ],
 );
 
+/**
+ * App-wide settings: a single row (id 1), absent until first saved. The initial
+ * savings balance is the starting point of the accumulated savings (block 5).
+ */
+export const appSettings = sqliteTable(
+  'app_settings',
+  {
+    id: integer('id').primaryKey(),
+    initialSavingsCents: integer('initial_savings_cents').notNull(),
+    initialSavingsDate: text('initial_savings_date').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check('app_settings_single_row', sql`${t.id} = 1`),
+    check('app_settings_initial_savings_integer', isInteger(t.initialSavingsCents)),
+    check('app_settings_initial_savings_not_negative', sql`${t.initialSavingsCents} >= 0`),
+    check('app_settings_initial_savings_date', sql`${t.initialSavingsDate} GLOB ${DATE_GLOB}`),
+  ],
+);
+
 export const goals = sqliteTable(
   'goals',
   {

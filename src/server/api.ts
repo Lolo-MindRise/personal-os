@@ -25,6 +25,7 @@ import { registerBudgetApi } from './budgetApi.js';
 import { registerCategoriesApi } from './categoriesApi.js';
 import { registerDebtsApi } from './debtsApi.js';
 import { registerRecurringApi } from './recurringApi.js';
+import { registerSummaryApi } from './summaryApi.js';
 
 const MESSAGES = {
   ...COMMON_MESSAGES,
@@ -212,4 +213,5 @@ export function registerApi(app: FastifyInstance, db: Db): void {
   registerCategoriesApi(app, db);
   registerDebtsApi(app, db);
   registerRecurringApi(app, db);
+  registerSummaryApi(app, db);
 }

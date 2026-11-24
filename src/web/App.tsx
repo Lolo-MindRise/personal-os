@@ -3,14 +3,18 @@ import { BackupBanner } from './BackupBanner.js';
 import { BudgetPage } from './BudgetPage.js';
 import { CategoriesPage } from './CategoriesPage.js';
 import { DebtsPage } from './DebtsPage.js';
+import { GoalsPage } from './GoalsPage.js';
 import { MovementsPage } from './MovementsPage.js';
 import { RecurringPage } from './RecurringPage.js';
+import { SummaryPage } from './SummaryPage.js';
 
 export const VIEWS = [
   ['movements', 'Movimientos'],
   ['recurring', 'Fijos'],
   ['budget', 'Presupuesto'],
   ['debts', 'Deudas'],
+  ['summary', 'Resumen'],
+  ['goals', 'Objetivos'],
   ['categories', 'Categorías'],
 ] as const;
 
@@ -47,6 +51,10 @@ function Screen({ view }: { view: View }) {
       return <BudgetPage />;
     case 'debts':
       return <DebtsPage />;
+    case 'summary':
+      return <SummaryPage />;
+    case 'goals':
+      return <GoalsPage />;
     case 'categories':
       return <CategoriesPage />;
   }
