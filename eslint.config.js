@@ -5,7 +5,17 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist/', 'coverage/', 'node_modules/', 'test-results/', 'playwright-report/'] },
+  {
+    // scripts/lib/*.mjs are plain-JS helpers for the shell scripts, outside every tsconfig.
+    ignores: [
+      'dist/',
+      'coverage/',
+      'node_modules/',
+      'test-results/',
+      'playwright-report/',
+      'scripts/lib/*.mjs',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {

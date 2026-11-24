@@ -155,3 +155,46 @@ the default.
 Do not start the real instance on a port another process uses (`npm run dev`
 uses 5310; the e2e suite uses 5321–5324): keep `PORT` in the instance config
 distinct, as in step 1.
+
+### Backups: what is kept
+
+A backup is taken on every start, every 24 hours and before each migration,
+into `<data dir>/backups` and the mirror. After each one, both places are
+trimmed with the same rules (days and months in Europe/Andorra time):
+
+- every backup of the last 48 hours;
+- the newest of each day, for the last 60 days;
+- the newest of each month, forever;
+- the 10 newest `-pre-migration` and the 10 newest `-before-restore`, whatever their age.
+
+So restarting the app many times in a day never pushes out yesterday, last
+week or last month. `/api/backups/status` shows the oldest restorable date
+and how many backups each rule keeps, locally and in the mirror.
+
+### Restore a backup
+
+1. **Stop the app**: the stop shortcut, or `bash ~/apps/personal-os/scripts/stop.sh`.
+   The script refuses to run while the app is up.
+2. **List the backups**, newest first, with date (Andorra time) and type:
+
+   ```sh
+   bash ~/apps/personal-os/scripts/restore.sh            # local copies
+   bash ~/apps/personal-os/scripts/restore.sh --mirror   # copies on the second disk
+   ```
+
+3. **Restore one** by its file name from the list (add `--mirror` for the mirror):
+
+   ```sh
+   bash ~/apps/personal-os/scripts/restore.sh personal-os-20261124T030000000Z-daily.sqlite
+   ```
+
+   Before anything changes, the script checks that the file is a healthy SQLite
+   database and aborts with a message if it is not. Then it saves the current
+   database as `<data dir>/backups/personal-os-<time>-before-restore.sqlite`
+   and puts the chosen backup in its place. The `-before-restore` copy is how
+   you undo a restore: restore that file the same way.
+
+4. **Start the app** again. Migrations newer than the backup run on start,
+   after their own `-pre-migration` backup.
+
+Try it once on a quiet day, so you know a backup restores before you need it.

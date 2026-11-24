@@ -265,18 +265,38 @@ export interface DashboardDto {
   };
 }
 
+export interface BackupTiersDto {
+  /** Last 48 hours. */
+  recent: number;
+  /** Newest of each day, last 60 days. */
+  daily: number;
+  /** Newest of each month. */
+  monthly: number;
+  /** Kept only because they are `-pre-migration` or `-before-restore` (10 newest of each). */
+  preMigration: number;
+}
+
+export interface BackupSetStatusDto {
+  count: number;
+  oldestBackupAt: string | null;
+  tiers: BackupTiersDto;
+}
+
 /** State of the in-app backups (ADR-0003). */
 export interface BackupStatusDto {
   /** False when backups do not run (development, or no data directory). */
   enabled: boolean;
-  /** ISO timestamp of the newest local backup, or null if there is none. */
+  /** ISO timestamp of the newest local backup file (a `-before-restore` copy counts), or null. */
   lastBackupAt: string | null;
   localCount: number;
-  mirror: {
+  /** ISO timestamp of the oldest local backup (the furthest back Manuel can restore), or null. */
+  oldestBackupAt: string | null;
+  /** Local backups per retention tier; each file is counted once, in the first tier that keeps it. */
+  tiers: BackupTiersDto;
+  mirror: BackupSetStatusDto & {
     configured: boolean;
     /** `ok` after a successful copy, `error` when the mirror is unreachable. */
     state: 'disabled' | 'ok' | 'error';
-    count: number;
   };
   /** Spanish messages for the UI banner; empty when everything is fine. */
   warnings: string[];

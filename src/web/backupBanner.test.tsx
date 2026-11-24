@@ -8,7 +8,15 @@ const status = (warnings: string[]): BackupStatusDto => ({
   enabled: true,
   lastBackupAt: '2026-11-25T03:00:00.000Z',
   localCount: 3,
-  mirror: { configured: true, state: warnings.length > 0 ? 'error' : 'ok', count: 3 },
+  oldestBackupAt: '2026-10-01T03:00:00.000Z',
+  tiers: { recent: 3, daily: 0, monthly: 0, preMigration: 0 },
+  mirror: {
+    configured: true,
+    state: warnings.length > 0 ? 'error' : 'ok',
+    count: 3,
+    oldestBackupAt: '2026-10-01T03:00:00.000Z',
+    tiers: { recent: 3, daily: 0, monthly: 0, preMigration: 0 },
+  },
   warnings,
 });
 
