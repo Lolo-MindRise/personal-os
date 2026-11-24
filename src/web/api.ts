@@ -1,5 +1,6 @@
 import type {
   ApiErrorBody,
+  BackupStatusDto,
   CategoryDto,
   CategoryUsageDto,
   MonthSummaryDto,
@@ -60,6 +61,7 @@ const itemMonth = (itemId: number, month: string) =>
 export function createApiClient(fetchFn: typeof fetch = fetch) {
   return {
     categories: () => request<CategoryDto[]>(fetchFn, '/api/categories'),
+    backupStatus: () => request<BackupStatusDto>(fetchFn, '/api/backups/status'),
     categoryUsage: () => request<CategoryUsageDto[]>(fetchFn, '/api/categories/usage'),
     createCategory: (payload: { name: string; kind: Kind }) =>
       request<CategoryDto>(fetchFn, '/api/categories', json('POST', payload)),

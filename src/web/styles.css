@@ -366,3 +366,21 @@ table.movements {
   color: var(--muted);
   text-align: center;
 }
+
+.backup-warning {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  background: #fef3f2;
+  color: var(--danger);
+}
+
+.backup-warning p {
+  margin: 0;
+}
+
+.backup-warning p + p {
+  margin-top: 0.25rem;
+}

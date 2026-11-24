@@ -74,6 +74,23 @@ export interface MonthSummaryDto {
   projectedSavingsCents: number;
 }
 
+/** State of the in-app backups (ADR-0003). */
+export interface BackupStatusDto {
+  /** False when backups do not run (development, or no data directory). */
+  enabled: boolean;
+  /** ISO timestamp of the newest local backup, or null if there is none. */
+  lastBackupAt: string | null;
+  localCount: number;
+  mirror: {
+    configured: boolean;
+    /** `ok` after a successful copy, `error` when the mirror is unreachable. */
+    state: 'disabled' | 'ok' | 'error';
+    count: number;
+  };
+  /** Spanish messages for the UI banner; empty when everything is fine. */
+  warnings: string[];
+}
+
 /** Error body for every 4xx response. `fields` maps a field name to its message. */
 export interface ApiErrorBody {
   error: string;
