@@ -28,7 +28,7 @@ This file accumulates across the blocks.
 |---|---|---|
 | main JS | 882.86 kB (gzip 250.50) | 326.12 kB (gzip 100.01) |
 | largest other chunk | none (single chunk) | DashboardCharts (Recharts) 457.80 kB (gzip 128.48) |
-| CSS | 9.07 kB | see build output |
+| CSS | 9.07 kB (gzip 2.40) | 11.66 kB (gzip 2.92) |
 Build no longer warns about chunks over 500 kB.
 
 ### Decisions taken
@@ -39,6 +39,15 @@ Build no longer warns about chunks over 500 kB.
   brick is used only for negatives and errors.
 - Tables keep their element classes; amounts right-aligned through `.amount`.
 - Dashboard links are still buttons: block 2 turns them into real links.
+
+- The Resumen year is in the URL (`#/summary?year=2026`). The Movimientos search and filters are
+  **not** in the URL yet: deferred to block 2, which adds the category/month filters and their
+  "clear filter" display.
+- "Copias" is a new read-only screen (no new API). Needed because the sidebar spec lists it;
+  flagged in the PR for Manuel to accept.
+- Reviewer first pass (block 1): budget-bar contrast fixed (`--budget` ≥ 3:1), year selector moved
+  into the header, screenshots retaken from a fresh build including Importar and Proyección.
+  Left: `useMonth` syncs the module variable inside the snapshot read; no test for storage-unavailable theme.
 
 ### Not verified
 - Windows: installed-app icon and theme colour after the change.

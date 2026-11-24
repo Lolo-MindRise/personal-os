@@ -12,7 +12,10 @@ export function PageHeader({
   action,
   hint,
   headingRef,
+  period,
 }: {
+  /** A non-monthly period selector (the year in Resumen). */
+  period?: ReactNode;
   title: string;
   month?: string | undefined;
   onMonthChange?: ((month: string) => void) | undefined;
@@ -31,6 +34,7 @@ export function PageHeader({
       {month !== undefined && onMonthChange !== undefined && (
         <MonthPicker month={month} onChange={onMonthChange} />
       )}
+      {period}
       {hint !== undefined && <p className="hint">{hint}</p>}
     </header>
   );

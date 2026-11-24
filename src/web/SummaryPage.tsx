@@ -14,7 +14,7 @@ import {
 } from './summaryForms.js';
 
 import { PageHeader, SubNav } from './PageHeader.js';
-import { hrefFor } from './router.js';
+import { hrefFor, updateParams, useRoute } from './router.js';
 
 const defaultApi = createApiClient();
 
@@ -175,7 +175,12 @@ export function SettingsForm(props: {
 
 /** The "Resumen" screen: a year month by month, and the initial savings balance. */
 export function SummaryPage({ api = defaultApi }: { api?: ApiClient }) {
-  const [year, setYear] = useState(() => new Date().getFullYear());
+  const route = useRoute();
+  const urlYear = Number(route.params.year);
+  const year = Number.isInteger(urlYear) && urlYear > 1900 ? urlYear : new Date().getFullYear();
+  const setYear = (next: number) => {
+    updateParams({ year: String(next) });
+  };
   const [summary, setSummary] = useState<YearSummaryDto | undefined>();
   const [loadError, setLoadError] = useState<string | undefined>();
   /** Kept apart from `loadError`: a good summary load must not hide a failed settings load. */
@@ -245,7 +250,33 @@ export function SummaryPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <PageHeader title="Resumen" />
+      <PageHeader
+        title="Resumen"
+        hint="Ingresos, gastos, amortizaciones y ahorro de cada mes del año, con el ahorro acumulado. Solo cuentan los movimientos confirmados."
+        period={
+          <nav className="month-picker" aria-label="Año">
+            <button
+              type="button"
+              aria-label="Año anterior"
+              onClick={() => {
+                setYear(year - 1);
+              }}
+            >
+              ←
+            </button>
+            <span className="month-label year-label">{year}</span>
+            <button
+              type="button"
+              aria-label="Año siguiente"
+              onClick={() => {
+                setYear(year + 1);
+              }}
+            >
+              →
+            </button>
+          </nav>
+        }
+      />
       <SubNav
         current="summary"
         items={[
@@ -253,33 +284,6 @@ export function SummaryPage({ api = defaultApi }: { api?: ApiClient }) {
           { id: 'goals', label: 'Objetivos', href: hrefFor('goals') },
         ]}
       />
-      <p className="hint">
-        Ingresos, gastos, amortizaciones y ahorro de cada mes del año, con el ahorro acumulado. Solo
-        cuentan los movimientos confirmados.
-      </p>
-
-      <nav className="month-picker" aria-label="Año">
-        <button
-          type="button"
-          aria-label="Año anterior"
-          onClick={() => {
-            setYear(year - 1);
-          }}
-        >
-          ←
-        </button>
-        <span className="month-label year-label">{year}</span>
-        <button
-          type="button"
-          aria-label="Año siguiente"
-          onClick={() => {
-            setYear(year + 1);
-          }}
-        >
-          →
-        </button>
-      </nav>
-
       {[loadError, settingsError].map(
         (message) =>
           message !== undefined && (
