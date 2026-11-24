@@ -12,8 +12,9 @@ set "APP_DIR=$HOME/apps/personal-os"
 wsl.exe -- bash -lc "%APP_DIR%/scripts/start.sh"
 if errorlevel 1 goto failed
 
+rem No $ anchor in findstr: it does not match the LF-only lines that WSL outputs.
 set "PORT="
-for /f "usebackq delims=" %%P in (`wsl.exe -- bash -lc "%APP_DIR%/scripts/start.sh --port" ^| findstr /r "^[0-9][0-9]*$"`) do set "PORT=%%P"
+for /f "usebackq delims=" %%P in (`wsl.exe -- bash -lc "%APP_DIR%/scripts/start.sh --port" ^| findstr /r "^[0-9][0-9]*"`) do set "PORT=%%P"
 if not defined PORT goto failed
 start "" "http://localhost:%PORT%"
 exit /b 0
