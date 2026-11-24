@@ -197,3 +197,70 @@ Branch `agent/overnight/05-summary-goals`, stacked on block 4.
 
 ### Open questions
 - None.
+
+### PR
+https://github.com/Lolo-MindRise/personal-os/pull/21 (both CI jobs green)
+
+## Block 6: Milestones screen
+Branch `agent/overnight/06-milestones`, stacked on block 5.
+
+### Done
+- API (`src/server/milestonesApi.ts`): `GET /api/milestones` (ordered by target date, then id),
+  `POST` (status defaults to `pending`), `PATCH /api/milestones/:id` (any subset; `notes: null`
+  clears the notes). No migration: the `milestones` table already existed.
+- Screen "Hitos": list with date, title, notes, status (Pendiente / En curso / Hecho), add and edit
+  form. A milestone whose date is before today and that is not done is highlighted and also
+  flagged with the text "Vencido" (not only colour). Pure rule in `src/shared/milestones.ts`.
+
+### Decisions taken
+- Overdue is decided in the browser with its local date; the target day itself is not overdue.
+- No delete for milestones (the brief says list, add, edit). Status changes through the edit form.
+- The e2e test uses dates in 2020 and 2099, so it does not depend on the day it runs.
+
+### Review
+(see the section after the run summary)
+
+### Open questions
+- None.
+
+### PR
+(filled in when opened)
+
+## Run summary (read this first)
+
+### What is done
+All six blocks are implemented, each with unit and API tests, an e2e smoke test for its new
+screen, a reviewer pass and its findings fixed. No new dependencies, no `.claude/` changes, no
+data model change except one additive migration (`0003`, block 5).
+
+### PRs in merge order (each is stacked on the previous one; merge 1 first)
+1. #17 Categories screen
+2. #18 In-app backups
+3. #19 Budget screen
+4. #20 Debts screen
+5. #21 Summary and goals (migration `0003_damp_jack_murdock`)
+6. Milestones screen (PR number in the Block 6 section above)
+
+Merge them in this order; after each merge GitHub retargets the next PR to `main`.
+
+### Blocked
+Nothing. No stop condition was hit and the guard hook never blocked anything.
+
+### Test first, in the morning
+1. **Backups** (the only block that touches the real data directory): start the real instance
+   after merging #18 and check that `<data dir>/backups` has a `-startup` file and that
+   `/api/backups/status` is healthy. Then set `PERSONAL_OS_BACKUP_MIRROR_DIR` and check the mirror
+   fills and the banner shows when the second disk is unplugged. Merging #21 adds a migration: a
+   `-pre-migration` backup must appear before it is applied.
+2. **Categories**: create the real categories (the instance starts empty).
+3. **Budget** and **Resumen**: set the initial savings balance and date, then check that the
+   accumulated figures match what you expect.
+4. **Debts**: link a real extra repayment from the movement form and check the estimated balance.
+
+### Things to know
+- Several screens have no delete (debts, goals, milestones, budget lines): the brief did not ask for it.
+- The decisions I took are listed per block above; the ones most worth a look are the budget totals
+  (expense rows only), the accumulated-savings boundary rule, and refusing to migrate when the
+  pre-migration backup fails.
+- Process: in three blocks my handoff edit landed in the wrong place and the reviewer caught it;
+  the review-log row says so.

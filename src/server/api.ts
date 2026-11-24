@@ -24,6 +24,7 @@ import { categories, debts, movements } from './db/schema.js';
 import { registerBudgetApi } from './budgetApi.js';
 import { registerCategoriesApi } from './categoriesApi.js';
 import { registerDebtsApi } from './debtsApi.js';
+import { registerMilestonesApi } from './milestonesApi.js';
 import { registerRecurringApi } from './recurringApi.js';
 import { registerSummaryApi } from './summaryApi.js';
 
@@ -212,6 +213,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
   registerBudgetApi(app, db);
   registerCategoriesApi(app, db);
   registerDebtsApi(app, db);
+  registerMilestonesApi(app, db);
   registerRecurringApi(app, db);
   registerSummaryApi(app, db);
 }

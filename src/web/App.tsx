@@ -4,6 +4,7 @@ import { BudgetPage } from './BudgetPage.js';
 import { CategoriesPage } from './CategoriesPage.js';
 import { DebtsPage } from './DebtsPage.js';
 import { GoalsPage } from './GoalsPage.js';
+import { MilestonesPage } from './MilestonesPage.js';
 import { MovementsPage } from './MovementsPage.js';
 import { RecurringPage } from './RecurringPage.js';
 import { SummaryPage } from './SummaryPage.js';
@@ -15,6 +16,7 @@ export const VIEWS = [
   ['debts', 'Deudas'],
   ['summary', 'Resumen'],
   ['goals', 'Objetivos'],
+  ['milestones', 'Hitos'],
   ['categories', 'Categorías'],
 ] as const;
 
@@ -55,6 +57,8 @@ function Screen({ view }: { view: View }) {
       return <SummaryPage />;
     case 'goals':
       return <GoalsPage />;
+    case 'milestones':
+      return <MilestonesPage />;
     case 'categories':
       return <CategoriesPage />;
   }
