@@ -223,7 +223,7 @@ Branch `agent/overnight/06-milestones`, stacked on block 5.
 - None.
 
 ### PR
-(filled in when opened)
+https://github.com/Lolo-MindRise/personal-os/pull/22
 
 ## Run summary (read this first)
 
@@ -239,7 +239,7 @@ data model change except one additive migration (`0003`, block 5).
 3. #19 Budget screen
 4. #20 Debts screen
 5. #21 Summary and goals (migration `0003_damp_jack_murdock`)
-6. Milestones screen (PR number in the Block 6 section above)
+6. #22 Milestones screen (also carries this summary)
 
 Merge them in this order; after each merge GitHub retargets the next PR to `main`.
 
