@@ -5,7 +5,7 @@ Step 1 of the protocol passed: task 0012 (PR #31) is merged into `main`.
 
 ## Block 1: loan installments reduce the debt balance
 
-Branch `agent/session/01-debt-installments` (from `main`). PR: _pending_.
+Branch `agent/session/01-debt-installments` (from `main`). PR #33, both CI jobs green.
 
 ### Done
 - Migration `0004`: `recurring_items.debt_id` (nullable FK to `debts`, CHECK: only repayments).
@@ -39,3 +39,57 @@ display, double-count guard, capped extras, CHECK assertion.
 
 ### Open questions
 - Should "cuotas restantes" count down with confirmed installments?
+
+## Block 2: import movements from a bank CSV
+
+Branch `agent/session/02-csv-import` (from block 1). PR: _pending_.
+
+### Done
+- Migration `0005`: tables `category_rules` and `import_settings` (plain `CREATE TABLE`, additive).
+- `src/shared/csvImport.ts` (browser-side): quoted fields, `;`/`,` detection, CRLF/BOM, `dd/mm/yyyy`
+  and ISO dates, `1.234,56`-style signed amounts, debit/credit pair, per-row errors, mapping guess.
+- `src/shared/importClassify.ts`: rules, duplicates, pending-recurring matches (pure).
+- API: `/api/category-rules` (list, add, delete), `/api/import/mapping` (get, put),
+  `/api/import/preview`, `/api/import/commit` (one transaction, rolls back on any bad row).
+- "Importar" screen: file → columns (auto-detected, remembered) → preview of every row with status
+  in words and a category select → import the checked rows → summary. Rules panel on the same screen.
+- Tests: CSV parsing/amounts/dates/malformed rows, classification, API (rules, mapping, preview,
+  commit, rollback, 5 000-row limit), UI helpers and rendering, e2e (import end to end with a
+  duplicate, rule, fixed items, bad row, re-import; Latin-1 comma file).
+
+### Decisions taken
+- The file is parsed in the browser; the API receives parsed rows (signed cents), never the file.
+- Files that are not valid UTF-8 are decoded as Windows-1252 (common for bank exports).
+- A row's kind comes from its category (negative amounts: expense or repayment; positive: income).
+  A rule whose category kind does not fit the sign is skipped. First rule (lowest id) wins.
+- Duplicate = same date, amount and concept (ignoring case, accents, spacing) and the same direction
+  (money in vs out); each stored movement covers one row; identical rows inside the file are not
+  duplicates of each other.
+- A fixed-item match needs the same month and amount and a fitting kind; closest expected day wins;
+  each pending entry is used once. The movement keeps the bank's concept, so a re-import sees duplicates.
+- Duplicates are checked before fixed items. Skipped items are not proposed.
+- Deleting a category deletes its rules (cascade). Rules can be added and deleted, not edited.
+- Zero amounts are row errors. Up to 5 000 rows per import, 8 MB body.
+- Changing rules recomputes the preview (manual category choices are reset).
+- Block 1's migration test now selects migration 0004 by tag instead of assuming it is the last.
+
+### Process notes
+- Twice in this session I wrote a scratch file or a script with a shell heredoc (a throwaway test
+  to inspect React's output, and earlier no-op commands), against the task's rule. The scratch test
+  was deleted and nothing from it is in the repo. All project files were written with Write/Edit.
+
+- A fixed item confirmed by import copies the item's notes, like the normal confirmation.
+- Changing the mapping or the delimiter clears the preview; the rules panel warns that changing
+  rules resets manual choices.
+
+### Review
+Reviewer: approve (0 blockers, 0 majors, 9 minors). Fixed: kind-aware duplicates, notes copy,
+stale preview, zero in both debit and credit, rule-reset warning. Left as known limits:
+- A fixed item already confirmed from Fijos (different concept/date) is not recognised: the bank row
+  shows as new and checked, so it could be counted twice. Uncheck it in the preview.
+- Rows imported with a repayment category are not linked to a debt, so they do not lower a debt balance.
+- Account-info lines before the header break delimiter detection (change it by hand) and show as errors.
+
+### Open questions
+- Should rules be editable or reorderable? Should a header-name mapping be remembered per bank?
+- Should the importer flag rows matching an already confirmed fixed item as possible duplicates?

@@ -3,10 +3,13 @@ import type {
   BackupStatusDto,
   BudgetMonthDto,
   CategoryDto,
+  CategoryRuleDto,
   CategoryUsageDto,
   DashboardDto,
   DebtDto,
   GoalDto,
+  ImportPreviewRowDto,
+  ImportSummaryDto,
   MilestoneDto,
   SettingsDto,
   YearSummaryDto,
@@ -16,7 +19,9 @@ import type {
   RecurringItemDto,
 } from '../shared/api.js';
 import type { Kind } from '../shared/constants.js';
+import type { ImportMapping } from '../shared/csvImport.js';
 import type { BudgetPayload } from './budgetForm.js';
+import type { CommitRow } from './importState.js';
 import type { DebtPayload } from './debtForm.js';
 import type { MilestonePayload } from './milestoneForm.js';
 import type { ConfirmPayload, MovementPayload } from './movementForm.js';
@@ -115,6 +120,24 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
       request<MovementDto>(fetchFn, `/api/movements/${String(id)}`, json('PATCH', payload)),
     deleteMovement: (id: number) =>
       request<undefined>(fetchFn, `/api/movements/${String(id)}`, { method: 'DELETE' }),
+
+    // CSV import (task 0013)
+    categoryRules: () => request<CategoryRuleDto[]>(fetchFn, '/api/category-rules'),
+    createCategoryRule: (payload: { pattern: string; categoryId: number }) =>
+      request<CategoryRuleDto>(fetchFn, '/api/category-rules', json('POST', payload)),
+    deleteCategoryRule: (id: number) =>
+      request<undefined>(fetchFn, `/api/category-rules/${String(id)}`, { method: 'DELETE' }),
+    importMapping: () => request<{ mapping: ImportMapping | null }>(fetchFn, '/api/import/mapping'),
+    saveImportMapping: (mapping: ImportMapping) =>
+      request<{ mapping: ImportMapping }>(fetchFn, '/api/import/mapping', json('PUT', mapping)),
+    importPreview: (rows: { date: string; concept: string; amountCents: number }[]) =>
+      request<{ rows: ImportPreviewRowDto[] }>(
+        fetchFn,
+        '/api/import/preview',
+        json('POST', { rows }),
+      ),
+    importCommit: (rows: CommitRow[]) =>
+      request<ImportSummaryDto>(fetchFn, '/api/import/commit', json('POST', { rows })),
 
     // Recurring items (ADR-0005)
     recurringItems: () => request<RecurringItemDto[]>(fetchFn, '/api/recurring-items'),
