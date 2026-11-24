@@ -10,3 +10,5 @@ coverage/
 *.db-*
 .DS_Store
 .dev-data/
+test-results/
+playwright-report/

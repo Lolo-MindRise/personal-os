@@ -21,10 +21,11 @@
     "start": "NODE_ENV=production node dist/server/index.js",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "typecheck": "tsc -p tsconfig.json && tsc -p src/shared && tsc -p src/server && tsc -p src/web",
+    "typecheck": "tsc -p tsconfig.json && tsc -p src/shared && tsc -p src/server && tsc -p src/web && tsc -p e2e",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
-    "db:seed": "tsx src/server/db/seed.ts"
+    "db:seed": "tsx src/server/db/seed.ts",
+    "test:e2e": "npm run build && playwright test"
   },
   "dependencies": {
     "@fastify/static": "10.1.12",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.65.1",
     "@types/better-sqlite3": "9.6.0",
     "@types/node": "26.6.6",
     "@types/react": "19.3.0",

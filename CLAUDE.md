@@ -17,8 +17,12 @@ a phone. Keep this file short: it is loaded in every session.
 - Never commit to `main`, never merge into `main`, never force-push,
   never rewrite history of a branch you did not create.
 - Finish by opening a pull request. Manuel is the only one who merges.
-- Never modify `.claude/settings.json` or any permission settings: permission
-  changes are made by Manuel.
+- `.claude/settings*.json` and `.claude/hooks/` are maintained by Manuel only
+  (the guard hook enforces this); permission changes are his.
+- Never write to GitHub through `gh api` (no edits, comments or state changes).
+  If a `gh` command fails, stop and report it.
+- After a PR is merged, never push to its branch again. New work starts on a
+  new branch from `main`.
 - `.claude/hooks/guard.sh` blocks merges, rule changes, pushes to `main`,
   force pushes and access to the real data. If it blocks you, do not work
   around it: stop and report it in the PR or handoff.

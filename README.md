@@ -34,15 +34,19 @@ The port comes from the `PORT` environment variable (default `5310`).
 npm run lint        # ESLint + Prettier check
 npm run typecheck   # TypeScript, strict
 npm test            # Vitest
+npm run test:e2e    # Playwright: dev and production smoke tests (builds first)
 npm run format      # Apply Prettier formatting
 ```
 
-CI (`.github/workflows/ci.yml`) runs `npm ci`, lint, typecheck, test and
-build on every pull request.
+CI (`.github/workflows/ci.yml`) runs two jobs on every pull request: `check`
+(`npm ci`, lint, typecheck, test, build) and `e2e` (Chromium, `npm run test:e2e`).
+Locally, Chromium needs `npx playwright install chromium` once, and on a fresh
+Ubuntu/WSL also its system libraries: `sudo env "PATH=$PATH" npx playwright install-deps chromium`.
 
 ## Layout
 
 ```
 src/server/   Fastify API (health endpoint, static serving in production)
 src/web/      React + Vite frontend (UI text in es-ES)
+e2e/          Playwright smoke tests (dev and production servers)
 ```
