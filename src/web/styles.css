@@ -367,6 +367,28 @@ table.movements {
   text-align: center;
 }
 
+.budget tfoot th,
+.budget tfoot td {
+  border-top: 2px solid var(--border);
+  font-weight: 600;
+}
+
+.budget .diff-over {
+  color: var(--danger);
+}
+
+.budget .diff-under {
+  color: var(--income);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.form-hint {
+  margin: 0 0 0.75rem;
+}
+
 .backup-warning {
   max-width: 64rem;
   margin: 0 auto;

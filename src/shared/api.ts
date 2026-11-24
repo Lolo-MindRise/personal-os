@@ -74,6 +74,28 @@ export interface MonthSummaryDto {
   projectedSavingsCents: number;
 }
 
+/** One category's row in a month's budget (task 0008, block 3). */
+export interface BudgetRowDto {
+  categoryId: number;
+  categoryName: string;
+  kind: Kind;
+  /** The budget in effect that month, or null when the category has none. */
+  budgetCents: number | null;
+  /** Month (`YYYY-MM`) the budget in effect starts from, or null. */
+  budgetFrom: string | null;
+  /** Confirmed movements of the category in the month. */
+  actualCents: number;
+  /** budget − actual: positive is under budget, negative is over. Null without a budget. */
+  differenceCents: number | null;
+}
+
+export interface BudgetMonthDto {
+  month: string;
+  rows: BudgetRowDto[];
+  /** Expense rows only; the difference is total budget − total actual. */
+  totals: { budgetCents: number; actualCents: number; differenceCents: number };
+}
+
 /** State of the in-app backups (ADR-0003). */
 export interface BackupStatusDto {
   /** False when backups do not run (development, or no data directory). */

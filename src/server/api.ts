@@ -21,6 +21,7 @@ import {
 import type { Db } from './db/index.js';
 import { dueEntries } from './db/recurring.js';
 import { categories, debts, movements } from './db/schema.js';
+import { registerBudgetApi } from './budgetApi.js';
 import { registerCategoriesApi } from './categoriesApi.js';
 import { registerRecurringApi } from './recurringApi.js';
 
@@ -206,6 +207,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     return summary;
   });
 
+  registerBudgetApi(app, db);
   registerCategoriesApi(app, db);
   registerRecurringApi(app, db);
 }

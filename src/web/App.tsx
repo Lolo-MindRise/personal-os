@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BackupBanner } from './BackupBanner.js';
+import { BudgetPage } from './BudgetPage.js';
 import { CategoriesPage } from './CategoriesPage.js';
 import { MovementsPage } from './MovementsPage.js';
 import { RecurringPage } from './RecurringPage.js';
@@ -7,6 +8,7 @@ import { RecurringPage } from './RecurringPage.js';
 export const VIEWS = [
   ['movements', 'Movimientos'],
   ['recurring', 'Fijos'],
+  ['budget', 'Presupuesto'],
   ['categories', 'Categorías'],
 ] as const;
 
@@ -39,6 +41,8 @@ function Screen({ view }: { view: View }) {
       return <MovementsPage />;
     case 'recurring':
       return <RecurringPage />;
+    case 'budget':
+      return <BudgetPage />;
     case 'categories':
       return <CategoriesPage />;
   }
