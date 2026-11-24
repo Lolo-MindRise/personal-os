@@ -206,6 +206,9 @@ test('edit a fixed item, end it, and see it stop appearing as pending', async ({
   const yyyy = month.slice(0, 4);
   try {
     await nav(page, 'Fijos').click();
+    // Let the list finish loading first: the screen is now loaded on demand, and a slow first
+    // load must not land after the new item and replace the list.
+    await expect(itemRows(page)).toHaveCount(5);
     await page.getByLabel('Categoría').selectOption({ label: 'Ocio' });
     await page.getByLabel('Concepto').fill(concept);
     await page.getByLabel('Importe previsto (€)').fill('20');
