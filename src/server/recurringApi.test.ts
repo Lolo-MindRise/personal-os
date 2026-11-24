@@ -395,6 +395,46 @@ describe('confirm one', () => {
     expect((await post(confirmUrl(id, '2026-1'))).statusCode).toBe(400);
   });
 
+  it.each([
+    ['an array', '[]'],
+    ['a string', '"hola"'],
+    ['a number', '5'],
+    ['an unknown field', '{"surprise":true}'],
+    ['a wrong type', '{"amountCents":"12"}'],
+    ['malformed JSON', '{"amountCents":'],
+  ])('answers 400, never 500, when the body is %s', async (_name, payload) => {
+    const id = await itemId('Internet');
+    const response = await app.inject({
+      method: 'POST',
+      url: confirmUrl(id, '2026-01'),
+      headers: { 'content-type': 'application/json' },
+      payload,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(concepts(await pending('2026-01'))).toContain('Internet');
+    expect((await movementsOf('2026-01')).filter((m) => m.recurringItemId === id)).toEqual([]);
+  });
+
+  it('treats a missing body, an empty object and null as "no overrides"', async () => {
+    const [internet, power, gym] = await Promise.all([
+      itemId('Internet'),
+      itemId('Electricidad'),
+      itemId('Gimnasio'),
+    ]);
+    const none = await post(confirmUrl(internet, '2026-01'));
+    const empty = await post(confirmUrl(power, '2026-01'), {});
+    const nullBody = await app.inject({
+      method: 'POST',
+      url: confirmUrl(gym, '2026-01'),
+      headers: { 'content-type': 'application/json' },
+      payload: 'null',
+    });
+    for (const response of [none, empty, nullBody]) {
+      expect(response.statusCode).toBe(201);
+    }
+    expect(concepts(await pending('2026-01'))).toEqual([]);
+  });
+
   it('refuses to confirm a skipped entry until the skip is undone', async () => {
     const id = await itemId('Internet');
     await post(skipUrl(id, '2026-01'));

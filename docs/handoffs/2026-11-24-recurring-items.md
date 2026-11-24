@@ -2,9 +2,10 @@
 
 ## Done
 - Branch `agent/implementer/recurring-items`, from `main` (ADR-0005 implemented).
-- Migrations (new, none edited): `0001` adds `recurring_items`, `recurring_skips`
-  and `movements.recurring_item_id`; `0002` is a hand-written unique index
-  on `(recurring_item_id, substr(date, 1, 7))`. See `docs/data-model.md`.
+- Migrations, both new in this PR (no migration from `main` was edited): `0001`
+  adds `recurring_items`, `recurring_skips` and `movements.recurring_item_id`
+  (hand-edited once before the first commit, see Notes); `0002` is a hand-written
+  unique index on `(recurring_item_id, substr(date, 1, 7))`. See `docs/data-model.md`.
 - API (`src/server/recurringApi.ts`): CRUD for items, `GET /api/months/:month/pending`
   and `/skipped`, confirm one, confirm all, skip, undo skip; `409` on double
   confirm, double skip, skip of a confirmed entry, confirm of a skipped one.
@@ -13,9 +14,14 @@
   section with Confirmar (opens the movement form pre-filled, kind and category
   locked), Saltar, Deshacer, Confirmar todos; pending amounts and "Ahorro previsto".
 - Seed: five fictional fixed items; January's salary and rent are their confirmations.
-- Tests: 368 unit (up from 197) and 8 e2e (up from 6). Lint, typecheck, build pass.
+- Tests: 374 unit (up from 197) and 9 e2e (up from 6). Lint, typecheck, build pass.
   Mutation checks: ignoring confirmations, ignoring the end month, a UI confirm
-  that does not link, and "confirm all" taking skipped entries each fail tests.
+  that does not link, "confirm all" taking skipped entries, action errors cleared
+  by a reload, and no cancel of a stale confirmation each fail tests.
+- Reviewer: changes required, fixed. Major: a failed Saltar/Deshacer/Confirmar
+  todos error vanished on the reload (now `actionError`). Minors: the form now
+  leaves confirm mode when its entry is no longer pending; odd confirm bodies
+  tested (400, never 500); editing a linked movement's kind is allowed, on purpose.
 - Housekeeping: ADR-0005 item 1 ticked; mode of the task 0005 brief set to 644.
 
 ## Deviation proposed
@@ -35,6 +41,8 @@
 - Confirming a skipped entry is `409` until the skip is undone.
 - Extra endpoint `GET /api/months/:month/skipped`, so the screen can offer "Deshacer".
 - "Terminar" ends an item this month (or its start month if later), after a confirm.
+- A linked movement may still change kind and category when edited (it is a real
+  record); only its month is fixed. Recorded in `docs/data-model.md`.
 - Task 0002 and 0004 briefs are also mode 755; only 0005 was in scope.
 
 ## Notes

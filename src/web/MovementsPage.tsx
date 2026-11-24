@@ -21,6 +21,9 @@ const defaultApi = createApiClient();
 
 const messageOf = (error: unknown) => (error instanceof ApiError ? error.message : NETWORK_ERROR);
 
+export const CONFIRMATION_CANCELLED =
+  'Se ha cancelado la confirmación: ese fijo ya no está pendiente.';
+
 export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   const [month, setMonth] = useState(currentMonth);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
@@ -29,6 +32,8 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   const [skipped, setSkipped] = useState<PendingEntryDto[]>([]);
   const [summary, setSummary] = useState<MonthSummaryDto | undefined>();
   const [loadError, setLoadError] = useState<string | undefined>();
+  /** Why a pending-section action failed or a confirmation was cancelled. Not cleared by reloads. */
+  const [actionError, setActionError] = useState<string | undefined>();
   const [reloads, setReloads] = useState(0);
 
   const [form, setForm] = useState<MovementFormValues>(() => emptyForm());
@@ -80,6 +85,19 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     setReloads((n) => n + 1);
   }, []);
 
+  // If the entry being confirmed is no longer pending (skipped, or confirmed by
+  // "Confirmar todos" or elsewhere), a later submit would fail with a 409: cancel
+  // the confirmation and say so. State is adjusted while rendering, as React
+  // recommends for state derived from other state (not in an effect).
+  if (confirmingId !== undefined && !pending.some((e) => e.recurringItemId === confirmingId)) {
+    setForm(emptyForm());
+    setEditingId(undefined);
+    setConfirmingId(undefined);
+    setFieldErrors({});
+    setFormError(undefined);
+    setActionError(CONFIRMATION_CANCELLED);
+  }
+
   const resetForm = () => {
     setForm(emptyForm());
     setEditingId(undefined);
@@ -93,6 +111,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     if (confirmingId !== undefined) {
       resetForm();
     }
+    setActionError(undefined);
     setMonth(next);
   };
 
@@ -156,17 +175,18 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     }
   };
 
-  /** Runs a pending-section action, then refreshes everything. */
-  const act = async (action: () => Promise<unknown>, entry?: PendingEntryDto) => {
+  /**
+   * Runs a pending-section action, then refreshes everything. A failure is kept
+   * in `actionError`, which a reload does not clear (unlike `loadError`), so the
+   * user always sees why the action did not work.
+   */
+  const act = async (action: () => Promise<unknown>) => {
     setBusy(true);
+    setActionError(undefined);
     try {
       await action();
-      // Skipping the entry that is being confirmed cancels the confirmation.
-      if (entry !== undefined && entry.recurringItemId === confirmingId) {
-        resetForm();
-      }
     } catch (error) {
-      setLoadError(messageOf(error));
+      setActionError(messageOf(error));
     } finally {
       setBusy(false);
       reload();
@@ -215,6 +235,12 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
         </p>
       )}
 
+      {actionError !== undefined && (
+        <p className="form-error" role="alert">
+          {actionError}
+        </p>
+      )}
+
       {summary !== undefined && <SummaryBar summary={summary} />}
 
       <PendingList
@@ -222,7 +248,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
         skipped={skipped}
         busy={busy}
         onConfirm={confirm}
-        onSkip={(entry) => void act(() => api.skipRecurring(entry.recurringItemId, month), entry)}
+        onSkip={(entry) => void act(() => api.skipRecurring(entry.recurringItemId, month))}
         onUndo={(entry) => void act(() => api.undoSkip(entry.recurringItemId, month))}
         onConfirmAll={() => void act(() => api.confirmAll(month))}
       />

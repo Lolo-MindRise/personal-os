@@ -259,3 +259,45 @@ test('edit a fixed item, end it, and see it stop appearing as pending', async ({
     await cleanUp(request, month, [concept]);
   }
 });
+
+test('a failed action keeps its error visible, and confirm all cancels a confirmation in progress', async ({
+  page,
+  request,
+}) => {
+  const month = localMonth();
+  try {
+    await test.step('an entry confirmed elsewhere: skipping the stale row explains why it failed', async () => {
+      await expect(pendingRow(page, 'Internet')).toHaveCount(1);
+      // Confirm it behind the page's back, so the row on screen is out of date.
+      const items = (await (await request.get('/api/recurring-items')).json()) as ItemRow[];
+      const internet = items.find((item) => item.concept === 'Internet');
+      expect(internet).toBeDefined();
+      const confirmed = await request.post(
+        `/api/recurring-items/${String(internet?.id)}/months/${month}/confirm`,
+      );
+      expect(confirmed.status()).toBe(201);
+
+      await pendingRow(page, 'Internet').getByRole('button', { name: 'Saltar' }).click();
+
+      // The list refreshes (the row is gone) and the error is still there afterwards.
+      await expect(pendingRow(page, 'Internet')).toHaveCount(0);
+      await expect(page.getByRole('alert').filter({ hasText: 'ya está confirmado' })).toBeVisible();
+    });
+
+    await test.step('confirm all while confirming one cancels that confirmation, with a message', async () => {
+      await pendingRow(page, 'Gimnasio').getByRole('button', { name: 'Confirmar' }).click();
+      await expect(page.getByRole('heading', { name: 'Confirmar fijo' })).toBeVisible();
+
+      await page.getByRole('button', { name: 'Confirmar todos' }).click();
+
+      await expect(movementRows(page)).toHaveCount(5);
+      await expect(page.getByRole('heading', { name: 'Añadir movimiento' })).toBeVisible();
+      await expect(
+        page.getByRole('alert').filter({ hasText: 'Se ha cancelado la confirmación' }),
+      ).toBeVisible();
+      await expect(page.getByLabel('Concepto')).toHaveValue('');
+    });
+  } finally {
+    await cleanUp(request, month, []);
+  }
+});

@@ -57,7 +57,9 @@ that month (`dueEntries`, `src/server/db/recurring.ts`).
 - **Deleting a confirmed movement** makes its item pending again (nothing to
   recompute: pending is derived).
 - A movement linked to an item keeps its month: its date can change inside the
-  month, not move to another one.
+  month, not move to another one. Its kind and category stay editable on
+  purpose: a confirmed movement is a real record and the user may correct it
+  (the item itself does not change, and the link stays).
 - Past months keep showing unconfirmed items as pending.
 
 ### Month summary
