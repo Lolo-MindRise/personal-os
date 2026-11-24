@@ -18,15 +18,53 @@ export interface MovementDto {
   amountCents: number;
   notes: string | null;
   debtId: number | null;
+  /** The recurring item this movement confirms, if any (ADR-0005). */
+  recurringItemId: number | null;
+}
+
+/** A fixed income or expense, defined once (ADR-0005). */
+export interface RecurringItemDto {
+  id: number;
+  kind: Kind;
+  categoryId: number;
+  categoryName: string;
+  concept: string;
+  amountCents: number;
+  /** Expected day of the month, 1–31 (clamped to the month's length). */
+  expectedDay: number;
+  startMonth: string;
+  endMonth: string | null;
+  notes: string | null;
+}
+
+/** An item due in a month and not yet confirmed (computed, never stored). */
+export interface PendingEntryDto {
+  recurringItemId: number;
+  month: string;
+  /** Expected date: the item's day clamped to the month's length. */
+  date: string;
+  kind: Kind;
+  categoryId: number;
+  categoryName: string;
+  concept: string;
+  amountCents: number;
+  notes: string | null;
 }
 
 export interface MonthSummaryDto {
   month: string;
+  /** Confirmed movements only. */
   incomeCents: number;
   expenseCents: number;
   repaymentCents: number;
   /** income − expenses − repayments; negative when the month is in deficit. */
   savingsCents: number;
+  /** Items still pending in the month (not confirmed, not skipped). */
+  pendingIncomeCents: number;
+  pendingExpenseCents: number;
+  pendingRepaymentCents: number;
+  /** savings + pending income − pending expenses − pending repayments. */
+  projectedSavingsCents: number;
 }
 
 /** Error body for every 4xx response. `fields` maps a field name to its message. */

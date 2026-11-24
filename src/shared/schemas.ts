@@ -56,6 +56,37 @@ export const movementCreateSchema = movementFieldsSchema.refine(
 /** PATCH body: any subset of the fields. The merged result is re-validated with movementCreateSchema. */
 export const movementUpdateSchema = movementFieldsSchema.partial();
 
+/** Base object of a recurring item (ADR-0005), without the cross-field rule. */
+export const recurringItemFieldsSchema = z.strictObject({
+  kind: kindSchema,
+  categoryId: z.number().int().positive(),
+  concept: text,
+  amountCents: cents,
+  expectedDay: z.number().int().min(1).max(31),
+  startMonth: isoMonth,
+  endMonth: isoMonth.nullish(),
+  notes: optionalNotes,
+});
+
+export const recurringItemCreateSchema = recurringItemFieldsSchema.refine(
+  (item) => item.endMonth == null || item.endMonth >= item.startMonth,
+  {
+    path: ['endMonth'],
+    error: 'El mes final no puede ser anterior al mes inicial.',
+  },
+);
+
+/** PATCH body: any subset. The merged result is re-validated with recurringItemCreateSchema. */
+export const recurringItemUpdateSchema = recurringItemFieldsSchema.partial();
+
+/** Optional overrides when confirming a pending entry. Kind and category are not overridable. */
+export const confirmOverridesSchema = z.strictObject({
+  date: isoDate.optional(),
+  amountCents: cents.optional(),
+  concept: text.optional(),
+  notes: optionalNotes,
+});
+
 export const budgetLineCreateSchema = z.strictObject({
   categoryId: z.number().int().positive(),
   amountCents: cents,
@@ -88,6 +119,9 @@ export const milestoneCreateSchema = z.strictObject({
 export type CategoryCreate = z.infer<typeof categoryCreateSchema>;
 export type MovementUpdate = z.infer<typeof movementUpdateSchema>;
 export type MovementCreate = z.infer<typeof movementCreateSchema>;
+export type RecurringItemCreate = z.infer<typeof recurringItemCreateSchema>;
+export type RecurringItemUpdate = z.infer<typeof recurringItemUpdateSchema>;
+export type ConfirmOverrides = z.infer<typeof confirmOverridesSchema>;
 export type BudgetLineCreate = z.infer<typeof budgetLineCreateSchema>;
 export type DebtCreate = z.infer<typeof debtCreateSchema>;
 export type GoalCreate = z.infer<typeof goalCreateSchema>;
