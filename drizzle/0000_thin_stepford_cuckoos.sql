@@ -6,6 +6,7 @@ CREATE TABLE `budget_lines` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	FOREIGN KEY (`category_id`) REFERENCES `categories`(`id`) ON UPDATE no action ON DELETE no action,
+	CONSTRAINT "budget_lines_amount_integer" CHECK(typeof("budget_lines"."amount_cents") = 'integer'),
 	CONSTRAINT "budget_lines_amount_positive" CHECK("budget_lines"."amount_cents" > 0),
 	CONSTRAINT "budget_lines_valid_from_month" CHECK("budget_lines"."valid_from" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]')
 );
@@ -35,6 +36,10 @@ CREATE TABLE `debts` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	CONSTRAINT "debts_name_not_empty" CHECK(length(trim("debts"."name")) > 0),
+	CONSTRAINT "debts_monthly_payment_integer" CHECK(typeof("debts"."monthly_payment_cents") = 'integer'),
+	CONSTRAINT "debts_balance_integer" CHECK(typeof("debts"."balance_cents") = 'integer'),
+	CONSTRAINT "debts_installments_integer" CHECK(typeof("debts"."remaining_installments") = 'integer'),
+	CONSTRAINT "debts_rate_integer" CHECK(typeof("debts"."annual_rate_bps") = 'integer'),
 	CONSTRAINT "debts_monthly_payment_positive" CHECK("debts"."monthly_payment_cents" > 0),
 	CONSTRAINT "debts_balance_not_negative" CHECK("debts"."balance_cents" >= 0),
 	CONSTRAINT "debts_balance_as_of_date" CHECK("debts"."balance_as_of" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
@@ -50,6 +55,7 @@ CREATE TABLE `goals` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	CONSTRAINT "goals_name_not_empty" CHECK(length(trim("goals"."name")) > 0),
+	CONSTRAINT "goals_target_amount_integer" CHECK(typeof("goals"."target_amount_cents") = 'integer'),
 	CONSTRAINT "goals_target_amount_positive" CHECK("goals"."target_amount_cents" > 0),
 	CONSTRAINT "goals_target_date_format" CHECK("goals"."target_date" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]')
 );
@@ -82,6 +88,7 @@ CREATE TABLE `movements` (
 	FOREIGN KEY (`category_id`,`kind`) REFERENCES `categories`(`id`,`kind`) ON UPDATE no action ON DELETE no action,
 	CONSTRAINT "movements_kind_valid" CHECK("movements"."kind" IN ('income', 'expense', 'repayment')),
 	CONSTRAINT "movements_date_format" CHECK("movements"."date" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
+	CONSTRAINT "movements_amount_integer" CHECK(typeof("movements"."amount_cents") = 'integer'),
 	CONSTRAINT "movements_amount_positive" CHECK("movements"."amount_cents" > 0),
 	CONSTRAINT "movements_concept_not_empty" CHECK(length(trim("movements"."concept")) > 0),
 	CONSTRAINT "movements_debt_only_on_repayment" CHECK("movements"."debt_id" IS NULL OR "movements"."kind" = 'repayment')

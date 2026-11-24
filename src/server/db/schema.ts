@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { sql, type AnyColumn } from 'drizzle-orm';
 import {
   check,
   foreignKey,
@@ -22,6 +22,7 @@ const DATE_GLOB = sql.raw("'[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'");
 const MONTH_GLOB = sql.raw("'[0-9][0-9][0-9][0-9]-[0-1][0-9]'");
 
 const now = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
+const isInteger = (column: AnyColumn) => sql`typeof(${column}) = 'integer'`;
 const nowISO = () => new Date().toISOString();
 
 const id = () => integer('id').primaryKey({ autoIncrement: true });
@@ -61,6 +62,10 @@ export const debts = sqliteTable(
   },
   (t) => [
     check('debts_name_not_empty', sql`length(trim(${t.name})) > 0`),
+    check('debts_monthly_payment_integer', isInteger(t.monthlyPaymentCents)),
+    check('debts_balance_integer', isInteger(t.balanceCents)),
+    check('debts_installments_integer', isInteger(t.remainingInstallments)),
+    check('debts_rate_integer', isInteger(t.annualRateBps)),
     check('debts_monthly_payment_positive', sql`${t.monthlyPaymentCents} > 0`),
     check('debts_balance_not_negative', sql`${t.balanceCents} >= 0`),
     check('debts_balance_as_of_date', sql`${t.balanceAsOf} GLOB ${DATE_GLOB}`),
@@ -92,6 +97,7 @@ export const movements = sqliteTable(
     }),
     check('movements_kind_valid', sql`${t.kind} IN (${kindList})`),
     check('movements_date_format', sql`${t.date} GLOB ${DATE_GLOB}`),
+    check('movements_amount_integer', isInteger(t.amountCents)),
     check('movements_amount_positive', sql`${t.amountCents} > 0`),
     check('movements_concept_not_empty', sql`length(trim(${t.concept})) > 0`),
     // debt_id is only allowed on repayment movements.
@@ -116,6 +122,7 @@ export const budgetLines = sqliteTable(
   (t) => [
     // History is append-only: one line per category and month, new lines supersede old ones.
     unique('budget_lines_category_valid_from_unique').on(t.categoryId, t.validFrom),
+    check('budget_lines_amount_integer', isInteger(t.amountCents)),
     check('budget_lines_amount_positive', sql`${t.amountCents} > 0`),
     check('budget_lines_valid_from_month', sql`${t.validFrom} GLOB ${MONTH_GLOB}`),
   ],
@@ -133,6 +140,7 @@ export const goals = sqliteTable(
   },
   (t) => [
     check('goals_name_not_empty', sql`length(trim(${t.name})) > 0`),
+    check('goals_target_amount_integer', isInteger(t.targetAmountCents)),
     check('goals_target_amount_positive', sql`${t.targetAmountCents} > 0`),
     check('goals_target_date_format', sql`${t.targetDate} GLOB ${DATE_GLOB}`),
   ],

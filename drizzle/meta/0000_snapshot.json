@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "5ed071c4-b9ca-4d77-8bd1-f35532f9dacd",
+  "id": "105284c2-95ca-4503-8a0c-54d4efb99541",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "budget_lines": {
@@ -80,6 +80,10 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {
+        "budget_lines_amount_integer": {
+          "name": "budget_lines_amount_integer",
+          "value": "typeof(\"budget_lines\".\"amount_cents\") = 'integer'"
+        },
         "budget_lines_amount_positive": {
           "name": "budget_lines_amount_positive",
           "value": "\"budget_lines\".\"amount_cents\" > 0"
@@ -247,6 +251,22 @@
           "name": "debts_name_not_empty",
           "value": "length(trim(\"debts\".\"name\")) > 0"
         },
+        "debts_monthly_payment_integer": {
+          "name": "debts_monthly_payment_integer",
+          "value": "typeof(\"debts\".\"monthly_payment_cents\") = 'integer'"
+        },
+        "debts_balance_integer": {
+          "name": "debts_balance_integer",
+          "value": "typeof(\"debts\".\"balance_cents\") = 'integer'"
+        },
+        "debts_installments_integer": {
+          "name": "debts_installments_integer",
+          "value": "typeof(\"debts\".\"remaining_installments\") = 'integer'"
+        },
+        "debts_rate_integer": {
+          "name": "debts_rate_integer",
+          "value": "typeof(\"debts\".\"annual_rate_bps\") = 'integer'"
+        },
         "debts_monthly_payment_positive": {
           "name": "debts_monthly_payment_positive",
           "value": "\"debts\".\"monthly_payment_cents\" > 0"
@@ -325,6 +345,10 @@
         "goals_name_not_empty": {
           "name": "goals_name_not_empty",
           "value": "length(trim(\"goals\".\"name\")) > 0"
+        },
+        "goals_target_amount_integer": {
+          "name": "goals_target_amount_integer",
+          "value": "typeof(\"goals\".\"target_amount_cents\") = 'integer'"
         },
         "goals_target_amount_positive": {
           "name": "goals_target_amount_positive",
@@ -543,6 +567,10 @@
         "movements_date_format": {
           "name": "movements_date_format",
           "value": "\"movements\".\"date\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'"
+        },
+        "movements_amount_integer": {
+          "name": "movements_amount_integer",
+          "value": "typeof(\"movements\".\"amount_cents\") = 'integer'"
         },
         "movements_amount_positive": {
           "name": "movements_amount_positive",

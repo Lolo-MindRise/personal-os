@@ -27,6 +27,11 @@
   (same `:*` form as the other rules), or tell me to retry.
 
 ## Notes
+- No backup runs before the startup migration yet (ADR-0003 asks for one).
+  Backups are out of scope here; the backup/deploy task must add it before
+  the real instance runs migrations.
+- Integer cents and basis points are also enforced in the database with
+  `typeof(col) = 'integer'` checks (SQLite would store 12.5 as REAL).
 - Kind/category match is enforced by the database; Zod cannot know the
   category's kind. The API task must map the FK error to a 4xx.
 - DB date check is a format check; real-date validation lives in Zod.

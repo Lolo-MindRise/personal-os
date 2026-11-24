@@ -12,7 +12,7 @@ Creation schemas (Zod, shared with the future API and frontend):
   (12.5 % = 1250). Timestamps: ISO 8601 UTC text.
 - Every table: `id` (autoincrement), `created_at`, `updated_at`.
 - Layers: Zod validates real calendar dates and types; the database enforces
-  the rest with `CHECK` and foreign keys (its date check is a format check only).
+  the rest with `CHECK` (including integer type on cents and basis points) and foreign keys (its date check is a format check only).
 
 ## Tables
 

@@ -24,6 +24,12 @@ try {
   process.exit(1);
 }
 
-process.on('SIGTERM', () => {
-  database.close();
-});
+// Without this, the open SQLite handle would outlive a `kill`. Close the server, then the DB.
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.on(signal, () => {
+    void app.close().finally(() => {
+      database.close();
+      process.exit(0);
+    });
+  });
+}

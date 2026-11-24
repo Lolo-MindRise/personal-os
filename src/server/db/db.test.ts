@@ -144,6 +144,7 @@ describe('movements', () => {
         .run();
     expect(() => insert(0)).toThrow(/CHECK/);
     expect(() => insert(-5)).toThrow(/CHECK/);
+    expect(() => insert(12.5)).toThrow(/CHECK/); // SQLite would otherwise store a REAL
   });
 
   it('allows debt_id only on repayment movements', () => {
@@ -235,6 +236,8 @@ describe('debts, goals and milestones', () => {
     expect(() => insert({ monthlyPaymentCents: 0 })).toThrow(/CHECK/);
     expect(() => insert({ balanceCents: -1 })).toThrow(/CHECK/);
     expect(() => insert({ annualRateBps: -1 })).toThrow(/CHECK/);
+    expect(() => insert({ annualRateBps: 12.5 })).toThrow(/CHECK/);
+    expect(() => insert({ balanceCents: 10.5 })).toThrow(/CHECK/);
     expect(() => insert({ remainingInstallments: -1 })).toThrow(/CHECK/);
     expect(() => insert({ balanceAsOf: 'ayer' })).toThrow(/CHECK/);
   });
