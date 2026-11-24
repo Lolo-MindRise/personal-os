@@ -472,3 +472,88 @@ describe('Windows shortcuts', () => {
     expect(text).toContain('start "" "http://localhost:%PORT%"');
   });
 });
+
+// The autostart scripts only run on Windows, so these tests check their structure and the rules
+// they must keep (task 0014). The real run is the manual test in the PR.
+describe('Windows autostart scripts', () => {
+  const read = (name: string) => readFileSync(join(REPO_ROOT, 'scripts/windows', name), 'utf8');
+  const install = read('install-autostart.ps1');
+  const uninstall = read('uninstall-autostart.ps1');
+  const taskName = (text: string) => /\$TaskName = '([^']+)'/.exec(text)?.[1];
+
+  it('both use the same task name', () => {
+    expect(taskName(install)).toBe('PersonalOS-Autostart');
+    expect(taskName(uninstall)).toBe(taskName(install));
+  });
+
+  it('install registers a task for the current user, at logon, without administrator rights', () => {
+    expect(install).toContain('Register-ScheduledTask');
+    expect(install).toContain('New-ScheduledTaskTrigger -AtLogOn -User $user');
+    expect(install).toContain('-LogonType Interactive -RunLevel Limited');
+    expect(install).not.toMatch(/RunLevel\s+Highest/i);
+    expect(install).not.toMatch(/-Verb\s+RunAs/i);
+    expect(install).not.toMatch(/requires\s+-RunAsAdministrator/i);
+  });
+
+  it('install runs the existing start script through a hidden wsl.exe, leaving $HOME to bash', () => {
+    expect(install).toContain('-WindowStyle Hidden');
+    expect(install).toContain('wsl.exe');
+    expect(install).toContain("-- bash -lc '");
+    expect(install).toContain('/scripts/start.sh');
+    // The default is single-quoted, so PowerShell never expands $HOME (Windows' own HOME).
+    expect(install).toContain("$AppDir = '$HOME/apps/personal-os'");
+    // The same instance directory as the shortcuts.
+    const shortcut = readFileSync(join(REPO_ROOT, 'scripts/windows/personal-os-start.cmd'), 'utf8');
+    expect(shortcut).toContain('set "APP_DIR=$HOME/apps/personal-os"');
+  });
+
+  it('install is idempotent: it replaces a task of the same name and reports how many exist', () => {
+    expect(install).toMatch(/Register-ScheduledTask[\s\S]*-Force/);
+    expect(install).toContain('Get-ScheduledTask -TaskName $TaskName');
+    expect(install).toContain('already existed');
+    expect(install).toContain('.Count');
+  });
+
+  it('install checks -Distribution before it reaches the task command line', () => {
+    expect(install).toContain("$Distribution -notmatch '^[\\w.-]+$'");
+    expect(install).toContain('throw');
+  });
+
+  it('install also checks -AppDir: no spaces or quotes in the task command line', () => {
+    expect(install).toContain("$AppDir -notmatch '^[\\w$./-]+$'");
+    // The documented default passes its own check.
+    expect(/^[\w$./-]+$/.test('$HOME/apps/personal-os')).toBe(true);
+    expect(/^[\w$./-]+$/.test("$HOME/my apps/x'y")).toBe(false);
+  });
+
+  it('install and the README warn about the brief console flash at logon', () => {
+    expect(install).toContain('flash a console window');
+    const readme = readFileSync(join(REPO_ROOT, 'README.md'), 'utf8');
+    expect(readme).toContain('console window may');
+  });
+
+  it('uninstall removes the task without asking, and is safe when there is none', () => {
+    expect(uninstall).toContain('Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false');
+    expect(uninstall).toContain('-ErrorAction SilentlyContinue');
+    expect(uninstall).toContain('nothing to remove');
+  });
+
+  it('both print what they did and fail with a message and exit code 1', () => {
+    for (const text of [install, uninstall]) {
+      expect(text).toContain('Write-Host');
+      expect(text).toContain('exit 1');
+      expect(text).toContain("$ErrorActionPreference = 'Stop'");
+    }
+  });
+
+  it('are plain ASCII: PowerShell 5.1 reads a file without a BOM as ANSI', () => {
+    for (const text of [install, uninstall]) {
+      expect(text.split('').every((char) => char.charCodeAt(0) < 128)).toBe(true);
+    }
+  });
+
+  it('git converts them to CRLF, like the .cmd files', () => {
+    const attributes = readFileSync(join(REPO_ROOT, '.gitattributes'), 'utf8');
+    expect(attributes).toContain('*.ps1 text eol=crlf');
+  });
+});

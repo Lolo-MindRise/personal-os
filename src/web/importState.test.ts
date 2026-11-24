@@ -38,6 +38,7 @@ const proposal = (over: Partial<ImportPreviewRowDto> = {}): ImportPreviewRowDto 
   status: 'new',
   recurringItemId: null,
   recurringConcept: null,
+  reason: null,
   ...over,
 });
 

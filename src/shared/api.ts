@@ -362,6 +362,8 @@ export interface ImportPreviewRowDto {
   status: 'new' | 'duplicate' | 'recurring' | 'noCategory';
   recurringItemId: number | null;
   recurringConcept: string | null;
+  /** For a duplicate: why ("ya existe un movimiento igual" or "ya confirmado como fijo"). */
+  reason: string | null;
 }
 
 export interface ImportSummaryDto {

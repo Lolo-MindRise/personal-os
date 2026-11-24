@@ -155,6 +155,52 @@ test('import a bank CSV: rules, a duplicate, fixed items, a bad row, and a re-im
   }
 });
 
+test('a bank row for a fixed item already confirmed by hand is flagged, not counted twice', async ({
+  page,
+  request,
+}) => {
+  try {
+    // The rent (700,00, day 2) is confirmed in Fijos for June 2027, with the item's own concept.
+    const items = (await (await request.get('/api/recurring-items')).json()) as {
+      id: number;
+      concept: string;
+    }[];
+    const rent = items.find((i) => i.concept === 'Alquiler');
+    expect(rent).toBeDefined();
+    const confirmed = await request.post(
+      `/api/recurring-items/${String(rent?.id ?? 0)}/months/2027-06/confirm`,
+      { data: {} },
+    );
+    expect(confirmed.status()).toBe(201);
+
+    await page.goto('/');
+    await nav(page, 'Importar').click();
+    const csv = [
+      'Fecha;Concepto;Importe',
+      '20/06/2027;RECIBO PISO JUNIO;-700,00',
+      '21/06/2027;Tienda rara;-12,00',
+      '',
+    ].join('\n');
+    await page.getByLabel('Archivo CSV').setInputFiles({
+      name: 'extracto.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(csv, 'utf8'),
+    });
+    await page.getByRole('button', { name: 'Ver vista previa' }).click();
+
+    const row = (text: string) =>
+      page.locator('table.import-preview tbody tr').filter({ hasText: text });
+    await expect(row('RECIBO PISO')).toContainText('Duplicado');
+    await expect(row('RECIBO PISO')).toContainText('ya confirmado como fijo');
+    await expect(row('RECIBO PISO').getByRole('checkbox')).not.toBeChecked();
+    await expect(row('Tienda rara')).toContainText('Falta la categoría');
+    await expect(page.getByTestId('import-counts')).toContainText('1 duplicadas');
+    await expect(page.getByTestId('import-counts')).toContainText('Marcadas para importar: 0');
+  } finally {
+    await cleanUp(request);
+  }
+});
+
 test('a Latin-1 file with Spanish accents and a comma delimiter is read correctly', async ({
   page,
   request,

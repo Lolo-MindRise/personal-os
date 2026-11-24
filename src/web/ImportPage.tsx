@@ -252,7 +252,12 @@ export function PreviewTable(props: {
                   </select>
                 )}
               </td>
-              <td className={`import-status ${status}`}>{STATUS_LABELS[status]}</td>
+              <td className={`import-status ${status}`}>
+                {STATUS_LABELS[status]}
+                {line.proposal.reason !== null && (
+                  <span className="notes">{line.proposal.reason}</span>
+                )}
+              </td>
             </tr>
           );
         })}

@@ -48,3 +48,24 @@ test('the dev page renders and no request fails', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Añadir movimiento' })).toBeVisible();
   expect(await categories, '/api/categories answered through the proxy').toBeDefined();
 });
+
+// The app icons are drawn in code; the dev server serves them through a Vite middleware
+// (production gets them from the build, see installable.spec.ts).
+test('the dev server serves the manifest and the generated icons', async ({ request }) => {
+  const manifest = await request.get('/manifest.webmanifest');
+  expect(manifest.status()).toBe(200);
+  expect(((await manifest.json()) as { name: string }).name).toBe('Personal OS');
+  for (const [file, width] of [
+    ['icon-192.png', 192],
+    ['icon-512.png', 512],
+    ['icon-maskable-512.png', 512],
+    ['apple-touch-icon.png', 180],
+  ] as const) {
+    const response = await request.get(`/icons/${file}`);
+    expect(response.status(), file).toBe(200);
+    expect(response.headers()['content-type'], file).toBe('image/png');
+    const bytes = await response.body();
+    expect(bytes.subarray(0, 8).toString('hex'), file).toBe('89504e470d0a1a0a');
+    expect(bytes.readUInt32BE(16), file).toBe(width);
+  }
+});
