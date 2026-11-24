@@ -13,8 +13,8 @@ block() {
 
 tool="$(grep -o '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"' <<<"$input" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')"
 
-# Protected agent configuration: permissions and this hook (ADR-0001).
-protected='\.claude/(settings[^/"]*\.json|hooks/)'
+# Protected agent configuration: permissions, this hook and the subagents (ADR-0001, ADR-0007).
+protected='\.claude/(settings[^/"]*\.json|hooks/|agents/)'
 
 if [[ "$tool" == "Bash" ]]; then
   target="$input"
@@ -70,14 +70,14 @@ if [[ "$tool" == "Bash" ]]; then
   # No shell writes to the protected agent configuration.
   if grep -Eq "$protected" <<<"$target"; then
     grep -Eq '(>|tee|sed[[:space:]]+-i|perl[[:space:]]+-pi|(^|[[:space:]";&|])(mv|cp|rm|chmod|truncate|ln)[[:space:]]|git[[:space:]]+(checkout|restore|rm|mv)[[:space:]])' <<<"$target" \
-      && block "agents may not modify permission settings or the guard hook"
+      && block "agents may not modify permission settings, the guard hook or the subagents"
   fi
 else
   target="$(grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' <<<"$input" | head -1)"
 
   # No file-tool edits to the protected agent configuration.
   if [[ "$tool" =~ ^(Edit|Write|MultiEdit|NotebookEdit)$ ]] && grep -Eq "$protected" <<<"$target"; then
-    block "agents may not modify permission settings or the guard hook"
+    block "agents may not modify permission settings, the guard hook or the subagents"
   fi
 fi
 
