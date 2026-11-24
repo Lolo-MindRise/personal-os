@@ -78,3 +78,34 @@ Branch `agent/overnight/02-backups`, stacked on block 1.
 
 ### Open questions
 - None.
+
+### PR
+https://github.com/Lolo-MindRise/personal-os/pull/18 (both CI jobs green)
+
+## Block 3: Budget screen
+Branch `agent/overnight/03-budget`, stacked on block 2.
+
+### Done
+- `GET /api/months/:month/budget`: one row per category with the budget in effect (latest
+  `valid_from` not after the month), the confirmed actual, and the difference, plus totals.
+  Pure logic in `src/shared/budget.ts` (tested without a DB, and cross-checked against the
+  existing `budgetForMonth`).
+- `POST /api/budget-lines` adds a line (category, amount, from month); history is never
+  edited. Screen "Presupuesto": month picker, table with totals row, "Cambiar presupuesto" form
+  (new `MonthPicker` component). No migration.
+
+### Decisions taken
+- Rows: every expense category, plus any other category that has a budget in effect that month.
+  Income and repayment categories without a budget are left out.
+- Difference = budget − actual (positive = under budget, green; negative = over, red).
+  Categories without a budget show no difference. Totals: budget and actual over all rows, and
+  difference = total budget − total actual (so unbudgeted spending lowers it).
+- "Actual" = confirmed movements of the category in the month; pending fixed items do not count.
+- A second line for the same category and month is a `409` ("history is not edited"): a typo in
+  a month's amount can only be fixed by adding a line from the next month on. There is no way
+  to remove a budget (amount must be positive). Say if you want either.
+- The e2e test adds a line in 2030 and cannot clean up (append-only); the e2e database is
+  fresh per run.
+
+### Open questions
+- None.
