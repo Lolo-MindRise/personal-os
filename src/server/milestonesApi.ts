@@ -29,16 +29,17 @@ function getMilestone(db: Db, id: number): MilestoneDto | undefined {
   return db.select(columns).from(milestones).where(eq(milestones.id, id)).get();
 }
 
+/** Ordered by target date; the id keeps equal dates in a stable order. */
+export function listMilestones(db: Db): MilestoneDto[] {
+  return db
+    .select(columns)
+    .from(milestones)
+    .orderBy(asc(milestones.targetDate), asc(milestones.id))
+    .all();
+}
+
 export function registerMilestonesApi(app: FastifyInstance, db: Db): void {
-  // Ordered by target date; the id keeps equal dates in a stable order.
-  app.get('/api/milestones', () => {
-    const rows: MilestoneDto[] = db
-      .select(columns)
-      .from(milestones)
-      .orderBy(asc(milestones.targetDate), asc(milestones.id))
-      .all();
-    return rows;
-  });
+  app.get('/api/milestones', () => listMilestones(db));
 
   app.post('/api/milestones', (request, reply) => {
     const parsed = milestoneCreateSchema.safeParse(request.body);

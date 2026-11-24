@@ -51,6 +51,8 @@ async function cleanUp(request: APIRequestContext, month: string, concepts: stri
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(NOW);
   await page.goto('/');
+  // "Inicio" is the default screen; these tests start on Movimientos.
+  await nav(page, 'Movimientos').click();
   await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeVisible();
 });
 

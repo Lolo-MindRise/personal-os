@@ -42,4 +42,4 @@ install-script allow list (task 0010).
 
 ## Action Items
 
-1. [ ] Task 0011: home dashboard.
+1. [x] Task 0011: home dashboard.

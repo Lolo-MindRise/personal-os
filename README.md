@@ -45,7 +45,7 @@ CI (`.github/workflows/ci.yml`) runs two jobs on every pull request: `check`
 Locally, Chromium needs `npx playwright install chromium` once, and on a fresh
 Ubuntu/WSL also its system libraries (see Prerequisites).
 
-The e2e suite uses its own ports (Vite 5321, API 5322, production server 5323)
+The e2e suite uses its own ports (Vite 5321, API 5322, production server 5323, empty-database server 5324)
 and fixed dates, so it can run while `npm run dev` or the real instance is up.
 
 ## Layout
@@ -153,5 +153,5 @@ the default.
    a `-pre-migration` backup.
 
 Do not start the real instance on a port another process uses (`npm run dev`
-uses 5310; the e2e suite uses 5321–5323): keep `PORT` in the instance config
+uses 5310; the e2e suite uses 5321–5324): keep `PORT` in the instance config
 distinct, as in step 1.

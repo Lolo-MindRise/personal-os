@@ -35,6 +35,15 @@ test('the dev page renders and no request fails', async ({ page }) => {
 
   // First, so a broken module (e.g. "404 .../api.ts") is named in the failure.
   expect(problems, 'failed requests and errors').toEqual([]);
+  await expect(page.getByRole('heading', { name: 'Inicio', level: 1 })).toBeVisible();
+  // The dev database may be empty or seeded: the key figures show either way.
+  await expect(page.getByRole('region', { name: 'Cifras clave' })).toBeVisible();
+
+  // The other screens still load through the proxy.
+  await page
+    .getByRole('navigation', { name: 'Secciones' })
+    .getByRole('button', { name: 'Movimientos' })
+    .click();
   await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Añadir movimiento' })).toBeVisible();
   expect(await categories, '/api/categories answered through the proxy').toBeDefined();

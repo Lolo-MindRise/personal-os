@@ -186,6 +186,85 @@ export interface BudgetMonthDto {
   totals: { budgetCents: number; actualCents: number; differenceCents: number };
 }
 
+/** One month of the dashboard's 12-month window (same figures as a Resumen row). */
+export interface DashboardMonthDto {
+  month: string;
+  incomeCents: number;
+  expenseCents: number;
+  repaymentCents: number;
+  savingsCents: number;
+  /** Accumulated savings at the end of the month; null before the initial balance date. */
+  accumulatedCents: number | null;
+}
+
+/** An expense category of the selected month with the budget in effect (null when none). */
+export interface DashboardCategoryDto {
+  categoryId: number;
+  categoryName: string;
+  budgetCents: number | null;
+  actualCents: number;
+  /** True only when there is a budget and the actual amount exceeds it. */
+  overBudget: boolean;
+}
+
+export interface DashboardDebtDto {
+  id: number;
+  name: string;
+  estimatedBalanceCents: number;
+  remainingInstallments: number;
+  monthlyPaymentCents: number;
+  /** The balance as last recorded and its date: the baseline of the progress. */
+  recordedBalanceCents: number;
+  balanceAsOf: string;
+  repaidSinceCents: number;
+  /**
+   * Whole percent of the recorded balance repaid by linked extra repayments since its date.
+   * Null when the recorded balance is zero (there is no baseline). The original amount of the
+   * loan is not stored, so progress is never measured against it.
+   */
+  progressPercent: number | null;
+}
+
+export interface DashboardMilestoneDto extends MilestoneDto {
+  overdue: boolean;
+}
+
+/** Everything the home screen shows (task 0011), in cents. */
+export interface DashboardDto {
+  month: string;
+  /** The server's local date, used for goals and overdue milestones. */
+  today: string;
+  /** What exists yet, so each block can say what to set up. */
+  setup: {
+    initialBalance: boolean;
+    movements: boolean;
+    goals: boolean;
+    budget: boolean;
+    debts: boolean;
+  };
+  keyFigures: {
+    /**
+     * Accumulated savings at the end of the selected month (the chart's last point); null when
+     * the month ends before the initial balance date.
+     */
+    accumulatedSavingsCents: number | null;
+    /** The goal with the nearest target date that is not in the past, or null. */
+    nextGoal: GoalDto | null;
+    totalDebtCents: number;
+    /** Savings of the month plus what is still pending (ADR-0005). */
+    projectedSavingsCents: number;
+  };
+  /** The 12 months ending at `month`, oldest first. */
+  months: DashboardMonthDto[];
+  categories: DashboardCategoryDto[];
+  debts: { items: DashboardDebtDto[]; totalEstimatedCents: number };
+  upcoming: {
+    pending: PendingEntryDto[];
+    /** The next three milestones not done, overdue first (earliest date first). */
+    milestones: DashboardMilestoneDto[];
+  };
+}
+
 /** State of the in-app backups (ADR-0003). */
 export interface BackupStatusDto {
   /** False when backups do not run (development, or no data directory). */

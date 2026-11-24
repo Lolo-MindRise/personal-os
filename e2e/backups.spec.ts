@@ -28,7 +28,7 @@ test('the warning banner is visible on every screen and the app still works', as
   const banner = page.getByRole('status', { name: 'Aviso de copias de seguridad' });
   await expect(banner).toBeVisible();
   await expect(banner).toContainText('copia de reserva');
-  await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Inicio', level: 1 })).toBeVisible();
 
   await page
     .getByRole('navigation', { name: 'Secciones' })
