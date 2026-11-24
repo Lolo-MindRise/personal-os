@@ -107,3 +107,7 @@ SQLite (better-sqlite3 + Drizzle), Zod, Vitest, Playwright. Server binds to
 ## Files
 
 Create and edit files with the file tools (Write, Edit), not with shell redirection or heredocs.
+
+If the guard hook blocks a shell command whose only effect was writing a file, write that file with the file tools instead. If it blocks anything else, stop and report it.
+
+Windows-only parts (`.cmd`, PowerShell) are not covered by CI. List them in the PR under "Manual test needed" with exact steps; the task is not done until Manuel has run them.
