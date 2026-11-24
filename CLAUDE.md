@@ -111,3 +111,9 @@ Create and edit files with the file tools (Write, Edit), not with shell redirect
 If the guard hook blocks a shell command whose only effect was writing a file, write that file with the file tools instead. If it blocks anything else, stop and report it.
 
 Windows-only parts (`.cmd`, PowerShell) are not covered by CI. List them in the PR under "Manual test needed" with exact steps; the task is not done until Manuel has run them.
+
+Shell output may only go to /tmp or /dev/null; the guard hook blocks shell writes to any other file.
+
+After fixing reviewer findings, run the reviewer again on the final diff before opening the PR, and record both verdicts in the PR.
+
+Review every generated migration before committing it: it must not contain DROP TABLE or rebuild an existing table. If the tool generates one, write an additive migration by hand and add a test that existing rows survive.
