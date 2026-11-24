@@ -265,10 +265,12 @@ describe('GoalForm and its validation', () => {
 });
 
 describe('navigation and api client', () => {
-  it('has Resumen and Objetivos', () => {
-    const html = renderToStaticMarkup(<Navigation view="summary" onChange={noop} />);
-    expect(html).toContain('Resumen');
-    expect(html).toContain('Objetivos');
+  it('has one sidebar entry for Objetivos y resumen, active on both screens', () => {
+    for (const view of ['summary', 'goals'] as const) {
+      const html = renderToStaticMarkup(<Navigation view={view} />);
+      expect(html).toContain('>Objetivos y resumen<');
+      expect(html).toMatch(/aria-current="page"[^>]*>Objetivos y resumen</);
+    }
   });
 
   it('uses the right URLs and methods', async () => {

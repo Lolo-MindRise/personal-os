@@ -23,7 +23,8 @@ import {
   type MovementFormValues,
   type MovementPayload,
 } from './movementForm.js';
-import { currentMonth, monthLabel, shiftMonth } from './months.js';
+import { PageHeader } from './PageHeader.js';
+import { useMonth } from './router.js';
 import { PendingList } from './PendingList.js';
 import { SummaryBar } from './SummaryBar.js';
 
@@ -35,7 +36,7 @@ export const CONFIRMATION_CANCELLED =
   'Se ha cancelado la confirmación: ese fijo ya no está pendiente.';
 
 export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
-  const [month, setMonth] = useState(currentMonth);
+  const [month, setMonth] = useMonth();
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [debts, setDebts] = useState<DebtDto[]>([]);
   const [movements, setMovements] = useState<MovementDto[]>([]);
@@ -264,9 +265,12 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <h1 ref={headingRef} tabIndex={-1}>
-        Movimientos
-      </h1>
+      <PageHeader
+        title="Movimientos"
+        headingRef={headingRef}
+        month={search === undefined ? month : undefined}
+        onMonthChange={changeMonth}
+      />
 
       {!showFilters && search === undefined && (
         <div className="form-actions">
@@ -335,38 +339,6 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
 
       {search === undefined && (
         <>
-          <nav className="month-picker" aria-label="Mes">
-            <button
-              type="button"
-              aria-label="Mes anterior"
-              onClick={() => {
-                changeMonth(shiftMonth(month, -1));
-              }}
-            >
-              ←
-            </button>
-            <input
-              type="month"
-              aria-label="Mes"
-              value={month}
-              onChange={(e) => {
-                if (e.target.value !== '') {
-                  changeMonth(e.target.value);
-                }
-              }}
-            />
-            <button
-              type="button"
-              aria-label="Mes siguiente"
-              onClick={() => {
-                changeMonth(shiftMonth(month, 1));
-              }}
-            >
-              →
-            </button>
-            <span className="month-label">{monthLabel(month)}</span>
-          </nav>
-
           {loadError !== undefined && (
             <p className="form-error" role="alert">
               {loadError}

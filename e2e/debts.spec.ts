@@ -7,7 +7,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 // debt, so the debt it adds stays; the e2e database is fresh on every run.
 
 const nav = (page: Page, name: string) =>
-  page.getByRole('navigation', { name: 'Secciones' }).getByRole('button', { name });
+  page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name });
 const card = (page: Page, name: string) =>
   page.locator('section.debt-card').filter({ hasText: name });
 

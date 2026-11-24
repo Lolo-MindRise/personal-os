@@ -5,7 +5,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 // so it never mixes with the seed; the test removes it afterwards.
 
 const nav = (page: Page, name: string) =>
-  page.getByRole('navigation', { name: 'Secciones' }).getByRole('button', { name });
+  page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name });
 const results = (page: Page) => page.getByRole('region', { name: 'Resultados de la búsqueda' });
 const resultRows = (page: Page) => results(page).locator('tbody tr');
 

@@ -121,7 +121,9 @@ describe('web app manifest', () => {
     icons: { src: string; sizes: string; type: string; purpose: string }[];
   };
   const css = readFileSync(join(WEB, 'styles.css'), 'utf8');
-  const variable = (name: string) => new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`).exec(css)?.[1];
+  // The installed app uses the light theme's colours (snow background, pine accent).
+  const light = css.slice(css.indexOf(":root[data-theme='light']"));
+  const variable = (name: string) => new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`).exec(light)?.[1];
 
   it('makes the app installable as a standalone application', () => {
     expect(manifest.name).toBe('Personal OS');

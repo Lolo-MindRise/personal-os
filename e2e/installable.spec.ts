@@ -48,7 +48,7 @@ test('the page links the manifest and Chromium finds nothing blocking the instal
     'href',
     '/manifest.webmanifest',
   );
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#1f6feb');
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#1f3b2d');
 
   const session = await page.context().newCDPSession(page);
   const result = (await session.send('Page.getInstallabilityErrors')) as {

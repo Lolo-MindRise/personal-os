@@ -54,7 +54,7 @@ describe('Inicio with no data', () => {
 
 describe('Navigation', () => {
   it('has Inicio first', () => {
-    const html = renderToStaticMarkup(<Navigation view="dashboard" onChange={noop} />);
+    const html = renderToStaticMarkup(<Navigation view="dashboard" />);
     expect(html.indexOf('Inicio')).toBeLessThan(html.indexOf('Movimientos'));
     expect(html).toContain('aria-current="page"');
   });

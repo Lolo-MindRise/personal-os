@@ -6,7 +6,7 @@ import { expect, test, type Page } from '@playwright/test';
 // not depend on the day the suite runs. Milestones cannot be deleted; nothing else reads them.
 
 const nav = (page: Page, name: string) =>
-  page.getByRole('navigation', { name: 'Secciones' }).getByRole('button', { name });
+  page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name });
 const row = (page: Page, title: string) =>
   page.locator('table.milestones tbody tr').filter({ hasText: title });
 

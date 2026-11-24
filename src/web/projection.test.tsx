@@ -236,9 +236,7 @@ describe('projection screen parts', () => {
   });
 
   it('has the Proyección section in the navigation', () => {
-    expect(renderToStaticMarkup(<Navigation view="dashboard" onChange={noop} />)).toContain(
-      'Proyección',
-    );
+    expect(renderToStaticMarkup(<Navigation view="dashboard" />)).toContain('Proyección');
   });
 });
 

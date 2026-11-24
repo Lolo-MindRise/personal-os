@@ -6,6 +6,8 @@ import { groupByKind, usageReason, validateCategoryName } from './categories.js'
 import { Field } from './Field.js';
 import { KIND_LABELS } from './labels.js';
 
+import { PageHeader } from './PageHeader.js';
+
 const defaultApi = createApiClient();
 
 const messageOf = (error: unknown) => (error instanceof ApiError ? error.message : NETWORK_ERROR);
@@ -244,7 +246,7 @@ export function CategoriesPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <h1>Categorías</h1>
+      <PageHeader title="Categorías" />
       <p className="hint">
         Las categorías clasifican movimientos, fijos y presupuestos. Una categoría con datos
         asociados no se puede eliminar, pero sí renombrar.

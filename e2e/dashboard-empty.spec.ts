@@ -44,7 +44,7 @@ test('the links open the screen that fixes each gap', async ({ page }) => {
     await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible();
     await page
       .getByRole('navigation', { name: 'Secciones' })
-      .getByRole('button', { name: 'Inicio' })
+      .getByRole('link', { name: 'Inicio' })
       .click();
     await expect(page.getByRole('heading', { name: 'Inicio', level: 1 })).toBeVisible();
   }

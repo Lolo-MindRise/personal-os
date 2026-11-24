@@ -1,34 +1,76 @@
+/*
+ * Design tokens (task 0015). Dark is the default; light is chosen with the sidebar toggle
+ * (`data-theme="light"` on <html>). Palette: pine #1F3B2D, granite #5E6668, snow #F7F8F6,
+ * amber #B7791F (warnings, over budget), brick #A4462F (negative values and errors only).
+ * Text colours meet WCAG AA (4.5:1) on their backgrounds in both themes.
+ */
 :root {
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --text: #1c2530;
-  --muted: #5d6b7a;
-  --border: #d5dbe2;
-  --accent: #1f6feb;
+  /* Space scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2.5rem;
+
+  /* Type scale */
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+
+  /* Radius by hierarchy: controls < cards < panels */
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --radius-panel: 14px;
+
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Dark theme (default) */
+  --bg: #121815;
+  --surface: #1a221e;
+  --surface-raised: #222c27;
+  --text: #e8ece9;
+  --muted: #a3adaa;
+  --border: #33403a;
+  --accent: #7ccba0;
+  --primary: #2e5a44;
+  --primary-text: #ffffff;
   --accent-text: #ffffff;
-  --danger: #b42318;
-  --income: #067647;
-  --expense: #b54708;
-  --repayment: #5b3cc4;
-  --danger-bg: #fef3f2;
-  color-scheme: light dark;
+  --income: #6fbf92;
+  --expense: #c4ccc9;
+  --budget: #7a8982;
+  --repayment: #5bb5aa;
+  --warn: #e0a94a;
+  --warn-bg: #2f2616;
+  --danger: #e5846c;
+  --danger-bg: #36201b;
+  --overlay: rgb(0 0 0 / 55%);
+  color-scheme: dark;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #12161c;
-    --surface: #1b212a;
-    --text: #e6eaef;
-    --muted: #9aa7b5;
-    --border: #333c48;
-    --accent: #5b9bff;
-    --accent-text: #0b1220;
-    --danger: #ff8a80;
-    --danger-bg: #3a1c1a;
-    --income: #4cc38a;
-    --expense: #f0a050;
-    --repayment: #a995f5;
-  }
+:root[data-theme='light'] {
+  --bg: #f7f8f6;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --text: #1b2420;
+  --muted: #5e6668;
+  --border: #d4dad6;
+  --accent: #1f3b2d;
+  --primary: #1f3b2d;
+  --primary-text: #ffffff;
+  --accent-text: #ffffff;
+  --income: #1f3b2d;
+  --expense: #5e6668;
+  --budget: #7b8580;
+  --repayment: #3e7c74;
+  --warn: #8a5a12;
+  --warn-bg: #fbf3e2;
+  --danger: #a4462f;
+  --danger-bg: #fbeeea;
+  --overlay: rgb(20 30 25 / 40%);
+  color-scheme: light;
 }
 
 * {
@@ -39,42 +81,40 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
-  line-height: 1.45;
-}
-
-.page {
-  max-width: 64rem;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
+  font-family: var(--font);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  /* Every amount aligns in columns. */
+  font-variant-numeric: tabular-nums;
 }
 
 h1 {
-  margin: 0 0 1rem;
-  font-size: 1.6rem;
+  margin: 0;
+  font-size: var(--text-2xl);
+  line-height: 1.2;
 }
 
 h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1.1rem;
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-lg);
+}
+
+a {
+  color: var(--accent);
 }
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
 
 button {
-  padding: 0.4rem 0.8rem;
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--surface);
   cursor: pointer;
 }
@@ -89,9 +129,9 @@ button:disabled {
 }
 
 button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-text);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-text);
 }
 
 button.danger {
@@ -99,17 +139,18 @@ button.danger {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
-  padding: 0.4rem 0.5rem;
+  padding: var(--space-2);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--surface);
 }
 
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
 .visually-hidden {
@@ -121,11 +162,175 @@ select {
   white-space: nowrap;
 }
 
-.month-picker {
+/* Layout: sidebar + content */
+.app-shell {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: 100vh;
+  padding: var(--space-4);
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.sidebar-top {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  justify-content: space-between;
+}
+
+.sidebar-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.menu-button {
+  display: none;
+}
+
+.brand {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.main-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.nav-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-title {
+  margin: 0 0 var(--space-1);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.nav-link {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  background: var(--surface-raised);
+}
+
+.nav-link.active {
+  background: var(--primary);
+  color: var(--primary-text);
+  font-weight: 600;
+}
+
+.theme-toggle {
+  margin-top: auto;
+  font-size: var(--text-sm);
+}
+
+.content {
+  min-width: 0;
+}
+
+@media (max-width: 52rem) {
+  .app-shell {
+    display: block;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .menu-button {
+    display: block;
+  }
+
+  /* The menu folds away on a phone; the button opens it. */
+  .sidebar:not(.open) .sidebar-body {
+    display: none;
+  }
+
+  .theme-toggle {
+    margin-top: 0;
+  }
+}
+
+.page {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) var(--space-6);
+}
+
+.loading {
+  color: var(--muted);
+}
+
+/* Page header: title, month selector, one primary action */
+.page-header {
+  margin-bottom: var(--space-5);
+}
+
+.page-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.page-header .hint {
+  margin: 0;
+}
+
+.sub-nav {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.sub-nav a {
+  padding: var(--space-2) 0;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.sub-nav a.active {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.month-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .month-picker input {
@@ -133,69 +338,42 @@ select {
 }
 
 .month-label {
-  margin-left: 0.5rem;
+  margin-left: var(--space-2);
   color: var(--muted);
-}
-
-.main-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  max-width: 64rem;
-  margin: 0 auto;
-  padding: 0.75rem 1rem 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.nav-tab {
-  padding: 0.5rem 1rem;
-  border: 1px solid transparent;
-  border-bottom: 0;
-  border-radius: 6px 6px 0 0;
-  background: transparent;
-  color: var(--muted);
-}
-
-.nav-tab.active {
-  border-color: var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font-weight: 600;
 }
 
 .hint {
-  margin: -0.5rem 0 1rem;
+  margin: 0 0 var(--space-4);
   color: var(--muted);
 }
 
 .summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: 0.75rem;
-  margin: 0 0 1.5rem;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-5);
 }
 
 /* Pending amounts and the projection: lighter than the confirmed totals. */
 .summary.pending-summary {
-  margin-top: -0.75rem;
+  margin-top: calc(var(--space-3) * -1);
 }
 
 .pending-item {
-  padding: 0.5rem 1rem;
+  padding: var(--space-2) var(--space-4);
   border: 1px dashed var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: transparent;
 }
 
 .pending-item dt {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
 }
 
 .pending-item dd {
-  margin: 0.1rem 0 0;
-  font-size: 1.05rem;
-  font-variant-numeric: tabular-nums;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-base);
 }
 
 .pending-item.negative dd {
@@ -203,55 +381,62 @@ select {
 }
 
 .pending-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-5);
 }
 
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .section-header h2 {
   margin: 0;
 }
 
-table.pending {
+/* Tables: amounts right-aligned, one look for every table */
+table.pending,
+table.movements {
   width: 100%;
   border-collapse: collapse;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--surface);
 }
 
 .pending th,
-.pending td {
-  padding: 0.5rem 0.75rem;
+.pending td,
+.movements th,
+.movements td {
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: top;
 }
 
-.pending th {
-  font-size: 0.85rem;
+.pending th,
+.movements th {
   color: var(--muted);
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 
-.pending .amount {
+th.amount,
+td.amount {
   text-align: right;
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 
-.pending .actions {
+.pending .actions,
+.movements .actions {
   white-space: nowrap;
   text-align: right;
 }
 
-.pending .actions button + button {
-  margin-left: 0.35rem;
+.pending .actions button + button,
+.movements .actions button + button {
+  margin-left: var(--space-2);
 }
 
 .skipped-row td,
@@ -260,21 +445,20 @@ table.pending {
 }
 
 .summary-item {
-  padding: 0.75rem 1rem;
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--surface);
 }
 
 .summary-item dt {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .summary-item dd {
-  margin: 0.15rem 0 0;
-  font-size: 1.3rem;
-  font-variant-numeric: tabular-nums;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xl);
 }
 
 .summary-item.negative dd {
@@ -282,23 +466,23 @@ table.pending {
 }
 
 .movement-form {
-  margin-bottom: 1.5rem;
-  padding: 1rem;
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--surface);
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: 0.75rem 1rem;
+  gap: var(--space-3) var(--space-4);
 }
 
 .field label {
   display: block;
-  margin-bottom: 0.2rem;
-  font-size: 0.85rem;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-sm);
   color: var(--muted);
 }
 
@@ -309,62 +493,31 @@ table.pending {
 
 .field-error,
 .form-error {
-  margin: 0.25rem 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--danger);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .form-actions {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
 }
 
-table.movements {
-  width: 100%;
-  border-collapse: collapse;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-}
-
-.movements th,
-.movements td {
-  padding: 0.55rem 0.75rem;
-  border-bottom: 1px solid var(--border);
-  text-align: left;
-  vertical-align: top;
-}
-
-.movements th {
-  font-size: 0.85rem;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.movements .amount {
-  text-align: right;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.movements .actions {
-  white-space: nowrap;
-  text-align: right;
-}
-
-.movements .actions button + button {
-  margin-left: 0.35rem;
+.page > .form-actions {
+  margin-top: 0;
+  margin-bottom: var(--space-3);
 }
 
 .notes {
   display: block;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .kind {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 
@@ -381,7 +534,7 @@ table.movements {
 }
 
 .empty {
-  padding: 1rem;
+  padding: var(--space-4);
   color: var(--muted);
   text-align: center;
 }
@@ -393,7 +546,7 @@ table.movements {
 }
 
 .budget .diff-over {
-  color: var(--danger);
+  color: var(--warn);
 }
 
 .budget .diff-under {
@@ -405,42 +558,41 @@ table.movements {
 }
 
 .form-hint {
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-3);
 }
 
 .debt-card {
-  margin-bottom: 1rem;
-  padding: 1rem;
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--surface);
 }
 
 .debt-facts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: 0.5rem 1rem;
-  margin: 0 0 0.75rem;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-3);
 }
 
 .debt-facts dt {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .debt-facts dd {
-  margin: 0.1rem 0 0;
-  font-variant-numeric: tabular-nums;
+  margin: var(--space-1) 0 0;
 }
 
 .debt-estimate {
-  font-size: 1.3rem;
+  font-size: var(--text-xl);
   font-weight: 600;
 }
 
 .debt-repayments {
-  margin: 0.5rem 0 0;
-  padding-left: 1.25rem;
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
 }
 
 /* Simple CSS bars (no chart library): decoration under a figure that carries the meaning. */
@@ -494,14 +646,14 @@ table.movements {
 
 .goal-progress {
   height: 10px;
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
   border-radius: 5px;
   background: var(--border);
   overflow: hidden;
 }
 
 .goal-status {
-  margin: 0.5rem 0 0;
+  margin: var(--space-2) 0 0;
   color: var(--muted);
 }
 
@@ -517,26 +669,26 @@ table.movements {
 }
 
 .milestones .overdue-row td {
-  background: var(--danger-bg);
+  background: var(--warn-bg);
 }
 
 .milestones .overdue-row td:first-child {
-  border-left: 3px solid var(--danger);
+  border-left: 3px solid var(--warn);
 }
 
 .overdue-flag {
   display: inline-block;
-  margin-left: 0.5rem;
-  padding: 0 0.4rem;
-  border: 1px solid var(--danger);
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--warn);
   border-radius: 4px;
-  color: var(--danger);
-  font-size: 0.8rem;
+  color: var(--warn);
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 
 .status {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 
@@ -545,7 +697,7 @@ table.movements {
 }
 
 .status-in_progress {
-  color: var(--accent);
+  color: var(--warn);
 }
 
 .status-done {
@@ -553,13 +705,12 @@ table.movements {
 }
 
 .backup-warning {
-  max-width: 64rem;
-  margin: 0 auto;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--danger);
-  border-radius: 6px;
-  background: var(--danger-bg);
-  color: var(--danger);
+  margin: var(--space-4) var(--space-4) 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--warn);
+  border-radius: var(--radius-control);
+  background: var(--warn-bg);
+  color: var(--warn);
 }
 
 .backup-warning p {
@@ -567,15 +718,15 @@ table.movements {
 }
 
 .backup-warning p + p {
-  margin-top: 0.25rem;
+  margin-top: var(--space-1);
 }
 
-/* Home dashboard (task 0011) */
+/* Home dashboard */
 .key-figures {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
 }
 
 .key-figures .summary-item {
@@ -583,11 +734,11 @@ table.movements {
 }
 
 .key-figures dd {
-  margin: 0.15rem 0 0;
+  margin: var(--space-1) 0 0;
 }
 
 .key-figures .card-small {
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   font-weight: 600;
 }
 
@@ -596,36 +747,34 @@ table.movements {
 }
 
 .summary-item dd.card-note {
-  font-size: 0.85rem;
-  font-variant-numeric: normal;
+  font-size: var(--text-sm);
 }
 
 .card-note {
   display: block;
-  margin: 0.25rem 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .card-big {
-  margin: 0.25rem 0;
-  font-size: 1.3rem;
-  font-variant-numeric: tabular-nums;
+  margin: var(--space-1) 0;
+  font-size: var(--text-xl);
 }
 
 .dashboard-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-5);
 }
 
 .dashboard-columns {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: 1.5rem;
+  gap: var(--space-5);
 }
 
 .dashboard-empty {
   border: 1px dashed var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
 }
 
 .link-button {
@@ -642,22 +791,22 @@ table.movements {
 }
 
 .chart figcaption {
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .chart-box {
   width: 100%;
   height: 300px;
-  padding: 0.5rem;
+  padding: var(--space-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--surface);
 }
 
 .chart-data {
-  margin-top: 0.5rem;
+  margin-top: var(--space-2);
 }
 
 .chart-data summary {
@@ -667,7 +816,7 @@ table.movements {
 
 .progress {
   height: 8px;
-  margin: 0.5rem 0;
+  margin: var(--space-2) 0;
   border-radius: 4px;
 }
 
@@ -678,11 +827,11 @@ table.movements {
 }
 
 .upcoming li {
-  padding: 0.4rem 0;
+  padding: var(--space-2) 0;
   border-bottom: 1px solid var(--border);
 }
 
-/* CSV import (task 0013). Status is always written in words; colour only reinforces it. */
+/* CSV import. Status is always written in words; colour only reinforces it. */
 .import-preview,
 .import-sample {
   display: block;
@@ -707,17 +856,17 @@ table.movements {
 }
 
 .import-summary {
-  padding: 0.6rem 0.8rem;
+  padding: var(--space-3);
   border: 1px solid var(--income);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   color: var(--income);
 }
 
-/* Projection (task 0013, block 4). */
+/* Projection */
 .projection-notes ul,
 .goal-projection {
-  margin: 0.5rem 0;
-  padding-left: 1.2rem;
+  margin: var(--space-2) 0;
+  padding-left: var(--space-5);
 }
 
 .projection-table {
@@ -725,9 +874,9 @@ table.movements {
   overflow-x: auto;
 }
 
-/* Movement search (task 0013, block 3). */
+/* Movement search */
 .search-totals {
-  margin: 0.5rem 0;
+  margin: var(--space-2) 0;
 }
 
 .search-results table {
@@ -737,19 +886,19 @@ table.movements {
 
 .pager {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--space-3);
   align-items: center;
   justify-content: center;
-  margin: 0.75rem 0;
+  margin: var(--space-3) 0;
 }
 
 .rule-list {
-  margin: 0.5rem 0 0;
+  margin: var(--space-2) 0 0;
   padding: 0;
   list-style: none;
 }
 
 .rule-list li {
-  padding: 0.3rem 0;
+  padding: var(--space-1) 0;
   border-bottom: 1px solid var(--border);
 }

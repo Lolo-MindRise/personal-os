@@ -15,6 +15,8 @@ import {
 import { Field } from './Field.js';
 import { formatDate } from './months.js';
 
+import { PageHeader } from './PageHeader.js';
+
 const defaultApi = createApiClient();
 
 const messageOf = (error: unknown) => (error instanceof ApiError ? error.message : NETWORK_ERROR);
@@ -269,7 +271,7 @@ export function DebtsPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <h1>Deudas</h1>
+      <PageHeader title="Deudas" />
       <p className="hint">
         El saldo estimado parte del saldo registrado y descuenta, por orden de fecha y solo desde la
         fecha del saldo, la parte de capital de cada cuota confirmada (cuota menos intereses, con el

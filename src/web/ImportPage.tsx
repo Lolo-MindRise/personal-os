@@ -29,6 +29,8 @@ import {
 import { KIND_LABELS } from './labels.js';
 import { formatDate } from './months.js';
 
+import { PageHeader } from './PageHeader.js';
+
 const defaultApi = createApiClient();
 
 const messageOf = (error: unknown) => (error instanceof ApiError ? error.message : NETWORK_ERROR);
@@ -521,7 +523,7 @@ export function ImportPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <h1>Importar</h1>
+      <PageHeader title="Importar" />
       <p className="hint">
         Elige el extracto de tu banco en CSV. El archivo se lee en tu navegador; solo se guardan los
         movimientos que importes. Revisa todas las filas antes de importar.

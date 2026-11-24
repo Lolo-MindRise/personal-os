@@ -18,7 +18,7 @@ const NOW = '2027-03-15T12:00:00';
 const MONTH = '2027-03';
 
 const nav = (page: Page, name: 'Movimientos' | 'Fijos') =>
-  page.getByRole('navigation', { name: 'Secciones' }).getByRole('button', { name });
+  page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name });
 const summaryItem = (page: Page, label: string) =>
   page.locator('.summary-item').filter({ hasText: label });
 const pendingItem = (page: Page, label: string) =>
@@ -206,6 +206,9 @@ test('edit a fixed item, end it, and see it stop appearing as pending', async ({
   const yyyy = month.slice(0, 4);
   try {
     await nav(page, 'Fijos').click();
+    // Let the list finish loading first: the screen is now loaded on demand, and a slow first
+    // load must not land after the new item and replace the list.
+    await expect(itemRows(page)).toHaveCount(5);
     await page.getByLabel('Categoría').selectOption({ label: 'Ocio' });
     await page.getByLabel('Concepto').fill(concept);
     await page.getByLabel('Importe previsto (€)').fill('20');

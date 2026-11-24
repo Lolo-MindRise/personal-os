@@ -4,7 +4,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 // Tests clean up the categories they create.
 
 const nav = (page: Page, name: string) =>
-  page.getByRole('navigation', { name: 'Secciones' }).getByRole('button', { name });
+  page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name });
 
 async function deleteByName(request: APIRequestContext, names: string[]) {
   const all = (await (await request.get('/api/categories')).json()) as {

@@ -27,7 +27,7 @@ const mapping: ImportMapping = {
 
 describe('Navigation', () => {
   it('has the Importar section after Movimientos', () => {
-    const html = renderToStaticMarkup(<Navigation view="dashboard" onChange={noop} />);
+    const html = renderToStaticMarkup(<Navigation view="dashboard" />);
     expect(html.indexOf('Movimientos')).toBeLessThan(html.indexOf('Importar'));
   });
 });

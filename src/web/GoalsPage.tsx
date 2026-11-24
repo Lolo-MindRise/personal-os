@@ -13,6 +13,9 @@ import {
   type GoalFormValues,
 } from './summaryForms.js';
 
+import { PageHeader, SubNav } from './PageHeader.js';
+import { hrefFor } from './router.js';
+
 const defaultApi = createApiClient();
 
 const messageOf = (error: unknown) => (error instanceof ApiError ? error.message : NETWORK_ERROR);
@@ -235,7 +238,14 @@ export function GoalsPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <h1>Objetivos</h1>
+      <PageHeader title="Objetivos" />
+      <SubNav
+        current="goals"
+        items={[
+          { id: 'summary', label: 'Resumen del año', href: hrefFor('summary') },
+          { id: 'goals', label: 'Objetivos', href: hrefFor('goals') },
+        ]}
+      />
       <p className="hint">
         El progreso se mide contra el ahorro acumulado de «Resumen» (con su saldo inicial). Todos
         los objetivos se comparan con el mismo ahorro: no se reparte entre ellos. El ahorro mensual

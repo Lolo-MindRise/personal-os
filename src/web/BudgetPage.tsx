@@ -12,8 +12,9 @@ import {
 } from './budgetForm.js';
 import { Field } from './Field.js';
 import { KIND_LABELS } from './labels.js';
-import { MonthPicker } from './MonthPicker.js';
 import { currentMonth, formatMonth } from './months.js';
+import { PageHeader } from './PageHeader.js';
+import { useMonth } from './router.js';
 
 const defaultApi = createApiClient();
 
@@ -180,7 +181,7 @@ export function BudgetForm(props: {
 
 /** The "Presupuesto" screen: budget in effect vs. confirmed spending, per category and month. */
 export function BudgetPage({ api = defaultApi }: { api?: ApiClient }) {
-  const [month, setMonth] = useState(currentMonth);
+  const [month, setMonth] = useMonth();
   const [data, setData] = useState<BudgetMonthDto | undefined>();
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [loadError, setLoadError] = useState<string | undefined>();
@@ -247,13 +248,12 @@ export function BudgetPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <h1>Presupuesto</h1>
-      <p className="hint">
-        Presupuesto vigente en el mes frente a lo gastado y confirmado. Diferencia = presupuesto −
-        real: en rojo, te has pasado.
-      </p>
-
-      <MonthPicker month={month} onChange={changeMonth} />
+      <PageHeader
+        title="Presupuesto"
+        month={month}
+        onMonthChange={changeMonth}
+        hint="Presupuesto vigente en el mes frente a lo gastado y confirmado. Diferencia = presupuesto − real: en ámbar, te has pasado."
+      />
 
       {loadError !== undefined && (
         <p className="form-error" role="alert">

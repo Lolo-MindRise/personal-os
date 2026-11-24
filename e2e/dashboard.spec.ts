@@ -6,7 +6,7 @@ import { expect, test, type Page } from '@playwright/test';
 // of 3.000,00; one goal of 6.000,00 by 2026-12-31.
 
 const nav = (page: Page, name: string) =>
-  page.getByRole('navigation', { name: 'Secciones' }).getByRole('button', { name });
+  page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name });
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime('2026-01-15T12:00:00');
@@ -18,7 +18,7 @@ test('the dashboard is the default page and shows the key figures', async ({ pag
   await expect(nav(page, 'Inicio')).toHaveAttribute('aria-current', 'page');
   // First in the navigation.
   await expect(
-    page.getByRole('navigation', { name: 'Secciones' }).getByRole('button').first(),
+    page.getByRole('navigation', { name: 'Secciones' }).getByRole('link').first(),
   ).toHaveText('Inicio');
 
   await expect(page.getByTestId('figure-accumulated')).toContainText(/999,30\s€/);

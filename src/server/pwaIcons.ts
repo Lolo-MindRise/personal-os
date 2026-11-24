@@ -24,8 +24,8 @@ export const ICONS: IconSpec[] = [
   { file: 'apple-touch-icon.png', size: 180, maskable: true },
 ];
 
-/** The accent colour of the UI (`--accent` in src/web/styles.css). */
-export const ICON_BACKGROUND = [0x1f, 0x6f, 0xeb] as const;
+/** The pine colour of the UI (`--accent` in the light theme of src/web/styles.css). */
+export const ICON_BACKGROUND = [0x1f, 0x3b, 0x2d] as const;
 const WHITE = [0xff, 0xff, 0xff] as const;
 
 /** Three rising bars, centred inside the safe zone of a maskable icon (the middle 80 %). */

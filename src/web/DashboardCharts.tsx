@@ -200,7 +200,7 @@ export function CategoriesChart({ categories }: { categories: DashboardCategoryD
             />
             <Tooltip formatter={tooltipAmount} {...tooltipStyles} />
             <Legend wrapperStyle={{ color: 'var(--text)' }} />
-            <Bar dataKey="Presupuesto" fill="var(--muted)" />
+            <Bar dataKey="Presupuesto" fill="var(--budget)" />
             <Bar
               dataKey="Gasto"
               fill="var(--expense)"
@@ -209,7 +209,7 @@ export function CategoriesChart({ categories }: { categories: DashboardCategoryD
                   {...props}
                   fill={
                     (props.payload as { over?: boolean } | undefined)?.over === true
-                      ? 'var(--danger)'
+                      ? 'var(--warn)'
                       : 'var(--expense)'
                   }
                 />

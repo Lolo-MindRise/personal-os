@@ -6,7 +6,7 @@ import { expect, test, type Page } from '@playwright/test';
 // adds a line for Suministros in 2030, a month no other spec looks at.
 
 const nav = (page: Page, name: string) =>
-  page.getByRole('navigation', { name: 'Secciones' }).getByRole('button', { name });
+  page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name });
 const monthInput = (page: Page) => page.locator('nav.month-picker input[type=month]');
 const row = (page: Page, text: string) =>
   page.locator('table.budget tbody tr').filter({ hasText: text });
