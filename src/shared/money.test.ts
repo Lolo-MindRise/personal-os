@@ -116,3 +116,16 @@ describe('formatCents', () => {
     }
   });
 });
+
+describe('parseMoney with allowZero', () => {
+  it('accepts zero only when asked to, and still rejects the rest', () => {
+    expect(parseMoney('0')).toEqual({ ok: false, error: MONEY_ERRORS.zero });
+    expect(parseMoney('0', { allowZero: true })).toEqual({ ok: true, cents: 0 });
+    expect(parseMoney('0,00', { allowZero: true })).toEqual({ ok: true, cents: 0 });
+    expect(parseMoney('-1', { allowZero: true })).toEqual({
+      ok: false,
+      error: MONEY_ERRORS.negative,
+    });
+    expect(parseMoney('', { allowZero: true })).toEqual({ ok: false, error: MONEY_ERRORS.empty });
+  });
+});

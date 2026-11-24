@@ -74,6 +74,34 @@ export interface MonthSummaryDto {
   projectedSavingsCents: number;
 }
 
+/** An extra repayment (a `repayment` movement) linked to a debt. */
+export interface DebtRepaymentDto {
+  movementId: number;
+  date: string;
+  concept: string;
+  amountCents: number;
+}
+
+/** A debt with its linked extra repayments and the estimated current balance (block 4). */
+export interface DebtDto {
+  id: number;
+  name: string;
+  monthlyPaymentCents: number;
+  /** Balance as last recorded, valid on `balanceAsOf`. */
+  balanceCents: number;
+  balanceAsOf: string;
+  remainingInstallments: number;
+  /** Annual rate in basis points (650 = 6,50 %). */
+  annualRateBps: number;
+  notes: string | null;
+  /** Every extra repayment linked to the debt, newest first. */
+  repayments: DebtRepaymentDto[];
+  /** Sum of the linked repayments dated after `balanceAsOf`. */
+  repaidSinceCents: number;
+  /** balance − repaid since the as-of date, never below zero. Regular installments are not deducted. */
+  estimatedBalanceCents: number;
+}
+
 /** One category's row in a month's budget (task 0008, block 3). */
 export interface BudgetRowDto {
   categoryId: number;

@@ -23,6 +23,7 @@ import { dueEntries } from './db/recurring.js';
 import { categories, debts, movements } from './db/schema.js';
 import { registerBudgetApi } from './budgetApi.js';
 import { registerCategoriesApi } from './categoriesApi.js';
+import { registerDebtsApi } from './debtsApi.js';
 import { registerRecurringApi } from './recurringApi.js';
 
 const MESSAGES = {
@@ -209,5 +210,6 @@ export function registerApi(app: FastifyInstance, db: Db): void {
 
   registerBudgetApi(app, db);
   registerCategoriesApi(app, db);
+  registerDebtsApi(app, db);
   registerRecurringApi(app, db);
 }

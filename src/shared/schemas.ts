@@ -108,6 +108,9 @@ export const debtCreateSchema = z.strictObject({
   notes: optionalNotes,
 });
 
+/** PATCH body: any subset. The API re-checks the balance and its as-of date together. */
+export const debtUpdateSchema = debtCreateSchema.partial();
+
 export const goalCreateSchema = z.strictObject({
   name: text,
   targetAmountCents: cents,
@@ -130,5 +133,6 @@ export type RecurringItemUpdate = z.infer<typeof recurringItemUpdateSchema>;
 export type ConfirmOverrides = z.infer<typeof confirmOverridesSchema>;
 export type BudgetLineCreate = z.infer<typeof budgetLineCreateSchema>;
 export type DebtCreate = z.infer<typeof debtCreateSchema>;
+export type DebtUpdate = z.infer<typeof debtUpdateSchema>;
 export type GoalCreate = z.infer<typeof goalCreateSchema>;
 export type MilestoneCreate = z.infer<typeof milestoneCreateSchema>;

@@ -24,9 +24,9 @@ const THOUSANDS = /^\d{1,3}(\.\d{3})+$/;
  * thousands separators. Without a comma, a dot followed by one or two digits
  * is a decimal point (`12.5`); a dot followed by groups of exactly three
  * digits is a thousands separator (`1.234` is 1234 €).
- * Rejected: empty, negative, zero, more than two decimals, non-numeric.
+ * Rejected: empty, negative, zero (unless `allowZero`, for balances), more than two decimals, non-numeric.
  */
-export function parseMoney(input: string): ParseMoneyResult {
+export function parseMoney(input: string, options: { allowZero?: boolean } = {}): ParseMoneyResult {
   const text = input.trim();
   if (text === '') {
     return { ok: false, error: MONEY_ERRORS.empty };
@@ -71,7 +71,7 @@ export function parseMoney(input: string): ParseMoneyResult {
   if (!Number.isSafeInteger(cents)) {
     return { ok: false, error: MONEY_ERRORS.tooLarge };
   }
-  if (cents === 0) {
+  if (cents === 0 && options.allowZero !== true) {
     return { ok: false, error: MONEY_ERRORS.zero };
   }
   return { ok: true, cents };

@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { CategoryDto, MonthSummaryDto, MovementDto, PendingEntryDto } from '../shared/api.js';
+import type {
+  CategoryDto,
+  DebtDto,
+  MonthSummaryDto,
+  MovementDto,
+  PendingEntryDto,
+} from '../shared/api.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
 import { MovementForm, type FieldErrors, type FormMode } from './MovementForm.js';
 import { MovementList } from './MovementList.js';
@@ -27,6 +33,7 @@ export const CONFIRMATION_CANCELLED =
 export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   const [month, setMonth] = useState(currentMonth);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const [debts, setDebts] = useState<DebtDto[]>([]);
   const [movements, setMovements] = useState<MovementDto[]>([]);
   const [pending, setPending] = useState<PendingEntryDto[]>([]);
   const [skipped, setSkipped] = useState<PendingEntryDto[]>([]);
@@ -49,6 +56,9 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
 
   useEffect(() => {
     api.categories().then(setCategories, (error: unknown) => {
+      setLoadError(messageOf(error));
+    });
+    api.debts().then(setDebts, (error: unknown) => {
       setLoadError(messageOf(error));
     });
   }, [api]);
@@ -125,7 +135,12 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
       } else if (editingId === undefined) {
         await api.createMovement(payload);
       } else {
-        await api.updateMovement(editingId, payload);
+        // A repayment turned into another kind must drop its debt, or the API refuses it.
+        const had = movements.find((m) => m.id === editingId)?.debtId ?? null;
+        await api.updateMovement(
+          editingId,
+          payload.debtId === undefined && had !== null ? { ...payload, debtId: null } : payload,
+        );
       }
       resetForm();
       setActionError(undefined);
@@ -258,6 +273,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
       <MovementForm
         values={form}
         categories={categories}
+        debts={debts}
         errors={fieldErrors}
         formError={formError}
         mode={mode}

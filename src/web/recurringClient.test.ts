@@ -119,6 +119,7 @@ describe('confirming through the movement form', () => {
       concept: 'Internet',
       amount: '35,00',
       notes: '',
+      debtId: '',
     });
   });
 

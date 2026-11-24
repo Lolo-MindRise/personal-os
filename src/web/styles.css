@@ -389,6 +389,41 @@ table.movements {
   margin: 0 0 0.75rem;
 }
 
+.debt-card {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.debt-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0 0 0.75rem;
+}
+
+.debt-facts dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.debt-facts dd {
+  margin: 0.1rem 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.debt-estimate {
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.debt-repayments {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
 .backup-warning {
   max-width: 64rem;
   margin: 0 auto;
