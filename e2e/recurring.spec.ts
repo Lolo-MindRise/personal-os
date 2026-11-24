@@ -9,11 +9,13 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 type MovementRow = { id: number };
 type ItemRow = { id: number; concept: string };
 
-/** The current month in the browser's (local) calendar, as the page computes it. */
-function localMonth(): string {
-  const now = new Date();
-  return `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
+/**
+ * The browser's clock is fixed (see beforeEach), so "this month" is a constant and no test
+ * depends on the day or month it runs. The seeded items run from 2026-01 with no end month,
+ * so all five are pending in this month.
+ */
+const NOW = '2027-03-15T12:00:00';
+const MONTH = '2027-03';
 
 const nav = (page: Page, name: 'Movimientos' | 'Fijos') =>
   page.getByRole('navigation', { name: 'Secciones' }).getByRole('button', { name });
@@ -47,6 +49,7 @@ async function cleanUp(request: APIRequestContext, month: string, concepts: stri
 }
 
 test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(NOW);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeVisible();
 });
@@ -55,7 +58,7 @@ test('define a fixed item, see it pending, confirm it with another amount, skip 
   page,
   request,
 }) => {
-  const month = localMonth();
+  const month = MONTH;
   const created = 'suscripción de prueba'; // lowercase on purpose: shown as typed
   try {
     await test.step('Fijos lists the seeded items', async () => {
@@ -195,7 +198,7 @@ test('edit a fixed item, end it, and see it stop appearing as pending', async ({
   page,
   request,
 }) => {
-  const month = localMonth();
+  const month = MONTH;
   const concept = 'Curso corto';
   const mm = month.slice(5);
   const yyyy = month.slice(0, 4);
@@ -264,7 +267,7 @@ test('a failed action keeps its error visible, and confirm all cancels a confirm
   page,
   request,
 }) => {
-  const month = localMonth();
+  const month = MONTH;
   try {
     await test.step('an entry confirmed elsewhere: skipping the stale row explains why it failed', async () => {
       await expect(pendingRow(page, 'Internet')).toHaveCount(1);
