@@ -180,7 +180,7 @@ describe('MovementForm', () => {
     expect(render()).toContain('Añadir movimiento');
     const editing = render({ mode: 'edit' });
     expect(editing).toContain('Editar movimiento');
-    expect(editing).toContain('Guardar cambios');
+    expect(editing).toContain('Guardar movimiento');
     expect(editing).toContain('Cancelar');
   });
 
@@ -190,7 +190,7 @@ describe('MovementForm', () => {
       values: { ...emptyForm('2026-01-10'), categoryId: '2' },
     });
     expect(confirming).toContain('Confirmar fijo');
-    expect(confirming).toContain('>Confirmar<');
+    expect(confirming).toContain('>Confirmar fijo<');
     expect(confirming).toContain('Cancelar');
     // Kind and category are disabled; date, concept, amount and notes are not.
     expect(confirming.match(/<select[^>]*disabled/g)).toHaveLength(2);

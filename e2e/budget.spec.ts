@@ -46,6 +46,7 @@ test('shows the month with budget, actual and difference, and changes a budget f
   });
 
   await test.step('the same month again is refused: history is not edited', async () => {
+    await page.getByRole('button', { name: 'Cambiar presupuesto' }).first().click();
     await page.getByLabel('Categoría').selectOption({ label: 'Suministros' });
     await page.getByLabel('Presupuesto mensual (€)').fill('10,00');
     await page.getByLabel('Desde (mes)').fill('2030-06');

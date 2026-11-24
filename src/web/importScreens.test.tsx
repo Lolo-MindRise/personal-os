@@ -204,12 +204,13 @@ describe('RulesPanel', () => {
       />,
     );
 
-  it('lists the rules with a delete button and the form to add one', () => {
+  it('lists the rules with a delete button and a button that opens the form to add one', () => {
     const html = render();
     expect(html).toContain('«mercadona» → Supermercado');
     expect(html).toContain('Eliminar la regla «mercadona»');
-    expect(html).toContain('El concepto contiene');
-    expect(html).toContain('Añadir regla');
+    expect(html).toContain('>Añadir regla<');
+    // The form itself lives in a side panel, closed until the button is pressed.
+    expect(html).not.toContain('El concepto contiene');
   });
 
   it('says so when there are none, and shows an error', () => {

@@ -59,11 +59,12 @@ test('import a bank CSV: rules, a duplicate, fixed items, a bad row, and a re-im
     await expect(page.getByRole('heading', { name: 'Importar', level: 1 })).toBeVisible();
 
     await test.step('add a category rule', async () => {
+      await page.getByRole('button', { name: 'Añadir regla' }).click();
       await page.getByLabel('El concepto contiene').fill('mercadona');
       await page
         .getByLabel('Categoría', { exact: true })
         .selectOption({ label: 'Supermercado (gasto)' });
-      await page.getByRole('button', { name: 'Añadir regla' }).click();
+      await page.getByRole('button', { name: 'Guardar regla' }).click();
       await expect(page.getByText('«mercadona» → Supermercado')).toBeVisible();
     });
 

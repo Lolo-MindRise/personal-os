@@ -33,26 +33,32 @@ test('add, rename and delete a category; a used one cannot be deleted', async ({
       await expect(row.getByRole('button', { name: 'Eliminar' })).toBeDisabled();
     });
 
-    await test.step('add', async () => {
+    await test.step('add, in the side panel, which closes when saved', async () => {
+      await page.getByRole('button', { name: 'Añadir categoría' }).click();
+      const panel = page.getByRole('dialog', { name: 'Añadir categoría' });
+      await expect(panel).toBeVisible();
       await page.getByLabel('Nombre').fill(created);
-      await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+      await page.getByRole('button', { name: 'Guardar categoría' }).click();
+      await expect(panel).toHaveCount(0);
       await expect(
         page.locator('table.categories tbody tr').filter({ hasText: created }),
       ).toHaveCount(1);
     });
 
-    await test.step('a duplicate name is refused', async () => {
+    await test.step('a duplicate name is refused and the panel stays open', async () => {
+      await page.getByRole('button', { name: 'Añadir categoría' }).click();
       await page.getByLabel('Nombre').fill('MASCOTAS DE PRUEBA');
-      await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+      await page.getByRole('button', { name: 'Guardar categoría' }).click();
       await expect(page.getByText('Ya existe una categoría con ese nombre.')).toBeVisible();
-      await page.getByLabel('Nombre').fill('');
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
     });
 
     await test.step('rename', async () => {
       const row = page.locator('table.categories tbody tr').filter({ hasText: created });
       await row.getByRole('button', { name: 'Renombrar' }).click();
       await page.getByLabel('Nombre').fill(renamed);
-      await page.getByRole('button', { name: 'Guardar cambios' }).click();
+      await page.getByRole('button', { name: 'Guardar categoría' }).click();
       await expect(
         page.locator('table.categories tbody tr').filter({ hasText: renamed }),
       ).toHaveCount(1);

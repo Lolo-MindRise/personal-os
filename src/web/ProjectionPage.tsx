@@ -39,6 +39,7 @@ import {
 } from './projectionForm.js';
 
 import { PageHeader } from './PageHeader.js';
+import { SidePanel, usePanel } from './SidePanel.js';
 
 const defaultApi = createApiClient();
 
@@ -249,7 +250,7 @@ export function ScenarioForm(props: {
       </div>
       <div className="form-actions">
         <button type="submit" className="primary">
-          Añadir ajuste
+          Guardar ajuste
         </button>
       </div>
     </form>
@@ -302,6 +303,7 @@ export function ProjectionPage({ api = defaultApi }: { api?: ApiClient }) {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [form, setForm] = useState<ScenarioFormValues>(() => emptyScenarioForm(currentMonth));
   const [errors, setErrors] = useState<Partial<Record<ScenarioField, string>>>({});
+  const panel = usePanel();
 
   const rangeError =
     endMonth < currentMonth
@@ -345,6 +347,7 @@ export function ProjectionPage({ api = defaultApi }: { api?: ApiClient }) {
     setScenarios((current) => [...current, result.scenario]);
     setErrors({});
     setForm({ ...form, amount: '' });
+    panel.hide();
   };
 
   // A scenario that starts after a shorter end month no longer applies to anything: drop it.
@@ -356,7 +359,19 @@ export function ProjectionPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <PageHeader title="Proyección" />
+      <PageHeader
+        title="Proyección"
+        action={
+          <button
+            type="button"
+            className="primary"
+            disabled={data === undefined || rangeError !== undefined}
+            onClick={panel.show}
+          >
+            Añadir ajuste
+          </button>
+        }
+      />
       <p className="hint">¿Cuánto tendré ahorrado en una fecha? Elige hasta qué mes proyectar.</p>
 
       <div className="field">
@@ -431,16 +446,29 @@ export function ProjectionPage({ api = defaultApi }: { api?: ApiClient }) {
 
           <ProjectionExplanation />
 
-          <ScenarioForm
-            values={form}
-            categories={data.categories}
-            errors={errors}
-            onChange={(values) => {
-              setForm(values);
+          <SidePanel
+            open={panel.open}
+            title="Añadir ajuste"
+            onClose={() => {
+              setForm(emptyScenarioForm(currentMonth));
               setErrors({});
+              panel.hide();
             }}
-            onSubmit={addScenario}
-          />
+          >
+            <ScenarioForm
+              values={form}
+              categories={data.categories}
+              errors={errors}
+              onChange={(values) => {
+                setForm(values);
+                setErrors({});
+              }}
+              onSubmit={addScenario}
+            />
+          </SidePanel>
+          <p className="hint">
+            Los ajustes no se guardan: viven solo en esta página y cambian la proyección.
+          </p>
           {scenarios.length > 0 && (
             <section aria-label="Ajustes del escenario">
               <ul className="rule-list">

@@ -229,7 +229,7 @@ describe('RecurringForm', () => {
   it('switches its texts when editing', () => {
     const html = render({ editing: true });
     expect(html).toContain('Editar fijo');
-    expect(html).toContain('Guardar cambios');
+    expect(html).toContain('Guardar fijo');
     expect(html).toContain('Cancelar');
     expect(render()).not.toContain('Cancelar');
   });

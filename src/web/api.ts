@@ -42,7 +42,11 @@ export class ApiError extends Error {
   }
 }
 
-export const NETWORK_ERROR = 'No se ha podido conectar con el servidor.';
+export const NETWORK_ERROR =
+  'No se ha podido conectar con el servidor. Comprueba que Personal OS sigue en marcha y vuelve a intentarlo.';
+
+/** `MESSAGES.invalid` of the server. */
+const INVALID_DATA = 'Datos no válidos.';
 
 async function request<T>(fetchFn: typeof fetch, url: string, init?: RequestInit): Promise<T> {
   let response: Response;
@@ -62,7 +66,12 @@ async function request<T>(fetchFn: typeof fetch, url: string, init?: RequestInit
   }
   if (!response.ok) {
     const error = body as Partial<ApiErrorBody>;
-    throw new ApiError(error.error ?? NETWORK_ERROR, error.fields);
+    // The server's bare "invalid data" message says what happened but not what to do.
+    const message =
+      error.error === INVALID_DATA
+        ? `${INVALID_DATA} Revisa lo escrito y vuelve a intentarlo.`
+        : error.error;
+    throw new ApiError(message ?? NETWORK_ERROR, error.fields);
   }
   return body as T;
 }

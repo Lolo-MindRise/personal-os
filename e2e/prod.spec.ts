@@ -44,13 +44,17 @@ test('the month label is lowercase Spanish, not "Noviembre De 2026"', async ({ p
 test('add, edit and delete a movement, with the totals following', async ({ page }) => {
   await expect(page.getByText('No hay movimientos este mes.')).toBeVisible();
 
-  await test.step('add an expense', async () => {
+  await test.step('add an expense in the side panel, which closes when saved', async () => {
+    await page.getByRole('button', { name: 'Añadir movimiento' }).click();
+    const panel = page.getByRole('dialog', { name: 'Añadir movimiento' });
+    await expect(panel).toBeVisible();
     await page.getByLabel('Categoría').selectOption({ label: 'Supermercado' });
     // Typed in lowercase on purpose: it must be shown exactly as typed.
     await page.getByLabel('Concepto').fill('compra de prueba');
     await page.getByLabel('Importe (€)').fill('12,50');
     await page.getByLabel('Notas').fill('nota en minúsculas');
-    await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+    await page.getByRole('button', { name: 'Guardar movimiento' }).click();
+    await expect(panel).toHaveCount(0);
 
     await expect(rows(page)).toHaveCount(1);
     const row = rows(page).first();
@@ -65,23 +69,26 @@ test('add, edit and delete a movement, with the totals following', async ({ page
     await expect(summaryItem(page, 'Gastos')).toContainText(/12,50\s€/);
     await expect(summaryItem(page, 'Ahorro')).toContainText(/-12,50\s€/);
     // The form is cleared for the next movement.
+    await page.getByRole('button', { name: 'Añadir movimiento' }).click();
     await expect(page.getByLabel('Concepto')).toHaveValue('');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 
   await test.step('edit it', async () => {
     await rows(page).first().getByRole('button', { name: 'Editar' }).click();
-    await expect(page.getByRole('heading', { name: 'Editar movimiento' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Editar movimiento' })).toBeVisible();
     await expect(page.getByLabel('Importe (€)')).toHaveValue('12,50');
 
     await page.getByLabel('Concepto').fill('compra editada');
     await page.getByLabel('Importe (€)').fill('1.234,56');
-    await page.getByRole('button', { name: 'Guardar cambios' }).click();
+    await page.getByRole('button', { name: 'Guardar movimiento' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
 
     await expect(rows(page)).toHaveCount(1);
     await expect(rows(page).first()).toContainText('compra editada');
     await expect(rows(page).first()).toContainText(/1\.234,56\s€/);
     await expect(summaryItem(page, 'Gastos')).toContainText(/1\.234,56\s€/);
-    await expect(page.getByRole('heading', { name: 'Añadir movimiento' })).toBeVisible();
   });
 
   await test.step('delete it, accepting the confirmation', async () => {
@@ -114,10 +121,11 @@ test('declining the delete confirmation keeps the movement', async ({ page }) =>
 });
 
 test('an invalid amount shows its error next to the field and saves nothing', async ({ page }) => {
+  await page.getByRole('button', { name: 'Añadir movimiento' }).click();
   await page.getByLabel('Categoría').selectOption({ label: 'Supermercado' });
   await page.getByLabel('Concepto').fill('importe malo');
   await page.getByLabel('Importe (€)').fill('abc');
-  await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+  await page.getByRole('button', { name: 'Guardar movimiento' }).click();
 
   const error = page.locator('#movement-amount-error');
   await expect(error).toHaveText(/Importe no válido/);

@@ -16,7 +16,9 @@ interface Props {
 
 export function RecurringList({ items, debts = [], month = currentMonth(), onEdit, onEnd }: Props) {
   if (items.length === 0) {
-    return <p className="empty">Todavía no hay fijos. Añade el primero arriba.</p>;
+    return (
+      <p className="empty">Todavía no hay fijos. Pulsa «Añadir fijo» para crear el primero.</p>
+    );
   }
   return (
     <table className="movements recurring">

@@ -16,6 +16,7 @@ import {
 import { formatDate, todayISO } from './months.js';
 
 import { PageHeader } from './PageHeader.js';
+import { SidePanel, usePanel } from './SidePanel.js';
 
 const defaultApi = createApiClient();
 
@@ -34,7 +35,9 @@ export function MilestoneList({
   onEdit: (milestone: MilestoneDto) => void;
 }) {
   if (milestones.length === 0) {
-    return <p className="empty">Todavía no hay hitos. Añade el primero arriba.</p>;
+    return (
+      <p className="empty">Todavía no hay hitos. Pulsa «Añadir hito» para crear el primero.</p>
+    );
   }
   return (
     <table className="movements milestones">
@@ -161,7 +164,7 @@ export function MilestoneForm(props: {
       )}
       <div className="form-actions">
         <button type="submit" className="primary" disabled={props.busy}>
-          {editing ? 'Guardar cambios' : 'Añadir'}
+          Guardar hito
         </button>
         {editing && (
           <button type="button" onClick={props.onCancel}>
@@ -205,11 +208,13 @@ export function MilestonesPage({ api = defaultApi }: { api?: ApiClient }) {
     };
   }, [api, reloads]);
 
+  const panel = usePanel();
   const resetForm = () => {
     setForm(emptyMilestoneForm());
     setEditingId(undefined);
     setErrors({});
     setFormError(undefined);
+    panel.hide();
   };
 
   const submit = async (values: MilestoneFormValues) => {
@@ -240,7 +245,21 @@ export function MilestonesPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <PageHeader title="Hitos" />
+      <PageHeader
+        title="Hitos"
+        action={
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              resetForm();
+              panel.show();
+            }}
+          >
+            Añadir hito
+          </button>
+        }
+      />
       <p className="hint">
         Pasos con fecha hacia tus objetivos, ordenados por fecha. Los que han pasado de fecha sin
         estar hechos aparecen marcados como vencidos.
@@ -252,19 +271,25 @@ export function MilestonesPage({ api = defaultApi }: { api?: ApiClient }) {
         </p>
       )}
 
-      <MilestoneForm
-        values={form}
-        errors={errors}
-        formError={formError}
-        editing={editingId !== undefined}
-        busy={busy}
-        onChange={(values) => {
-          setForm(values);
-          setErrors({});
-        }}
-        onSubmit={(values) => void submit(values)}
-        onCancel={resetForm}
-      />
+      <SidePanel
+        open={panel.open}
+        title={editingId === undefined ? 'Añadir hito' : 'Editar hito'}
+        onClose={resetForm}
+      >
+        <MilestoneForm
+          values={form}
+          errors={errors}
+          formError={formError}
+          editing={editingId !== undefined}
+          busy={busy}
+          onChange={(values) => {
+            setForm(values);
+            setErrors({});
+          }}
+          onSubmit={(values) => void submit(values)}
+          onCancel={resetForm}
+        />
+      </SidePanel>
 
       <MilestoneList
         milestones={milestones}
@@ -273,6 +298,7 @@ export function MilestonesPage({ api = defaultApi }: { api?: ApiClient }) {
           setEditingId(milestone.id);
           setErrors({});
           setFormError(undefined);
+          panel.show();
         }}
       />
     </main>

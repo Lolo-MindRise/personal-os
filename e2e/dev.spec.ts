@@ -45,7 +45,7 @@ test('the dev page renders and no request fails', async ({ page }) => {
     .getByRole('link', { name: 'Movimientos' })
     .click();
   await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Añadir movimiento' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Añadir movimiento' })).toBeVisible();
   expect(await categories, '/api/categories answered through the proxy').toBeDefined();
 });
 

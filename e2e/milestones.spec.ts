@@ -19,15 +19,17 @@ test('add milestones, see them ordered by date, and an overdue one stand out unt
   await expect(row(page, 'Revisar el presupuesto')).toContainText('Hecho');
 
   await test.step('add one in the past and one in the far future', async () => {
+    await page.getByRole('button', { name: 'Añadir hito' }).click();
     await page.getByLabel('Título').fill('hito atrasado de prueba');
     await page.getByLabel('Fecha objetivo').fill('2020-01-15');
-    await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+    await page.getByRole('button', { name: 'Guardar hito' }).click();
     await expect(row(page, 'hito atrasado de prueba')).toHaveCount(1);
 
+    await page.getByRole('button', { name: 'Añadir hito' }).click();
     await page.getByLabel('Título').fill('hito lejano de prueba');
     await page.getByLabel('Fecha objetivo').fill('2099-06-30');
     await page.getByLabel('Estado').selectOption({ label: 'En curso' });
-    await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+    await page.getByRole('button', { name: 'Guardar hito' }).click();
     await expect(row(page, 'hito lejano de prueba')).toContainText('En curso');
   });
 
@@ -55,7 +57,7 @@ test('add milestones, see them ordered by date, and an overdue one stand out unt
   await test.step('marking it done removes the highlight', async () => {
     await row(page, 'hito atrasado de prueba').getByRole('button', { name: 'Editar' }).click();
     await page.getByLabel('Estado').selectOption({ label: 'Hecho' });
-    await page.getByRole('button', { name: 'Guardar cambios' }).click();
+    await page.getByRole('button', { name: 'Guardar hito' }).click();
     const late = row(page, 'hito atrasado de prueba');
     await expect(late).toContainText('Hecho');
     await expect(late).not.toHaveClass(/overdue-row/);
@@ -63,8 +65,9 @@ test('add milestones, see them ordered by date, and an overdue one stand out unt
   });
 
   await test.step('an empty title is refused next to the field', async () => {
+    await page.getByRole('button', { name: 'Añadir hito' }).click();
     await page.getByLabel('Fecha objetivo').fill('2099-01-01');
-    await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+    await page.getByRole('button', { name: 'Guardar hito' }).click();
     await expect(page.getByText('Escribe un título.')).toBeVisible();
   });
 });
