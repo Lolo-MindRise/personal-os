@@ -119,3 +119,5 @@ After fixing reviewer findings, run the reviewer again on the final diff before 
 Review every generated migration before committing it: it must not contain DROP TABLE or rebuild an existing table. If the tool generates one, write an additive migration by hand and add a test that existing rows survive.
 
 Every PR follows .github/pull_request_template.md. The risk level is the one set by the reviewer; never lower it.
+
+Plans run through the orchestrator (docs/system/orchestrator.md, ADR-0009). Agents may merge only into integration/* branches; only Manuel merges into main.
