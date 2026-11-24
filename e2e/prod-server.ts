@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DB_FILENAME } from '../src/server/db/config.js';
@@ -50,11 +50,20 @@ try {
   handle.close();
 }
 
+// A regular file where the backup mirror directory should be: the mirror is unreachable, which
+// the backups spec expects to see as a warning. It lives inside the temporary directory.
+const unreachableMirror = join(dataDir, 'mirror-blocked');
+writeFileSync(unreachableMirror, 'not a directory');
+
 const server = spawn('npm', ['start'], {
   // New process group, so the whole `npm -> sh -> node` chain can be stopped.
   detached: true,
   stdio: 'inherit',
-  env: { ...process.env, PERSONAL_OS_DATA_DIR: dataDir },
+  env: {
+    ...process.env,
+    PERSONAL_OS_DATA_DIR: dataDir,
+    PERSONAL_OS_BACKUP_MIRROR_DIR: unreachableMirror,
+  },
 });
 servers.push(server);
 server.on('exit', (code) => {

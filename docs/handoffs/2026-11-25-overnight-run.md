@@ -34,4 +34,47 @@ Branch `agent/overnight/01-categories` (from `main`; task 0007 confirmed merged,
 - None.
 
 ### PR
-(filled in when opened)
+https://github.com/Lolo-MindRise/personal-os/pull/17 (both CI jobs green)
+
+## Block 2: In-app backups (ADR-0003)
+Branch `agent/overnight/02-backups`, stacked on block 1.
+
+### Done
+- `src/server/backups.ts`: backup service on SQLite's online backup API (`sqlite.backup`).
+  Files `personal-os-<UTC stamp>-<startup|daily|pre-migration>.sqlite` in
+  `<PERSONAL_OS_DATA_DIR>/backups`, written as `.partial` then renamed; keeps the 14 newest.
+  Optional copy to `PERSONAL_OS_BACKUP_MIRROR_DIR`, keeps 7; if unreachable the app keeps
+  running, logs it and reports it. Only files matching the naming pattern are ever pruned.
+- Runs on startup, every 24 h (`unref`'d timer, stopped on SIGTERM), and before migrations:
+  `openDatabaseGuarded` calls a hook only for an existing database with pending migrations.
+  Closes the gap recorded in task 0004.
+- `GET /api/backups/status`: `enabled`, `lastBackupAt`, `localCount`, mirror state and count,
+  Spanish `warnings`. Banner (`role="status"`) on every screen when there are warnings.
+- Backups only run in production with a data directory (dev has none). No migration.
+- Tests (temporary directories only): retention, mirror, failures and recovery, scheduling,
+  pre-migration ordering and content, status endpoint. The e2e server uses an unreachable
+  mirror inside its temp dir, so Playwright checks the banner.
+
+### Decisions taken
+- If the backup before a migration fails, the app refuses to migrate and does not start
+  (data safety over availability). Startup and daily failures only warn.
+- All backup reasons share the same 14-file rotation (a migration backup can push out the
+  oldest daily copy).
+- No "stale backup" warning beyond: none yet, last attempt failed, mirror unreachable.
+- The mirror directory is created one level only, never its parents: an unmounted second disk
+  whose mount point exists as an empty folder must show as unreachable, not silently fill the
+  main disk. A mirror equal to the local directory is refused (it would prune local backups).
+- Shutdown waits for a backup in flight before closing the database. A `.partial` left by a
+  hard kill is not counted and not cleaned up automatically.
+- Migration tests use their own tiny migrations folder (`openDatabaseGuarded` takes an optional
+  folder), so later blocks adding migrations cannot break them.
+
+### Review
+- Reviewer: changes required, all fixed. Major: mirror `mkdir` recursive (above, with a test
+  proven by mutation). Minors: mirror = local dir, shutdown race, tests tied to the newest
+  migration, duplicate import, missing review-log row.
+- Drizzle's `__drizzle_migrations.id` is not filled in; migrations are counted by rows and
+  ordered by `created_at`.
+
+### Open questions
+- None.

@@ -26,3 +26,31 @@ export function resolveDbPath(env: Record<string, string | undefined>): string {
   }
   return DEV_DB_PATH;
 }
+
+export const BACKUP_MIRROR_ENV = 'PERSONAL_OS_BACKUP_MIRROR_DIR';
+export const BACKUPS_DIRNAME = 'backups';
+
+export interface BackupConfig {
+  /** Local backups: `<PERSONAL_OS_DATA_DIR>/backups`. */
+  dir: string;
+  /** Optional second location (a different disk); undefined when not configured. */
+  mirrorDir: string | undefined;
+}
+
+/**
+ * Backup locations (ADR-0003), both from the environment. Backups only run in
+ * production, where the data directory exists; development has none.
+ */
+export function resolveBackupConfig(
+  env: Record<string, string | undefined>,
+): BackupConfig | undefined {
+  const dataDir = env[DATA_DIR_ENV];
+  if (env.NODE_ENV !== 'production' || dataDir === undefined || dataDir.trim() === '') {
+    return undefined;
+  }
+  const mirror = env[BACKUP_MIRROR_ENV];
+  return {
+    dir: join(dataDir, BACKUPS_DIRNAME),
+    mirrorDir: mirror === undefined || mirror.trim() === '' ? undefined : mirror,
+  };
+}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BackupBanner } from './BackupBanner.js';
 import { CategoriesPage } from './CategoriesPage.js';
 import { MovementsPage } from './MovementsPage.js';
 import { RecurringPage } from './RecurringPage.js';
@@ -47,6 +48,7 @@ export function App() {
   const [view, setView] = useState<View>('movements');
   return (
     <>
+      <BackupBanner />
       <Navigation view={view} onChange={setView} />
       <Screen view={view} />
     </>

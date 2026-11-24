@@ -1,6 +1,8 @@
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyInstance } from 'fastify';
+import type { BackupStatusDto } from '../shared/api.js';
 import { registerApi } from './api.js';
+import type { BackupService } from './backups.js';
 import type { Db } from './db/index.js';
 
 export interface AppOptions {
@@ -8,14 +10,25 @@ export interface AppOptions {
   db: Db;
   /** Absolute path to the built frontend. When set, the server also serves it. */
   webRoot?: string | undefined;
+  /** In-app backups; without them the status endpoint reports them as disabled. */
+  backups?: BackupService | undefined;
   logger?: boolean;
 }
+
+const DISABLED: BackupStatusDto = {
+  enabled: false,
+  lastBackupAt: null,
+  localCount: 0,
+  mirror: { configured: false, state: 'disabled', count: 0 },
+  warnings: [],
+};
 
 export function buildApp(options: AppOptions): FastifyInstance {
   const app = Fastify({ logger: options.logger ?? false });
 
   app.get('/api/health', () => ({ status: 'ok' }));
   registerApi(app, options.db);
+  app.get('/api/backups/status', () => options.backups?.status() ?? DISABLED);
 
   const { webRoot } = options;
   if (webRoot !== undefined) {
