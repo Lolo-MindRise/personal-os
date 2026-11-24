@@ -271,7 +271,7 @@ test('edit a fixed item, end it, and see it stop appearing as pending', async ({
   }
 });
 
-test('a failed action keeps its error visible, and confirm all cancels a confirmation in progress', async ({
+test('a failed action keeps its error visible, and a confirmation whose entry stops being pending is cancelled', async ({
   page,
   request,
 }) => {

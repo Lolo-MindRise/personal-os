@@ -285,6 +285,7 @@ export function RulesPanel(props: {
     if (pattern.trim() !== '' && categoryId !== '') {
       props.onAdd(pattern, Number(categoryId));
       setPattern('');
+      setCategoryId('');
       panel.hide();
     }
   };
