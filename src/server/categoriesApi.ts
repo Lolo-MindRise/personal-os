@@ -36,29 +36,53 @@ function nameTaken(db: Db, name: string, exceptId?: number): boolean {
     .some((c) => c.id !== exceptId && c.name.trim().toLowerCase() === wanted);
 }
 
-function usageOf(db: Db, id: number) {
-  const count = (table: typeof movements | typeof recurringItems | typeof budgetLines) =>
-    db
-      .select({ n: sql<number>`count(*)` })
-      .from(table)
-      .where(eq(table.categoryId, id))
-      .get()?.n ?? 0;
-  return {
-    movements: count(movements),
-    recurringItems: count(recurringItems),
-    budgetLines: count(budgetLines),
+type Usage = Pick<CategoryUsageDto, 'movements' | 'recurringItems' | 'budgetLines'>;
+
+/** Usage counts for every category, with one grouped query per table. */
+function usageByCategory(db: Db): Map<number, Usage> {
+  const result = new Map<number, Usage>();
+  const slot = (id: number): Usage => {
+    let usage = result.get(id);
+    if (usage === undefined) {
+      usage = { movements: 0, recurringItems: 0, budgetLines: 0 };
+      result.set(id, usage);
+    }
+    return usage;
   };
+  const counts = (table: typeof movements | typeof recurringItems | typeof budgetLines) =>
+    db
+      .select({ id: table.categoryId, n: sql<number>`count(*)` })
+      .from(table)
+      .groupBy(table.categoryId)
+      .all();
+  for (const row of counts(movements)) {
+    slot(row.id).movements = row.n;
+  }
+  for (const row of counts(recurringItems)) {
+    slot(row.id).recurringItems = row.n;
+  }
+  for (const row of counts(budgetLines)) {
+    slot(row.id).budgetLines = row.n;
+  }
+  return result;
 }
+
+const usageOf = (db: Db, id: number): Usage =>
+  usageByCategory(db).get(id) ?? { movements: 0, recurringItems: 0, budgetLines: 0 };
 
 export function registerCategoriesApi(app: FastifyInstance, db: Db): void {
   // Registered before `/:id` routes; the static segment wins in find-my-way anyway.
   app.get('/api/categories/usage', () => {
+    const usage = usageByCategory(db);
     const rows: CategoryUsageDto[] = db
       .select(columns)
       .from(categories)
       .orderBy(asc(categories.name))
       .all()
-      .map((c) => ({ ...c, ...usageOf(db, c.id) }));
+      .map((c) => ({
+        ...c,
+        ...(usage.get(c.id) ?? { movements: 0, recurringItems: 0, budgetLines: 0 }),
+      }));
     return rows;
   });
 
