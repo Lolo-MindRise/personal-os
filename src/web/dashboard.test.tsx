@@ -10,8 +10,6 @@ import {
 } from './DashboardCharts.js';
 import { DashboardView, DebtCard } from './DashboardPage.js';
 
-const noop = () => undefined;
-
 const empty: DashboardDto = {
   month: '2026-03',
   today: '2026-03-15',
@@ -29,14 +27,14 @@ const empty: DashboardDto = {
 };
 
 describe('Inicio with no data', () => {
-  const html = renderToStaticMarkup(<DashboardView data={empty} onNavigate={noop} />);
+  const html = renderToStaticMarkup(<DashboardView data={empty} />);
 
   it('says what to set up in every block, with a link to its screen', () => {
     for (const text of [
       'Indicar saldo inicial',
-      'Crear un objetivo',
+      'Añadir un objetivo',
       'Añadir una deuda',
-      'Registrar un movimiento',
+      'Añadir un movimiento',
       'Definir un presupuesto',
       'Añadir un hito',
       'Ver fijos',

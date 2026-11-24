@@ -11,10 +11,11 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { BarShapeProps } from 'recharts';
+import type { BarRectangleItem, BarShapeProps } from 'recharts';
 import type { DashboardCategoryDto, DashboardMonthDto } from '../shared/api.js';
 import { formatCents } from '../shared/money.js';
 import { monthLabel } from './months.js';
+import { hrefFor, navigate } from './router.js';
 
 // Charts of the home screen (ADR-0006). Colours are CSS variables, so both system themes work.
 // Each chart sits in a figure with a text summary and a data table: the picture is never the
@@ -76,7 +77,15 @@ export function monthsSummaryText(months: DashboardMonthDto[]): string {
 }
 
 export function MonthsChart({ months }: { months: DashboardMonthDto[] }) {
+  // Clicking a month's bars opens that month's movements.
+  const openMonth = (entry: BarRectangleItem) => {
+    const target = (entry.payload as { month?: string } | undefined)?.month;
+    if (target !== undefined) {
+      navigate('movements', { month: target });
+    }
+  };
   const data = months.map((m) => ({
+    month: m.month,
     name: shortMonth(m.month),
     Ingresos: m.incomeCents,
     Gastos: m.expenseCents,
@@ -103,8 +112,8 @@ export function MonthsChart({ months }: { months: DashboardMonthDto[] }) {
             <YAxis tick={axisTick} stroke="var(--border)" tickFormatter={tickEuros} width={72} />
             <Tooltip formatter={tooltipAmount} {...tooltipStyles} />
             <Legend wrapperStyle={{ color: 'var(--text)' }} />
-            <Bar dataKey="Ingresos" fill="var(--income)" />
-            <Bar dataKey="Gastos" fill="var(--expense)" />
+            <Bar dataKey="Ingresos" fill="var(--income)" cursor="pointer" onClick={openMonth} />
+            <Bar dataKey="Gastos" fill="var(--expense)" cursor="pointer" onClick={openMonth} />
             <Line
               type="monotone"
               dataKey="Ahorro acumulado"
@@ -130,7 +139,9 @@ export function MonthsChart({ months }: { months: DashboardMonthDto[] }) {
           <tbody>
             {months.map((m) => (
               <tr key={m.month}>
-                <th scope="row">{monthLabel(m.month)}</th>
+                <th scope="row">
+                  <a href={hrefFor('movements', { month: m.month })}>{monthLabel(m.month)}</a>
+                </th>
                 <td className="amount">{formatCents(m.incomeCents)}</td>
                 <td className="amount">{formatCents(m.expenseCents)}</td>
                 <td className="amount">
@@ -160,8 +171,22 @@ export function categoriesSummaryText(categories: DashboardCategoryDto[]): strin
   return `Gastos del mes ${formatCents(spent)} en ${String(categories.length)} categorías. ${overText}`;
 }
 
-export function CategoriesChart({ categories }: { categories: DashboardCategoryDto[] }) {
+export function CategoriesChart({
+  categories,
+  month,
+}: {
+  categories: DashboardCategoryDto[];
+  month: string;
+}) {
+  // Clicking a category's bars opens that category's movements for the month.
+  const openCategory = (entry: BarRectangleItem) => {
+    const id = (entry.payload as { categoryId?: number } | undefined)?.categoryId;
+    if (id !== undefined) {
+      navigate('movements', { month, category: String(id) });
+    }
+  };
   const data = categories.map((c) => ({
+    categoryId: c.categoryId,
     name: categoryLabel(c),
     Presupuesto: c.budgetCents,
     Gasto: c.actualCents,
@@ -200,10 +225,17 @@ export function CategoriesChart({ categories }: { categories: DashboardCategoryD
             />
             <Tooltip formatter={tooltipAmount} {...tooltipStyles} />
             <Legend wrapperStyle={{ color: 'var(--text)' }} />
-            <Bar dataKey="Presupuesto" fill="var(--budget)" />
+            <Bar
+              dataKey="Presupuesto"
+              fill="var(--budget)"
+              cursor="pointer"
+              onClick={openCategory}
+            />
             <Bar
               dataKey="Gasto"
               fill="var(--expense)"
+              cursor="pointer"
+              onClick={openCategory}
               shape={(props: BarShapeProps) => (
                 <Rectangle
                   {...props}
@@ -232,7 +264,11 @@ export function CategoriesChart({ categories }: { categories: DashboardCategoryD
           <tbody>
             {categories.map((c) => (
               <tr key={c.categoryId}>
-                <th scope="row">{c.categoryName}</th>
+                <th scope="row">
+                  <a href={hrefFor('movements', { month, category: String(c.categoryId) })}>
+                    {c.categoryName}
+                  </a>
+                </th>
                 <td className="amount">
                   {c.budgetCents === null ? '—' : formatCents(c.budgetCents)}
                 </td>

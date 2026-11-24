@@ -7,6 +7,7 @@ import { Field } from './Field.js';
 import { KIND_LABELS } from './labels.js';
 
 import { PageHeader } from './PageHeader.js';
+import { hrefFor } from './router.js';
 
 const defaultApi = createApiClient();
 
@@ -114,7 +115,7 @@ export function CategoryTable(props: {
                   return (
                     <tr key={c.id}>
                       <td>
-                        {c.name}
+                        <a href={hrefFor('movements', { category: String(c.id) })}>{c.name}</a>
                         {reason !== undefined && <span className="notes">{reason}</span>}
                       </td>
                       <td className="actions">

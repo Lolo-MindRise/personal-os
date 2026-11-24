@@ -40,6 +40,26 @@ export function PageHeader({
   );
 }
 
+/** Says which filter a screen was opened with, and how to clear it. */
+export function FilterBar({
+  label,
+  clearHref,
+  clearLabel = 'Quitar filtro',
+}: {
+  label: string;
+  clearHref: string;
+  clearLabel?: string;
+}) {
+  return (
+    <p className="filter-bar" role="status">
+      <span>
+        Filtro: <strong>{label}</strong>
+      </span>
+      <a href={clearHref}>{clearLabel}</a>
+    </p>
+  );
+}
+
 /** Two screens that share one sidebar entry. */
 export function SubNav({
   items,

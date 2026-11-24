@@ -2,6 +2,7 @@ import type { DebtDto, RecurringItemDto } from '../shared/api.js';
 import { formatCents } from '../shared/money.js';
 import { KIND_LABELS } from './labels.js';
 import { currentMonth, formatMonth } from './months.js';
+import { hrefFor } from './router.js';
 
 interface Props {
   items: RecurringItemDto[];
@@ -43,7 +44,7 @@ export function RecurringList({ items, debts = [], month = currentMonth(), onEdi
               </td>
               <td>{item.categoryName}</td>
               <td>
-                {item.concept}
+                <a href={hrefFor('movements', { fixed: String(item.id) })}>{item.concept}</a>
                 {item.notes !== null && <span className="notes">{item.notes}</span>}
                 {item.debtId !== null && (
                   <span className="notes">

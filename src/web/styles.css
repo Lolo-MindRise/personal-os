@@ -505,6 +505,20 @@ td.amount {
   margin-top: var(--space-4);
 }
 
+/* Which filter a screen was opened with, and how to clear it */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+}
+
 .page > .form-actions {
   margin-top: 0;
   margin-bottom: var(--space-3);

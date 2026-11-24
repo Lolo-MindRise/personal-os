@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { DashboardDebtDto, DashboardDto, GoalDto } from '../shared/api.js';
 import { formatCents } from '../shared/money.js';
-import { navigate, type View } from './router.js';
+import { hrefFor, type Params, type View } from './router.js';
 import { CategoriesChart, MonthsChart } from './DashboardCharts.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
 import { formatDate, todayISO } from './months.js';
@@ -12,49 +12,16 @@ const defaultApi = createApiClient();
 
 const messageOf = (error: unknown) => (error instanceof ApiError ? error.message : NETWORK_ERROR);
 
-type Navigate = (view: View) => void;
-
-/** A button that looks like a link and opens another screen (the app has no URL routing). */
-function GoTo({
-  view,
-  onNavigate,
-  children,
-}: {
-  view: View;
-  onNavigate: Navigate;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      className="link-button"
-      onClick={() => {
-        onNavigate(view);
-      }}
-    >
-      {children}
-    </button>
-  );
+/** A link to another screen, optionally already filtered (`params`). */
+function GoTo({ view, params, children }: { view: View; params?: Params; children: ReactNode }) {
+  return <a href={hrefFor(view, params)}>{children}</a>;
 }
 
 /** What to set up when a block has no data: a sentence and a link to the screen that fixes it. */
-function EmptyState({
-  children,
-  view,
-  link,
-  onNavigate,
-}: {
-  children: ReactNode;
-  view: View;
-  link: string;
-  onNavigate: Navigate;
-}) {
+function EmptyState({ children, view, link }: { children: ReactNode; view: View; link: string }) {
   return (
     <p className="empty dashboard-empty">
-      {children}{' '}
-      <GoTo view={view} onNavigate={onNavigate}>
-        {link}
-      </GoTo>
+      {children} <GoTo view={view}>{link}</GoTo>
     </p>
   );
 }
@@ -89,13 +56,17 @@ const goalStatusText = (goal: GoalDto) =>
       ? 'Vencido.'
       : undefined;
 
-export function KeyFigures({ data, onNavigate }: { data: DashboardDto; onNavigate: Navigate }) {
+export function KeyFigures({ data }: { data: DashboardDto }) {
   const { keyFigures: k, setup } = data;
   const goal = k.nextGoal;
   return (
     <section aria-label="Cifras clave" className="key-figures">
       <dl className="summary-item" data-testid="figure-accumulated">
-        <dt>Ahorro acumulado</dt>
+        <dt>
+          <GoTo view="summary" params={{ year: data.month.slice(0, 4) }}>
+            Ahorro acumulado
+          </GoTo>
+        </dt>
         <dd
           className={
             k.accumulatedSavingsCents !== null && k.accumulatedSavingsCents < 0
@@ -111,7 +82,7 @@ export function KeyFigures({ data, onNavigate }: { data: DashboardDto; onNavigat
         {!setup.initialBalance && (
           <dd className="card-note">
             Sin saldo inicial: solo suma los movimientos.{' '}
-            <GoTo view="summary" onNavigate={onNavigate}>
+            <GoTo view="summary" params={{ year: data.month.slice(0, 4) }}>
               Indicar saldo inicial
             </GoTo>
           </dd>
@@ -119,7 +90,9 @@ export function KeyFigures({ data, onNavigate }: { data: DashboardDto; onNavigat
       </dl>
 
       <dl className="summary-item" data-testid="figure-goal">
-        <dt>Próximo objetivo</dt>
+        <dt>
+          <GoTo view="goals">Próximo objetivo</GoTo>
+        </dt>
         {goal === null ? (
           <dd className="card-small">—</dd>
         ) : (
@@ -133,22 +106,19 @@ export function KeyFigures({ data, onNavigate }: { data: DashboardDto; onNavigat
         {goal === null && (
           <dd className="card-note">
             {setup.goals ? 'Ningún objetivo con fecha futura.' : 'Aún no tienes objetivos.'}{' '}
-            <GoTo view="goals" onNavigate={onNavigate}>
-              {setup.goals ? 'Ver objetivos' : 'Crear un objetivo'}
-            </GoTo>
+            <GoTo view="goals">{setup.goals ? 'Ver objetivos' : 'Añadir un objetivo'}</GoTo>
           </dd>
         )}
       </dl>
 
       <dl className="summary-item" data-testid="figure-debt">
-        <dt>Deuda total estimada</dt>
+        <dt>
+          <GoTo view="debts">Deuda total estimada</GoTo>
+        </dt>
         <dd>{formatCents(k.totalDebtCents)}</dd>
         {!setup.debts && (
           <dd className="card-note">
-            No has registrado deudas.{' '}
-            <GoTo view="debts" onNavigate={onNavigate}>
-              Añadir una deuda
-            </GoTo>
+            No has registrado deudas. <GoTo view="debts">Añadir una deuda</GoTo>
           </dd>
         )}
       </dl>
@@ -157,13 +127,17 @@ export function KeyFigures({ data, onNavigate }: { data: DashboardDto; onNavigat
         className={k.projectedSavingsCents < 0 ? 'summary-item negative' : 'summary-item'}
         data-testid="figure-projected"
       >
-        <dt>Ahorro previsto del mes</dt>
+        <dt>
+          <GoTo view="movements" params={{ month: data.month }}>
+            Ahorro previsto del mes
+          </GoTo>
+        </dt>
         <dd>{formatCents(k.projectedSavingsCents)}</dd>
         {!setup.movements && (
           <dd className="card-note">
             Aún no hay movimientos.{' '}
-            <GoTo view="movements" onNavigate={onNavigate}>
-              Registrar uno
+            <GoTo view="movements" params={{ month: data.month }}>
+              Añadir uno
             </GoTo>
           </dd>
         )}
@@ -176,7 +150,9 @@ export function GoalCard({ goal }: { goal: GoalDto }) {
   const note = goalStatusText(goal);
   return (
     <article className="debt-card" data-testid="goal-card">
-      <h3>{goal.name}</h3>
+      <h3>
+        <GoTo view="goals">{goal.name}</GoTo>
+      </h3>
       <p className="card-big">
         {formatCents(Math.min(Math.max(goal.accumulatedCents, 0), goal.targetAmountCents))}{' '}
         <span className="muted">de {formatCents(goal.targetAmountCents)}</span>
@@ -210,7 +186,11 @@ export function GoalCard({ goal }: { goal: GoalDto }) {
 export function DebtCard({ debt }: { debt: DashboardDebtDto }) {
   return (
     <article className="debt-card" data-testid="debt-card">
-      <h3>{debt.name}</h3>
+      <h3>
+        <GoTo view="debts" params={{ debt: String(debt.id) }}>
+          {debt.name}
+        </GoTo>
+      </h3>
       <p className="card-big">{formatCents(debt.estimatedBalanceCents)}</p>
       <p className="card-note">
         {String(debt.remainingInstallments)} cuotas restantes ·{' '}
@@ -237,18 +217,18 @@ export function DebtCard({ debt }: { debt: DashboardDebtDto }) {
   );
 }
 
-export function DashboardView({ data, onNavigate }: { data: DashboardDto; onNavigate: Navigate }) {
+export function DashboardView({ data }: { data: DashboardDto }) {
   const { setup, keyFigures, upcoming } = data;
   return (
     <>
-      <KeyFigures data={data} onNavigate={onNavigate} />
+      <KeyFigures data={data} />
 
       <section className="dashboard-section">
         <h2>Últimos 12 meses</h2>
         {setup.movements ? (
           <MonthsChart months={data.months} />
         ) : (
-          <EmptyState view="movements" link="Registrar un movimiento" onNavigate={onNavigate}>
+          <EmptyState view="movements" link="Añadir un movimiento">
             Aún no hay movimientos, así que no hay nada que dibujar.
           </EmptyState>
         )}
@@ -258,9 +238,9 @@ export function DashboardView({ data, onNavigate }: { data: DashboardDto; onNavi
         <h2>Gastos del mes frente al presupuesto</h2>
         {data.categories.length > 0 ? (
           <>
-            <CategoriesChart categories={data.categories} />
+            <CategoriesChart categories={data.categories} month={data.month} />
             {!setup.budget && (
-              <EmptyState view="budget" link="Definir un presupuesto" onNavigate={onNavigate}>
+              <EmptyState view="budget" link="Definir un presupuesto">
                 Sin presupuesto no hay con qué comparar.
               </EmptyState>
             )}
@@ -268,7 +248,7 @@ export function DashboardView({ data, onNavigate }: { data: DashboardDto; onNavi
         ) : setup.budget ? (
           <p className="empty dashboard-empty">No hay gastos ni presupuesto en este mes.</p>
         ) : (
-          <EmptyState view="budget" link="Definir un presupuesto" onNavigate={onNavigate}>
+          <EmptyState view="budget" link="Definir un presupuesto">
             Sin presupuesto ni gastos en este mes.
           </EmptyState>
         )}
@@ -278,7 +258,7 @@ export function DashboardView({ data, onNavigate }: { data: DashboardDto; onNavi
         <section className="dashboard-section">
           <h2>Deudas</h2>
           {data.debts.items.length === 0 ? (
-            <EmptyState view="debts" link="Añadir una deuda" onNavigate={onNavigate}>
+            <EmptyState view="debts" link="Añadir una deuda">
               No has registrado deudas.
             </EmptyState>
           ) : (
@@ -297,11 +277,7 @@ export function DashboardView({ data, onNavigate }: { data: DashboardDto; onNavi
         <section className="dashboard-section">
           <h2>Objetivo</h2>
           {keyFigures.nextGoal === null ? (
-            <EmptyState
-              view="goals"
-              link={setup.goals ? 'Ver objetivos' : 'Crear un objetivo'}
-              onNavigate={onNavigate}
-            >
+            <EmptyState view="goals" link={setup.goals ? 'Ver objetivos' : 'Añadir un objetivo'}>
               {setup.goals ? 'Ningún objetivo con fecha futura.' : 'Aún no tienes objetivos.'}
             </EmptyState>
           ) : (
@@ -314,14 +290,17 @@ export function DashboardView({ data, onNavigate }: { data: DashboardDto; onNavi
         <section className="dashboard-section">
           <h2>Fijos pendientes del mes</h2>
           {upcoming.pending.length === 0 ? (
-            <EmptyState view="recurring" link="Ver fijos" onNavigate={onNavigate}>
+            <EmptyState view="recurring" link="Ver fijos">
               No queda ningún fijo pendiente este mes.
             </EmptyState>
           ) : (
             <ul className="upcoming" data-testid="upcoming-pending">
               {upcoming.pending.map((e) => (
                 <li key={e.recurringItemId}>
-                  <span className="muted">{formatDate(e.date)}</span> {e.concept}{' '}
+                  <span className="muted">{formatDate(e.date)}</span>{' '}
+                  <GoTo view="movements" params={{ month: data.month }}>
+                    {e.concept}
+                  </GoTo>{' '}
                   <span className={`kind-${e.kind}`}>{formatCents(e.amountCents)}</span>
                 </li>
               ))}
@@ -329,7 +308,7 @@ export function DashboardView({ data, onNavigate }: { data: DashboardDto; onNavi
           )}
           {upcoming.pending.length > 0 && (
             <p className="card-note">
-              <GoTo view="movements" onNavigate={onNavigate}>
+              <GoTo view="movements" params={{ month: data.month }}>
                 Confirmar en Movimientos
               </GoTo>
             </p>
@@ -339,14 +318,15 @@ export function DashboardView({ data, onNavigate }: { data: DashboardDto; onNavi
         <section className="dashboard-section">
           <h2>Próximos hitos</h2>
           {upcoming.milestones.length === 0 ? (
-            <EmptyState view="milestones" link="Añadir un hito" onNavigate={onNavigate}>
+            <EmptyState view="milestones" link="Añadir un hito">
               No hay hitos pendientes.
             </EmptyState>
           ) : (
             <ul className="upcoming" data-testid="upcoming-milestones">
               {upcoming.milestones.map((m) => (
                 <li key={m.id}>
-                  <span className="muted">{formatDate(m.targetDate)}</span> {m.title}
+                  <span className="muted">{formatDate(m.targetDate)}</span>{' '}
+                  <GoTo view="milestones">{m.title}</GoTo>
                   {m.overdue && <span className="overdue-flag">Vencido</span>}
                 </li>
               ))}
@@ -354,9 +334,7 @@ export function DashboardView({ data, onNavigate }: { data: DashboardDto; onNavi
           )}
           {upcoming.milestones.length > 0 && (
             <p className="card-note">
-              <GoTo view="milestones" onNavigate={onNavigate}>
-                Ver todos los hitos
-              </GoTo>
+              <GoTo view="milestones">Ver todos los hitos</GoTo>
             </p>
           )}
         </section>
@@ -366,15 +344,7 @@ export function DashboardView({ data, onNavigate }: { data: DashboardDto; onNavi
 }
 
 /** The "Inicio" screen: the financial situation at a glance, for the selected month. */
-export function DashboardPage({
-  api = defaultApi,
-  onNavigate = (view) => {
-    navigate(view);
-  },
-}: {
-  api?: ApiClient;
-  onNavigate?: Navigate;
-}) {
+export function DashboardPage({ api = defaultApi }: { api?: ApiClient }) {
   const [month, setMonth] = useMonth();
   const [data, setData] = useState<DashboardDto | undefined>();
   const [error, setError] = useState<string | undefined>();
@@ -412,7 +382,7 @@ export function DashboardPage({
           {error}
         </p>
       )}
-      {data !== undefined && <DashboardView data={data} onNavigate={onNavigate} />}
+      {data !== undefined && <DashboardView data={data} />}
     </main>
   );
 }

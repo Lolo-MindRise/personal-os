@@ -129,6 +129,9 @@ export function SearchResults(props: {
   onPage: (page: number) => void;
   onGoToMonth: (movement: MovementDto) => void;
   onBack: () => void;
+  backLabel?: string;
+  /** The screen already says which filter applies and how to clear it. */
+  compact?: boolean;
 }) {
   const { result } = props;
   const busy = props.busy ?? false;
@@ -149,11 +152,15 @@ export function SearchResults(props: {
         <h2 ref={heading} tabIndex={-1}>
           Resultados
         </h2>
-        <button type="button" onClick={props.onBack}>
-          Volver a la vista mensual
-        </button>
+        {props.compact !== true && (
+          <button type="button" onClick={props.onBack}>
+            {props.backLabel ?? 'Volver a la vista mensual'}
+          </button>
+        )}
       </div>
-      {filters.length > 0 && <p className="hint">Filtros: {filters.join(' · ')}.</p>}
+      {props.compact !== true && filters.length > 0 && (
+        <p className="hint">Filtros: {filters.join(' · ')}.</p>
+      )}
       <p className="search-totals" data-testid="search-totals" role="status">
         <strong>
           {result.count} {result.count === 1 ? 'movimiento' : 'movimientos'}

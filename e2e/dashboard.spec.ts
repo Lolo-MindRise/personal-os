@@ -108,7 +108,7 @@ test('debts, goal and upcoming items, with links to their screens', async ({ pag
   await expect(pending).toContainText('Gimnasio');
   await expect(page.getByTestId('upcoming-milestones')).toContainText('Liquidar el préstamo');
 
-  await page.getByRole('button', { name: 'Ver todos los hitos' }).click();
+  await page.getByRole('link', { name: 'Ver todos los hitos' }).click();
   await expect(page.getByRole('heading', { name: 'Hitos', level: 1 })).toBeVisible();
 });
 

@@ -1,11 +1,11 @@
-import { and, desc, eq, gte, lte, type SQL } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lte, or, type SQL } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { MovementDto, MovementSearchDto } from '../shared/api.js';
 import { normalizeText } from '../shared/importClassify.js';
 import { movementSearchSchema, SEARCH_DEFAULT_PAGE_SIZE } from '../shared/schemas.js';
 import { badRequest, fieldErrors, MESSAGES, movementColumns } from './apiCommon.js';
 import type { Db } from './db/index.js';
-import { categories, movements } from './db/schema.js';
+import { categories, movements, recurringItems } from './db/schema.js';
 
 /**
  * Search across all months. Structured filters run in SQL; the text filter runs here so it
@@ -23,6 +23,25 @@ export function registerMovementSearchApi(app: FastifyInstance, db: Db): void {
     const conditions: SQL[] = [];
     if (f.categoryId !== undefined) {
       conditions.push(eq(movements.categoryId, f.categoryId));
+    }
+    if (f.debtId !== undefined) {
+      // A debt's movements: extra repayments linked to it, and the installments confirmed from
+      // fixed items linked to it.
+      conditions.push(
+        or(
+          eq(movements.debtId, f.debtId),
+          inArray(
+            movements.recurringItemId,
+            db
+              .select({ id: recurringItems.id })
+              .from(recurringItems)
+              .where(eq(recurringItems.debtId, f.debtId)),
+          ),
+        ) as SQL,
+      );
+    }
+    if (f.recurringItemId !== undefined) {
+      conditions.push(eq(movements.recurringItemId, f.recurringItemId));
     }
     if (f.kind !== undefined) {
       conditions.push(eq(movements.kind, f.kind));

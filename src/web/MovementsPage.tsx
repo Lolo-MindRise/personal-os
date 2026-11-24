@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type {
   CategoryDto,
   DebtDto,
@@ -23,8 +23,11 @@ import {
   type MovementFormValues,
   type MovementPayload,
 } from './movementForm.js';
-import { PageHeader } from './PageHeader.js';
-import { useMonth } from './router.js';
+import { LinkedMovements } from './LinkedMovements.js';
+import { monthLabel } from './months.js';
+import { FilterBar, PageHeader } from './PageHeader.js';
+import { hrefFor, useMonth, useRoute } from './router.js';
+import type { SearchQuery } from './movementSearch.js';
 import { PendingList } from './PendingList.js';
 import { SummaryBar } from './SummaryBar.js';
 
@@ -37,6 +40,40 @@ export const CONFIRMATION_CANCELLED =
 
 export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   const [month, setMonth] = useMonth();
+  // Filters that links put in the URL: a category (within the month), or the movements behind
+  // a debt or a fixed item (across months).
+  const { params } = useRoute();
+  const categoryFilter = /^\d+$/.test(params.category ?? '') ? Number(params.category) : undefined;
+  const debtParam = /^\d+$/.test(params.debt ?? '') ? Number(params.debt) : undefined;
+  const fixedParam = /^\d+$/.test(params.fixed ?? '') ? Number(params.fixed) : undefined;
+  const [fixedName, setFixedName] = useState<string | undefined>();
+  useEffect(() => {
+    if (fixedParam === undefined) {
+      return;
+    }
+    let active = true;
+    api.recurringItems().then(
+      (items) => {
+        if (active) {
+          setFixedName(items.find((i) => i.id === fixedParam)?.concept);
+        }
+      },
+      // The name is a nicety: the filter works without it.
+      () => undefined,
+    );
+    return () => {
+      active = false;
+    };
+  }, [api, fixedParam]);
+  const linkedQuery = useMemo<SearchQuery | undefined>(
+    () =>
+      debtParam !== undefined
+        ? { debtId: debtParam }
+        : fixedParam !== undefined
+          ? { recurringItemId: fixedParam }
+          : undefined,
+    [debtParam, fixedParam],
+  );
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [debts, setDebts] = useState<DebtDto[]>([]);
   const [movements, setMovements] = useState<MovementDto[]>([]);
@@ -263,6 +300,34 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     }
   };
 
+  if (linkedQuery !== undefined) {
+    return (
+      <main className="page">
+        <PageHeader title="Movimientos" headingRef={headingRef} />
+        <FilterBar
+          label={
+            debtParam !== undefined
+              ? `deuda ${debts.find((d) => d.id === debtParam)?.name ?? String(debtParam)}`
+              : `fijo ${fixedName ?? String(fixedParam)}`
+          }
+          clearHref={hrefFor('movements')}
+        />
+        <LinkedMovements
+          key={JSON.stringify(linkedQuery)}
+          api={api}
+          query={linkedQuery}
+          categories={categories}
+        />
+      </main>
+    );
+  }
+
+  const categoryName = categories.find((c) => c.id === categoryFilter)?.name;
+  const shownMovements =
+    categoryFilter === undefined
+      ? movements
+      : movements.filter((m) => m.categoryId === categoryFilter);
+
   return (
     <main className="page">
       <PageHeader
@@ -271,6 +336,13 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
         month={search === undefined ? month : undefined}
         onMonthChange={changeMonth}
       />
+
+      {categoryFilter !== undefined && search === undefined && (
+        <FilterBar
+          label={`categoría ${categoryName ?? String(categoryFilter)} · ${monthLabel(month)}`}
+          clearHref={hrefFor('movements', { month })}
+        />
+      )}
 
       {!showFilters && search === undefined && (
         <div className="form-actions">
@@ -351,6 +423,9 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
             </p>
           )}
 
+          {categoryFilter !== undefined && (
+            <p className="hint">Los totales y los pendientes son los de todo el mes.</p>
+          )}
           {summary !== undefined && <SummaryBar summary={summary} />}
 
           <PendingList
@@ -381,7 +456,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
           />
 
           <MovementList
-            movements={movements}
+            movements={shownMovements}
             onEdit={edit}
             onDelete={(movement) => void remove(movement)}
           />
