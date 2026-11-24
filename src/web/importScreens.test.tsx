@@ -100,6 +100,7 @@ describe('PreviewTable', () => {
     status: 'new',
     recurringItemId: null,
     recurringConcept: null,
+    reason: null,
     ...over,
   });
   const lines = buildLines(
@@ -118,7 +119,12 @@ describe('PreviewTable', () => {
     ],
     [
       proposal({}),
-      proposal({ concept: 'REPETIDA', amountCents: -1_000, status: 'duplicate' }),
+      proposal({
+        concept: 'REPETIDA',
+        amountCents: -1_000,
+        status: 'duplicate',
+        reason: 'ya confirmado como fijo',
+      }),
       proposal({
         concept: 'RECIBO PISO',
         amountCents: -70_000,
@@ -148,6 +154,8 @@ describe('PreviewTable', () => {
     expect(html).toContain('Gasto');
     expect(html).toContain('Nuevo');
     expect(html).toContain('Duplicado');
+    // The reason is shown next to the status, so the user knows why it is unchecked.
+    expect(html).toMatch(/Duplicado<span class="notes">ya confirmado como fijo<\/span>/);
     expect(html).toContain('Confirma un fijo');
     expect(html).toContain('Falta la categoría');
   });

@@ -135,6 +135,7 @@ describe('duplicates', () => {
       kind: 'expense' as const,
       concept: 'Compra Mercadona',
       amountCents: 2_550,
+      recurringItemId: null,
     },
   ];
 
@@ -302,11 +303,139 @@ describe('recurring matches', () => {
             kind: 'expense' as const,
             concept: 'Alquiler',
             amountCents: 70_000,
+            recurringItemId: null,
           },
         ],
         pending: [pending({})],
       }),
     );
     expect(row).toMatchObject({ status: 'duplicate', recurringItemId: null });
+  });
+});
+
+describe('already confirmed as a fixed item (task 0014)', () => {
+  // The rent was confirmed by hand in Fijos: the item's own concept, on its expected day.
+  const confirmedRent = {
+    date: '2026-02-02',
+    kind: 'expense' as const,
+    concept: 'Alquiler',
+    amountCents: 70_000,
+    recurringItemId: 5,
+  };
+  const bankRent = { date: '2026-02-05', concept: 'RECIBO PISO FEB', amountCents: -70_000 };
+
+  it('flags a bank row for a fixed item already confirmed in the month, with the reason', () => {
+    const [row] = classifyRows([bankRent], context({ existing: [confirmedRent] }));
+    expect(row).toMatchObject({
+      status: 'duplicate',
+      reason: 'ya confirmado como fijo',
+      recurringItemId: null,
+    });
+  });
+
+  it('the reason of an exact duplicate is its own, and other rows have none', () => {
+    const rows = classifyRows(
+      [
+        { date: '2026-02-02', concept: 'Alquiler', amountCents: -70_000 }, // identical to the stored one
+        { date: '2026-02-09', concept: 'Algo', amountCents: -1_000 },
+      ],
+      context({ existing: [confirmedRent] }),
+    );
+    expect(rows[0]).toMatchObject({ status: 'duplicate', reason: 'ya existe un movimiento igual' });
+    expect(rows[1]?.reason).toBeNull();
+  });
+
+  it('needs the same month, the same amount and a fitting kind', () => {
+    const rows = classifyRows(
+      [
+        { date: '2026-03-05', concept: 'x', amountCents: -70_000 }, // another month
+        { date: '2026-02-05', concept: 'x', amountCents: -69_999 }, // another amount
+        { date: '2026-02-05', concept: 'x', amountCents: 70_000 }, // money in; the stored one is an expense
+      ],
+      context({ existing: [confirmedRent] }),
+    );
+    expect(rows.map((r) => r.status)).toEqual(['noCategory', 'noCategory', 'noCategory']);
+  });
+
+  it('an ordinary movement with the same amount does not count: only confirmed fixed items do', () => {
+    const [row] = classifyRows(
+      [bankRent],
+      context({ existing: [{ ...confirmedRent, recurringItemId: null, concept: 'Otra cosa' }] }),
+    );
+    expect(row?.status).toBe('noCategory');
+  });
+
+  it('a pending item with the same amount still wins and is proposed for confirmation', () => {
+    // Two fixed items cost 700: one confirmed by hand, one still pending.
+    const [row] = classifyRows(
+      [bankRent],
+      context({
+        existing: [confirmedRent],
+        pending: [
+          pending({ recurringItemId: 6, concept: 'Alquiler del trastero', amountCents: 70_000 }),
+        ],
+      }),
+    );
+    expect(row).toMatchObject({ status: 'recurring', recurringItemId: 6, reason: null });
+  });
+
+  it('each confirmed fixed movement covers one row: a second identical bank row is not flagged', () => {
+    const rows = classifyRows(
+      [bankRent, { ...bankRent, concept: 'OTRO RECIBO' }],
+      context({ existing: [confirmedRent] }),
+    );
+    expect(rows.map((r) => r.status)).toEqual(['duplicate', 'noCategory']);
+  });
+
+  it('one stored movement is never claimed by two rules for two rows', () => {
+    // The first row is an exact duplicate of the stored movement; the second has the same amount
+    // in the same month but must not be flagged by that already-used movement.
+    const rows = classifyRows(
+      [
+        { date: '2026-02-02', concept: 'Alquiler', amountCents: -70_000 },
+        { date: '2026-02-06', concept: 'Otro recibo', amountCents: -70_000 },
+      ],
+      context({ existing: [confirmedRent] }),
+    );
+    expect(rows.map((r) => r.status)).toEqual(['duplicate', 'noCategory']);
+  });
+
+  it('when a rule matched, the stored fixed item must have that rule’s category kind', () => {
+    const loanRule = rule(1, 'prestamo', 40, 'repayment', 'Préstamos');
+    const bank = { date: '2026-02-05', concept: 'Cuota PRESTAMO', amountCents: -15_000 };
+    const [asExpense] = classifyRows(
+      [bank],
+      context({
+        rules: [loanRule],
+        existing: [{ ...confirmedRent, amountCents: 15_000, kind: 'expense' as const }],
+      }),
+    );
+    expect(asExpense?.status).toBe('new');
+    const [asRepayment] = classifyRows(
+      [bank],
+      context({
+        rules: [loanRule],
+        existing: [{ ...confirmedRent, amountCents: 15_000, kind: 'repayment' as const }],
+      }),
+    );
+    expect(asRepayment).toMatchObject({ status: 'duplicate', reason: 'ya confirmado como fijo' });
+  });
+
+  it('works for income items too', () => {
+    const [row] = classifyRows(
+      [{ date: '2026-02-03', concept: 'INGRESO EMPRESA', amountCents: 200_000 }],
+      context({
+        existing: [
+          {
+            date: '2026-02-01',
+            kind: 'income',
+            concept: 'Nómina',
+            amountCents: 200_000,
+            recurringItemId: 1,
+          },
+        ],
+      }),
+    );
+    expect(row).toMatchObject({ status: 'duplicate', reason: 'ya confirmado como fijo' });
   });
 });

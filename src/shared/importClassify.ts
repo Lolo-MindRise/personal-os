@@ -18,6 +18,8 @@ export interface ExistingMovement {
   kind: Kind;
   /** Positive, as stored. */
   amountCents: number;
+  /** The fixed item this movement confirms, or null for an ordinary movement. */
+  recurringItemId: number | null;
 }
 
 export interface ClassifyContext {
@@ -42,6 +44,10 @@ export function kindsForAmount(amountCents: number): Kind[] {
 const duplicateKey = (date: string, outgoing: boolean, amountCents: number, concept: string) =>
   `${date}|${outgoing ? 'out' : 'in'}|${String(Math.abs(amountCents))}|${normalizeText(concept)}`;
 
+/** Why a row is flagged as a duplicate, shown next to its status. */
+export const DUPLICATE_REASON = 'ya existe un movimiento igual';
+export const CONFIRMED_FIXED_REASON = 'ya confirmado como fijo';
+
 /** The day of a `YYYY-MM-DD` date, for choosing the pending entry closest to a row. */
 const dayOf = (date: string) => Number(date.slice(8, 10));
 
@@ -55,16 +61,21 @@ const dayOf = (date: string) => Number(date.slice(8, 10));
  *   a fitting kind (the rule's category kind when a rule matched, otherwise any kind the sign allows).
  *   The closest expected day wins; each pending entry is used once. The row then confirms that
  *   item, with the item's kind and category and the row's own date, amount and concept.
+ * - Already confirmed as a fixed item (task 0014): when no pending entry matches, a stored
+ *   movement of the same month that confirms a fixed item with the same amount and a fitting kind
+ *   flags the row as a duplicate ("ya confirmado como fijo"). It is only checked after the two
+ *   rules above, so a pending item still wins, and each stored movement covers one row.
  */
 export function classifyRows(
   rows: ClassifyInput[],
   context: ClassifyContext,
 ): ImportPreviewRowDto[] {
-  const stored = new Map<string, number>();
-  for (const m of context.existing) {
-    const key = duplicateKey(m.date, m.kind !== 'income', m.amountCents, m.concept);
-    stored.set(key, (stored.get(key) ?? 0) + 1);
-  }
+  // Every stored movement covers at most one row, by whichever rule claims it first.
+  const stored = context.existing.map((m) => ({
+    ...m,
+    key: duplicateKey(m.date, m.kind !== 'income', m.amountCents, m.concept),
+    used: false,
+  }));
   const rules = context.rules.map((rule) => ({ rule, pattern: normalizeText(rule.pattern) }));
   const used = new Set<string>();
 
@@ -85,13 +96,14 @@ export function classifyRows(
       ruleId: matched?.id ?? null,
       recurringItemId: null,
       recurringConcept: null,
+      reason: null,
     };
 
     const key = duplicateKey(row.date, row.amountCents < 0, row.amountCents, row.concept);
-    const remaining = stored.get(key) ?? 0;
-    if (remaining > 0) {
-      stored.set(key, remaining - 1);
-      return { ...base, status: 'duplicate' };
+    const same = stored.find((m) => !m.used && m.key === key);
+    if (same !== undefined) {
+      same.used = true;
+      return { ...base, status: 'duplicate', reason: DUPLICATE_REASON };
     }
 
     const month = row.date.slice(0, 7);
@@ -119,6 +131,21 @@ export function classifyRows(
         recurringItemId: candidate.recurringItemId,
         recurringConcept: candidate.concept,
       };
+    }
+    // No pending item matches. If this month already has a movement confirming a fixed item with
+    // the same kind and amount (confirmed by hand in Fijos, with the item's own concept and date),
+    // this row is most likely that same payment: flag it instead of counting it twice.
+    const confirmed = stored.find(
+      (m) =>
+        !m.used &&
+        m.recurringItemId !== null &&
+        m.date.slice(0, 7) === month &&
+        m.amountCents === Math.abs(row.amountCents) &&
+        (matched === undefined ? kinds.includes(m.kind) : m.kind === matched.kind),
+    );
+    if (confirmed !== undefined) {
+      confirmed.used = true;
+      return { ...base, status: 'duplicate', reason: CONFIRMED_FIXED_REASON };
     }
     return { ...base, status: base.categoryId === null ? 'noCategory' : 'new' };
   });

@@ -171,6 +171,40 @@ describe('POST /api/import/preview', () => {
     expect(row?.status).toBe('noCategory');
   });
 
+  it('flags a bank row for a fixed item already confirmed by hand, with the reason', async () => {
+    const housing = await category('Vivienda', 'expense');
+    const item = (
+      await call('POST', '/api/recurring-items', {
+        kind: 'expense',
+        categoryId: housing,
+        concept: 'Alquiler',
+        amountCents: 70_000,
+        expectedDay: 2,
+        startMonth: '2026-01',
+      })
+    ).json<RecurringItemDto>();
+    // Confirmed in Fijos on the item's own day (the 2nd) with its own concept.
+    const confirmed = await call(
+      'POST',
+      `/api/recurring-items/${String(item.id)}/months/2026-02/confirm`,
+      {},
+    );
+    expect(confirmed.statusCode).toBe(201);
+
+    // The file only has a row on the 20th: the stored movement is before the file's first date.
+    const rows = await preview([
+      { date: '2026-02-20', concept: 'RECIBO PISO FEBRERO', amountCents: -70_000 },
+      { date: '2026-03-20', concept: 'RECIBO PISO MARZO', amountCents: -70_000 },
+    ]);
+    expect(rows[0]).toMatchObject({
+      status: 'duplicate',
+      reason: 'ya confirmado como fijo',
+      recurringItemId: null,
+    });
+    // March has no movement yet: its item is pending, so the row proposes confirming it.
+    expect(rows[1]).toMatchObject({ status: 'recurring', recurringItemId: item.id, reason: null });
+  });
+
   it('answers an empty list and validates the body', async () => {
     expect(await preview([])).toEqual([]);
     for (const bad of [

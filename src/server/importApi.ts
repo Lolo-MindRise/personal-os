@@ -76,15 +76,20 @@ function preview(db: Db, rows: { date: string; concept: string; amountCents: num
     return [];
   }
   const dates = rows.map((r) => r.date).sort();
+  // Whole months, not just the file's dates: a fixed item confirmed by hand sits at its own
+  // expected day, which may be outside the range of the bank rows.
+  const first = `${monthOf(dates[0] ?? '')}-01`;
+  const last = `${monthOf(dates.at(-1) ?? '')}-31`;
   const existing = db
     .select({
       date: movements.date,
       kind: movements.kind,
       concept: movements.concept,
       amountCents: movements.amountCents,
+      recurringItemId: movements.recurringItemId,
     })
     .from(movements)
-    .where(and(gte(movements.date, dates[0] ?? ''), lte(movements.date, dates.at(-1) ?? '')))
+    .where(and(gte(movements.date, first), lte(movements.date, last)))
     .all();
   const months = [...new Set(rows.map((r) => monthOf(r.date)))];
   const pending = months.flatMap((month) => dueEntries(db, month).pending);

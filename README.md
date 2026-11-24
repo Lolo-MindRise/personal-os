@@ -198,3 +198,44 @@ and how many backups each rule keeps, locally and in the mirror.
    after their own `-pre-migration` backup.
 
 Try it once on a quiet day, so you know a backup restores before you need it.
+
+### Install as an app
+
+The app can be installed from Edge or Chrome, so it opens in its own window from the Start
+menu like a desktop application. It is still the same local server: nothing is cached for
+offline use, and the app needs the server to be running.
+
+1. **Start the instance** (the start shortcut, or `bash ~/apps/personal-os/scripts/start.sh`),
+   after a deploy that includes this change (`scripts/deploy-local.sh`): the icons are made by
+   the build.
+2. **Install it.** Open `http://localhost:<port>` (the `PORT` of your instance config).
+   - Edge: the install icon at the right of the address bar, or `…` → _Apps_ → _Install this
+     site as an app_.
+   - Chrome: the install icon in the address bar, or `⋮` → _Cast, save and share_ →
+     _Install page as app_.
+
+   Confirm "Personal OS". It now appears in the Start menu; right-click it for _Pin to taskbar_
+   or _Pin to Start_. The installed app belongs to that exact address, so if you change `PORT`
+   you install it again.
+
+3. **Start it automatically when you sign in** (optional). In PowerShell, from the Windows side:
+
+   ```powershell
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "\\wsl$\<distro>\home\<you>\apps\personal-os\scripts\windows\install-autostart.ps1"
+   ```
+
+   (`<distro>` is the name from `wsl -l -v`, `<you>` your Linux user.) It registers a task called
+   `PersonalOS-Autostart` for your user only, with no administrator rights, that runs
+   `scripts/start.sh` inside WSL at logon with no visible window, and prints what it did. Running
+   it twice leaves one task. Options: `-Distribution <name>` to pin a WSL distribution, `-AppDir`
+   if the instance is not in `$HOME/apps/personal-os` (keep the single quotes around the value).
+   The task only starts the server: open the installed app yourself.
+
+   To try it without signing out: `Start-ScheduledTask -TaskName PersonalOS-Autostart`, then open
+   the app. If it does not start, `Get-ScheduledTaskInfo -TaskName PersonalOS-Autostart` shows
+   the last result, and the app log is `<data dir>/logs/app.log`.
+
+4. **Turn autostart off:** run `uninstall-autostart.ps1` the same way. It removes the task
+   (and says so if there was none); an app that is already running keeps running. To remove the
+   installed app itself, use `edge://apps` or `chrome://apps` (or right-click it in the Start
+   menu → _Uninstall_).
