@@ -2,6 +2,7 @@
 # PreToolUse guard for personal-os (ADR-0001, ADR-0003).
 # Receives the tool call as JSON on stdin. Exit code 2 blocks the call.
 # No jq dependency on purpose: it must work in any environment.
+# Agents must never edit this file or the permission settings.
 
 input="$(cat)"
 
@@ -12,12 +13,30 @@ block() {
 
 tool="$(grep -o '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"' <<<"$input" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')"
 
+# Protected agent configuration: permissions and this hook (ADR-0001).
+protected='\.claude/(settings[^/"]*\.json|hooks/)'
+
 if [[ "$tool" == "Bash" ]]; then
   target="$input"
 
   # Merging is reserved to Manuel (ADR-0001).
   grep -Eq 'gh[[:space:]]+pr[[:space:]]+merge' <<<"$target" && block "merging pull requests is reserved to Manuel"
   grep -Eq 'pulls/[0-9]+/merge' <<<"$target" && block "merging pull requests is reserved to Manuel"
+
+  # Closing, reopening or approving PRs is reserved to Manuel.
+  grep -Eq 'gh[[:space:]]+pr[[:space:]]+(close|reopen|review)' <<<"$target" \
+    && block "closing, reopening or reviewing pull requests is reserved to Manuel"
+
+  # The GitHub API is read-only for agents: no write methods, no fields
+  # (gh api switches to POST when fields or input are given).
+  if grep -Eq 'gh[[:space:]]+api' <<<"$target"; then
+    grep -Eq 'gh[[:space:]]+api[^;&|]*(-X|--method)[[:space:]=]*(POST|PATCH|PUT|DELETE)' <<<"$target" \
+      && block "the GitHub API is read-only for agents"
+    grep -Eq 'gh[[:space:]]+api[^;&|]*[[:space:]](-f|-F|--field|--raw-field|--input)([[:space:]=]|$)' <<<"$target" \
+      && block "the GitHub API is read-only for agents"
+    grep -Eq 'gh[[:space:]]+api[[:space:]]+graphql' <<<"$target" \
+      && block "the GitHub API is read-only for agents"
+  fi
 
   # Repository protection and visibility are reserved to Manuel (ADR-0001).
   grep -Eq 'rulesets|branches/[^[:space:]]*/protection|--visibility' <<<"$target" \
@@ -26,8 +45,19 @@ if [[ "$tool" == "Bash" ]]; then
   # No pushes to main and no force pushes (ADR-0001).
   grep -Eq 'git[[:space:]]+push[^;&|]*([[:space:]]|:)main([[:space:]]|"|$)' <<<"$target" && block "pushing to main is not allowed"
   grep -Eq 'git[[:space:]]+push[^;&|]*(--force|[[:space:]]-f([[:space:]]|"|$))' <<<"$target" && block "force pushes are not allowed"
+
+  # No shell writes to the protected agent configuration.
+  if grep -Eq "$protected" <<<"$target"; then
+    grep -Eq '(>|tee|sed[[:space:]]+-i|perl[[:space:]]+-pi|(^|[[:space:]";&|])(mv|cp|rm|chmod|truncate|ln)[[:space:]]|git[[:space:]]+(checkout|restore|rm|mv)[[:space:]])' <<<"$target" \
+      && block "agents may not modify permission settings or the guard hook"
+  fi
 else
   target="$(grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' <<<"$input" | head -1)"
+
+  # No file-tool edits to the protected agent configuration.
+  if [[ "$tool" =~ ^(Edit|Write|MultiEdit|NotebookEdit)$ ]] && grep -Eq "$protected" <<<"$target"; then
+    block "agents may not modify permission settings or the guard hook"
+  fi
 fi
 
 # The real instance and the real data are off limits (ADR-0003).
