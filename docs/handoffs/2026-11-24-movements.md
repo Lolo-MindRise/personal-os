@@ -16,7 +16,7 @@
 - Screen (`src/web`): month picker (default current month), totals, list,
   add/edit form with per-field Spanish errors, delete with `confirm`, plain CSS.
 - `CLAUDE.md`: two rules (no permission edits; no editing committed migrations).
-- Tests: 196 total (health tests removed with the helper): money, API (in-memory DB), form validation,
+- Tests: 197 total (health tests removed with the helper): money, API (in-memory DB), form validation,
   list/summary/form rendering, API client, month helpers.
 
 ## Decisions taken
