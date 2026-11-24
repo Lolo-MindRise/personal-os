@@ -1,6 +1,7 @@
 import type {
   ApiErrorBody,
   BackupStatusDto,
+  BudgetMonthDto,
   CategoryDto,
   CategoryUsageDto,
   MonthSummaryDto,
@@ -9,6 +10,7 @@ import type {
   RecurringItemDto,
 } from '../shared/api.js';
 import type { Kind } from '../shared/constants.js';
+import type { BudgetPayload } from './budgetForm.js';
 import type { ConfirmPayload, MovementPayload } from './movementForm.js';
 import type { RecurringPayload } from './recurringForm.js';
 
@@ -62,6 +64,9 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
   return {
     categories: () => request<CategoryDto[]>(fetchFn, '/api/categories'),
     backupStatus: () => request<BackupStatusDto>(fetchFn, '/api/backups/status'),
+    budget: (month: string) => request<BudgetMonthDto>(fetchFn, `/api/months/${enc(month)}/budget`),
+    addBudgetLine: (payload: BudgetPayload) =>
+      request<BudgetMonthDto>(fetchFn, '/api/budget-lines', json('POST', payload)),
     categoryUsage: () => request<CategoryUsageDto[]>(fetchFn, '/api/categories/usage'),
     createCategory: (payload: { name: string; kind: Kind }) =>
       request<CategoryDto>(fetchFn, '/api/categories', json('POST', payload)),
