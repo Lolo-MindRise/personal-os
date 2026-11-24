@@ -103,10 +103,14 @@ export const debtCreateSchema = z.strictObject({
   monthlyPaymentCents: cents,
   balanceCents: z.number().int().nonnegative(),
   balanceAsOf: isoDate,
-  remainingInstallments: z.number().int().nonnegative(),
-  annualRateBps: z.number().int().nonnegative(),
+  remainingInstallments: z.number().int().nonnegative().max(9_999),
+  // 0 to 100 %, as the form allows.
+  annualRateBps: z.number().int().nonnegative().max(10_000),
   notes: optionalNotes,
 });
+
+/** PATCH body: any subset. The API re-checks the balance and its as-of date together. */
+export const debtUpdateSchema = debtCreateSchema.partial();
 
 export const goalCreateSchema = z.strictObject({
   name: text,
@@ -130,5 +134,6 @@ export type RecurringItemUpdate = z.infer<typeof recurringItemUpdateSchema>;
 export type ConfirmOverrides = z.infer<typeof confirmOverridesSchema>;
 export type BudgetLineCreate = z.infer<typeof budgetLineCreateSchema>;
 export type DebtCreate = z.infer<typeof debtCreateSchema>;
+export type DebtUpdate = z.infer<typeof debtUpdateSchema>;
 export type GoalCreate = z.infer<typeof goalCreateSchema>;
 export type MilestoneCreate = z.infer<typeof milestoneCreateSchema>;

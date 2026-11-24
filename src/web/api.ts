@@ -4,6 +4,7 @@ import type {
   BudgetMonthDto,
   CategoryDto,
   CategoryUsageDto,
+  DebtDto,
   MonthSummaryDto,
   MovementDto,
   PendingEntryDto,
@@ -11,6 +12,7 @@ import type {
 } from '../shared/api.js';
 import type { Kind } from '../shared/constants.js';
 import type { BudgetPayload } from './budgetForm.js';
+import type { DebtPayload } from './debtForm.js';
 import type { ConfirmPayload, MovementPayload } from './movementForm.js';
 import type { RecurringPayload } from './recurringForm.js';
 
@@ -67,6 +69,11 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
     budget: (month: string) => request<BudgetMonthDto>(fetchFn, `/api/months/${enc(month)}/budget`),
     addBudgetLine: (payload: BudgetPayload) =>
       request<BudgetMonthDto>(fetchFn, '/api/budget-lines', json('POST', payload)),
+    debts: () => request<DebtDto[]>(fetchFn, '/api/debts'),
+    createDebt: (payload: DebtPayload) =>
+      request<DebtDto>(fetchFn, '/api/debts', json('POST', payload)),
+    updateDebt: (id: number, payload: Partial<DebtPayload>) =>
+      request<DebtDto>(fetchFn, `/api/debts/${String(id)}`, json('PATCH', payload)),
     categoryUsage: () => request<CategoryUsageDto[]>(fetchFn, '/api/categories/usage'),
     createCategory: (payload: { name: string; kind: Kind }) =>
       request<CategoryDto>(fetchFn, '/api/categories', json('POST', payload)),

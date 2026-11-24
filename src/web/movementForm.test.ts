@@ -5,6 +5,7 @@ import {
   FORM_ERRORS,
   formFromMovement,
   mapApiFieldErrors,
+  payloadForUpdate,
   unmappedApiMessage,
   validateMovementForm,
   type MovementFormValues,
@@ -17,6 +18,7 @@ const valid: MovementFormValues = {
   concept: ' Compra semanal ',
   amount: '1.234,56',
   notes: '',
+  debtId: '',
 };
 
 describe('emptyForm', () => {
@@ -57,6 +59,7 @@ describe('validateMovementForm', () => {
       concept: '   ',
       amount: 'doce',
       notes: '',
+      debtId: '',
     });
     expect(result).toEqual({
       ok: false,
@@ -106,8 +109,44 @@ describe('formFromMovement', () => {
       concept: 'Nómina',
       amount: '2000,05',
       notes: '',
+      debtId: '',
     });
     expect(validateMovementForm(form).ok).toBe(true);
+  });
+
+  it('keeps the linked debt of a repayment as text', () => {
+    const form = formFromMovement({
+      id: 1,
+      date: '2026-01-25',
+      kind: 'repayment',
+      categoryId: 6,
+      categoryName: 'Amortización extra',
+      concept: 'Extra',
+      amountCents: 10_000,
+      notes: null,
+      debtId: 3,
+      recurringItemId: null,
+    });
+    expect(form.debtId).toBe('3');
+  });
+});
+
+describe('debt link in the payload', () => {
+  const repayment: MovementFormValues = { ...valid, kind: 'repayment', categoryId: '6' };
+
+  it('sends the chosen debt on a repayment, and null for none', () => {
+    const linked = validateMovementForm({ ...repayment, debtId: '3' });
+    const free = validateMovementForm({ ...repayment, debtId: '' });
+    expect(linked.ok && linked.payload.debtId).toBe(3);
+    expect(free.ok && free.payload.debtId).toBeNull();
+  });
+
+  it('never sends a debt for other kinds, even a stale one', () => {
+    const result = validateMovementForm({ ...valid, kind: 'expense', debtId: '3' });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect('debtId' in result.payload).toBe(false);
+    }
   });
 });
 
@@ -115,19 +154,41 @@ describe('mapApiFieldErrors', () => {
   it('maps API field names to form fields and drops unknown ones', () => {
     expect(
       mapApiFieldErrors({ amountCents: 'mal', kind: 'no coincide', debtId: 'x', _: 'y' }),
-    ).toEqual({ amount: 'mal', kind: 'no coincide' });
+    ).toEqual({ amount: 'mal', kind: 'no coincide', debtId: 'x' });
   });
 });
 
 describe('unmappedApiMessage', () => {
-  it('returns the message of a field the form does not have, e.g. debtId', () => {
-    expect(unmappedApiMessage({ amountCents: 'mal', debtId: 'Solo las amortizaciones.' })).toBe(
-      'Solo las amortizaciones.',
-    );
+  it('returns the message of a field the form does not have, e.g. recurringItemId', () => {
+    expect(
+      unmappedApiMessage({ amountCents: 'mal', recurringItemId: 'Solo las amortizaciones.' }),
+    ).toBe('Solo las amortizaciones.');
   });
 
   it('returns nothing when every field is on the form', () => {
     expect(unmappedApiMessage({ amountCents: 'mal', kind: 'no coincide' })).toBeUndefined();
     expect(unmappedApiMessage({})).toBeUndefined();
+  });
+});
+
+describe('payloadForUpdate', () => {
+  const expense = () => {
+    const result = validateMovementForm(valid);
+    if (!result.ok) {
+      throw new Error('fixture invalid');
+    }
+    return result.payload;
+  };
+
+  it('clears the stored debt when a linked repayment becomes another kind', () => {
+    expect(payloadForUpdate(expense(), 3)).toEqual({ ...expense(), debtId: null });
+  });
+
+  it('leaves the payload alone when there was no debt, or the kind is still repayment', () => {
+    expect(payloadForUpdate(expense(), null)).toEqual(expense());
+    const repayment = { ...expense(), kind: 'repayment' as const, debtId: 3 };
+    expect(payloadForUpdate(repayment, 3)).toEqual(repayment);
+    const unlinked = { ...repayment, debtId: null };
+    expect(payloadForUpdate(unlinked, 3)).toEqual(unlinked);
   });
 });

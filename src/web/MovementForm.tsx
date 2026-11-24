@@ -1,5 +1,5 @@
 import type { SubmitEvent } from 'react';
-import type { CategoryDto } from '../shared/api.js';
+import type { CategoryDto, DebtDto } from '../shared/api.js';
 import { KINDS, type Kind } from '../shared/constants.js';
 import { Field } from './Field.js';
 import { KIND_LABELS } from './labels.js';
@@ -35,6 +35,8 @@ const SUBMIT_LABELS: Record<FormMode, string> = {
 interface Props {
   values: MovementFormValues;
   categories: CategoryDto[];
+  /** Debts a repayment can be linked to. */
+  debts?: Pick<DebtDto, 'id' | 'name'>[];
   /** Errors to show next to each field (client-side or returned by the API). */
   errors: FieldErrors;
   /** Message not tied to a field (for example a network failure). */
@@ -51,6 +53,10 @@ export function MovementForm(props: Props) {
   const { values, categories, errors, mode } = props;
   const options = categories.filter((c) => c.kind === values.kind);
   const locked = mode === 'confirm';
+  const debts = props.debts ?? [];
+  // A repayment may be linked to a debt (not while confirming a fixed item: it has no debt).
+  const showDebt =
+    values.kind === 'repayment' && !locked && (debts.length > 0 || values.debtId !== '');
 
   const set = <K extends keyof MovementFormValues>(key: K, value: MovementFormValues[K]) => {
     props.onChange({ ...values, [key]: value });
@@ -91,7 +97,12 @@ export function MovementForm(props: Props) {
             aria-describedby={describe('kind')}
             onChange={(e) => {
               // The category list depends on the kind, so a stale category is cleared.
-              props.onChange({ ...values, kind: e.target.value as Kind, categoryId: '' });
+              props.onChange({
+                ...values,
+                kind: e.target.value as Kind,
+                categoryId: '',
+                debtId: '',
+              });
             }}
           >
             {KINDS.map((kind) => (
@@ -119,6 +130,25 @@ export function MovementForm(props: Props) {
             ))}
           </select>
         </Field>
+        {showDebt && (
+          <Field id="movement-debtId" label="Deuda (opcional)" error={errors.debtId}>
+            <select
+              id="movement-debtId"
+              value={values.debtId}
+              aria-describedby={describe('debtId')}
+              onChange={(e) => {
+                set('debtId', e.target.value);
+              }}
+            >
+              <option value="">Sin deuda</option>
+              {debts.map((d) => (
+                <option key={d.id} value={String(d.id)}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field id="movement-concept" label="Concepto" error={errors.concept}>
           <input
             id="movement-concept"

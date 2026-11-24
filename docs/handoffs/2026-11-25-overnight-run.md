@@ -118,3 +118,40 @@ Branch `agent/overnight/03-budget`, stacked on block 2.
 
 ### Open questions
 - None.
+
+### PR
+https://github.com/Lolo-MindRise/personal-os/pull/19 (both CI jobs green)
+
+## Block 4: Debts screen
+Branch `agent/overnight/04-debts`, stacked on block 3.
+
+### Done
+- API (`src/server/debtsApi.ts`): `GET /api/debts` (each with its linked repayments, the sum
+  repaid after the as-of date and the estimated balance), `POST /api/debts`, `PATCH /api/debts/:id`.
+  Pure logic in `src/shared/debts.ts`: `estimateBalance`, `parseRate` / `formatRate` (rate typed
+  in percent, stored as basis points). `parseMoney` got an `allowZero` option (a balance can be 0).
+- Screen "Deudas": one card per debt with balance and its date, estimated balance today, monthly
+  payment, remaining installments, rate, repaid since the date and the linked repayments list.
+  Add and edit form. The page says that regular installments are not deducted automatically.
+- Movement form: a "Deuda (opcional)" select for `repayment` movements (not when confirming a
+  fixed item). Editing a repayment into another kind sends `debtId: null`, so the API accepts it.
+- No migration (the `debts` table and `movements.debt_id` already existed).
+
+### Decisions taken
+- Estimated balance = balance − linked repayments dated strictly after the as-of date, never
+  below zero. Repayments on or before the as-of date are listed and marked "no se descuenta".
+- "Updating the balance records a new as-of date": the API requires `balanceAsOf` whenever
+  `balanceCents` changes (400 otherwise) and refuses a date earlier than the current one. A
+  same-day correction is allowed. The form moves the date to today when the balance is edited.
+- No delete for debts (not asked). Rate is typed in percent with at most two decimals, 0 to 100.
+- A repayment confirmed from a fixed item cannot be linked to a debt (the confirm payload has no
+  debt); link it by editing the movement afterwards.
+- The API caps the rate at 100 % and installments at 9999, matching the form.
+
+### Review
+- Reviewer: changes required, fixed. Major: the `debtId: null` on a repayment turned into
+  another kind had no test; now a pure helper (`payloadForUpdate`) with unit tests plus an API
+  test of the transition. Minors: handoff section order, API bounds for rate and installments.
+
+### Open questions
+- None.
