@@ -53,5 +53,27 @@ Build no longer warns about chunks over 500 kB.
 - Windows: installed-app icon and theme colour after the change.
 - Screenshots were taken in headless Chromium (dark and light) under `/tmp/ui-shots`.
 
+## Block 2: connected navigation (`agent/ui/02-connected`)
+
+### Done
+- Dashboard: key figures, goal and debt cards, pending items, milestones, category and month data
+  tables are links; clicking a bar of the category chart opens that category's movements for the
+  month, a bar of the months chart opens that month.
+- Movimientos understands `category` (within the month, client-side), `debt` and `fixed` (across
+  months, through the search API) in the URL. A filter bar says what is applied and clears it.
+- Presupuesto row, Categorías row, Fijos concept, Deudas (`?debt=`) link the same way. Each debt
+  card links to its linked movements (installments and extra repayments were already listed there).
+- Server: `GET /api/movements/search` accepts `debtId` and `recurringItemId` (additive, tested).
+- `docs/ui-glossary.md`; applied: "Añadir" is the only create verb (dashboard said "Crear" and
+  "Registrar").
+- Tests: server search by debt and fixed item; `e2e/connections.spec.ts` (links land filtered, back
+  button, chart bars, debt filter); existing e2e updated (dashboard buttons became links).
+
+### Decisions taken
+- Movimientos search panel filters are still not in the URL (only link filters are). Reason: the
+  panel is a free form with its own state machine; link filters cover the brief's connections.
+- The `fixed` link keeps the selected month in the URL only so "clear filter" returns to it.
+- The dashboard no longer takes an `onNavigate` prop: plain links replace it.
+
 ## Next
-Block 2: connected navigation and `docs/ui-glossary.md`.
+Block 3: side-panel forms, button names, empty states, error messages.

@@ -22,6 +22,9 @@ export type FilterField = keyof FilterValues;
 export interface SearchQuery {
   q?: string;
   categoryId?: number;
+  /** Only set by links from the debts and fixed items screens, not by the filter panel. */
+  debtId?: number;
+  recurringItemId?: number;
   kind?: Kind;
   from?: string;
   to?: string;
@@ -139,6 +142,12 @@ export function describeFilters(
   }
   if (query.categoryId !== undefined) {
     parts.push(`categoría ${categoryName ?? String(query.categoryId)}`);
+  }
+  if (query.debtId !== undefined) {
+    parts.push('vinculados a una deuda');
+  }
+  if (query.recurringItemId !== undefined) {
+    parts.push('confirmados desde un fijo');
   }
   if (query.kind !== undefined) {
     parts.push(`tipo ${kindLabels[query.kind].toLowerCase()}`);

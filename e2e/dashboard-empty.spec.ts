@@ -37,10 +37,10 @@ test('the links open the screen that fixes each gap', async ({ page }) => {
   const cases: [string, string][] = [
     ['Definir un presupuesto', 'Presupuesto'],
     ['Añadir un hito', 'Hitos'],
-    ['Crear un objetivo', 'Objetivos'],
+    ['Añadir un objetivo', 'Objetivos'],
   ];
   for (const [link, heading] of cases) {
-    await page.getByRole('button', { name: link }).first().click();
+    await page.getByRole('link', { name: link }).first().click();
     await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible();
     await page
       .getByRole('navigation', { name: 'Secciones' })

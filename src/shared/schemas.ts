@@ -203,6 +203,9 @@ export const movementSearchSchema = z
   .strictObject({
     q: queryOptional(z.string().trim().max(100)),
     categoryId: queryOptional(queryInt(1)),
+    /** Movements linked to a debt, or confirming a fixed item (links from those screens). */
+    debtId: queryOptional(queryInt(1)),
+    recurringItemId: queryOptional(queryInt(1)),
     kind: queryOptional(kindSchema),
     from: queryOptional(isoDate),
     to: queryOptional(isoDate),

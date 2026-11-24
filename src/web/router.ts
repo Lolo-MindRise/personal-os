@@ -79,7 +79,7 @@ export function resetSelectedMonth(): void {
 /** The URL for a screen; monthly screens get the selected month unless one is given. */
 export function hrefFor(view: View, params: Params = {}): string {
   if (isMonthly(view) && params.month === undefined) {
-    return buildHash(view, { ...params, month: getSelectedMonth() });
+    return buildHash(view, { month: getSelectedMonth(), ...params });
   }
   return buildHash(view, params);
 }

@@ -129,6 +129,7 @@ export function SearchResults(props: {
   onPage: (page: number) => void;
   onGoToMonth: (movement: MovementDto) => void;
   onBack: () => void;
+  backLabel?: string;
 }) {
   const { result } = props;
   const busy = props.busy ?? false;
@@ -150,7 +151,7 @@ export function SearchResults(props: {
           Resultados
         </h2>
         <button type="button" onClick={props.onBack}>
-          Volver a la vista mensual
+          {props.backLabel ?? 'Volver a la vista mensual'}
         </button>
       </div>
       {filters.length > 0 && <p className="hint">Filtros: {filters.join(' · ')}.</p>}

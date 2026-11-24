@@ -14,7 +14,7 @@ import { Field } from './Field.js';
 import { KIND_LABELS } from './labels.js';
 import { currentMonth, formatMonth } from './months.js';
 import { PageHeader } from './PageHeader.js';
-import { useMonth } from './router.js';
+import { hrefFor, useMonth } from './router.js';
 
 const defaultApi = createApiClient();
 
@@ -50,7 +50,9 @@ export function BudgetTable({
         {data.rows.map((row) => (
           <tr key={row.categoryId}>
             <td>
-              {row.categoryName}
+              <a href={hrefFor('movements', { category: String(row.categoryId) })}>
+                {row.categoryName}
+              </a>
               {row.kind !== 'expense' && (
                 <span className="notes">{KIND_LABELS[row.kind]} · no entra en el total</span>
               )}

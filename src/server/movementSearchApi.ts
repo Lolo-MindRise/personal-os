@@ -24,6 +24,12 @@ export function registerMovementSearchApi(app: FastifyInstance, db: Db): void {
     if (f.categoryId !== undefined) {
       conditions.push(eq(movements.categoryId, f.categoryId));
     }
+    if (f.debtId !== undefined) {
+      conditions.push(eq(movements.debtId, f.debtId));
+    }
+    if (f.recurringItemId !== undefined) {
+      conditions.push(eq(movements.recurringItemId, f.recurringItemId));
+    }
     if (f.kind !== undefined) {
       conditions.push(eq(movements.kind, f.kind));
     }

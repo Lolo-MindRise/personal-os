@@ -195,6 +195,63 @@ describe('GET /api/movements/search', () => {
     expect(concepts(await run('?q=_'))).toEqual([]);
   });
 
+  it('filters by the debt a movement is linked to and by the fixed item it confirms', async () => {
+    const debt = (
+      await app.inject({
+        method: 'POST',
+        url: '/api/debts',
+        payload: {
+          name: 'Tarjeta de ejemplo',
+          monthlyPaymentCents: 5_000,
+          balanceCents: 120_000,
+          balanceAsOf: '2026-02-01',
+          remainingInstallments: 24,
+          annualRateBps: 1_999,
+        },
+      })
+    ).json<{ id: number }>();
+    await app.inject({
+      method: 'POST',
+      url: '/api/movements',
+      payload: {
+        date: '2026-02-20',
+        kind: 'repayment',
+        categoryId: loan,
+        concept: 'Extra tarjeta',
+        amountCents: 30_000,
+        debtId: debt.id,
+      },
+    });
+    const item = (
+      await app.inject({
+        method: 'POST',
+        url: '/api/recurring-items',
+        payload: {
+          kind: 'expense',
+          categoryId: food,
+          concept: 'Cesta mensual',
+          amountCents: 5_000,
+          expectedDay: 5,
+          startMonth: '2026-01',
+        },
+      })
+    ).json<{ id: number }>();
+    for (const month of ['2026-01', '2026-02']) {
+      const confirmed = await app.inject({
+        method: 'POST',
+        url: `/api/recurring-items/${String(item.id)}/months/${month}/confirm`,
+        payload: {},
+      });
+      expect(confirmed.statusCode).toBe(201);
+    }
+
+    expect(concepts(await run(`?debtId=${String(debt.id)}`))).toEqual(['Extra tarjeta']);
+    const fixed = await run(`?recurringItemId=${String(item.id)}`);
+    expect(fixed.count).toBe(2);
+    expect(fixed.rows.map((m) => m.date.slice(0, 7)).sort()).toEqual(['2026-01', '2026-02']);
+    expect((await search('?debtId=0')).statusCode).toBe(400);
+  });
+
   it('still lists a month through the existing endpoint', async () => {
     const response = await app.inject({ method: 'GET', url: '/api/movements?month=2026-01' });
     expect(response.json<unknown[]>()).toHaveLength(2);
