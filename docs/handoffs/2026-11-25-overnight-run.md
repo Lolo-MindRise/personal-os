@@ -22,9 +22,6 @@ Branch `agent/overnight/01-categories` (from `main`; task 0007 confirmed merged,
 - Renaming never changes the kind (`400` if sent): movements and fixed items depend on it.
 - Usage counts live in a separate endpoint so `GET /api/categories` keeps its shape.
 
-- Playwright prod project now runs every spec except `dev.spec.ts` (was an allowlist), so
-  future specs run against the production server by default.
-
 ### Review
 - Reviewer: changes required. Blocker: handoff missing from the diff (it was written after
   the commit reviewed; now included). Minor: N+1 in the usage endpoint, fixed with one grouped
@@ -66,6 +63,8 @@ Branch `agent/overnight/02-backups`, stacked on block 1.
   main disk. A mirror equal to the local directory is refused (it would prune local backups).
 - Shutdown waits for a backup in flight before closing the database. A `.partial` left by a
   hard kill is not counted and not cleaned up automatically.
+- Drizzle's `__drizzle_migrations.id` is not filled in; migrations are counted by rows and
+  ordered by `created_at`.
 - Migration tests use their own tiny migrations folder (`openDatabaseGuarded` takes an optional
   folder), so later blocks adding migrations cannot break them.
 
@@ -73,8 +72,6 @@ Branch `agent/overnight/02-backups`, stacked on block 1.
 - Reviewer: changes required, all fixed. Major: mirror `mkdir` recursive (above, with a test
   proven by mutation). Minors: mirror = local dir, shutdown race, tests tied to the newest
   migration, duplicate import, missing review-log row.
-- Drizzle's `__drizzle_migrations.id` is not filled in; migrations are counted by rows and
-  ordered by `created_at`.
 
 ### Open questions
 - None.
@@ -218,7 +215,9 @@ Branch `agent/overnight/06-milestones`, stacked on block 5.
 - The e2e test uses dates in 2020 and 2099, so it does not depend on the day it runs.
 
 ### Review
-(see the section after the run summary)
+- Reviewer: approve, 5 minors, all fixed: the run summary wording (not every minor was fixed),
+  an inaccurate "only block" claim, a stray bullet in block 1, a misplaced note in block 2, and an
+  unrelated CSS assertion in the milestones e2e test.
 
 ### Open questions
 - None.
@@ -230,7 +229,8 @@ Branch `agent/overnight/06-milestones`, stacked on block 5.
 
 ### What is done
 All six blocks are implemented, each with unit and API tests, an e2e smoke test for its new
-screen, a reviewer pass and its findings fixed. No new dependencies, no `.claude/` changes, no
+screen and a reviewer pass. Every blocker and major was fixed; some minors were recorded as
+decisions instead (blocks 1 and 3, see their sections and `docs/metrics/review-log.md`). No new dependencies, no `.claude/` changes, no
 data model change except one additive migration (`0003`, block 5).
 
 ### PRs in merge order (each is stacked on the previous one; merge 1 first)
@@ -247,7 +247,8 @@ Merge them in this order; after each merge GitHub retargets the next PR to `main
 Nothing. No stop condition was hit and the guard hook never blocked anything.
 
 ### Test first, in the morning
-1. **Backups** (the only block that touches the real data directory): start the real instance
+1. **Backups** (the block that writes into the real data directory; #21's migration is the only
+   other thing that changes the real database): start the real instance
    after merging #18 and check that `<data dir>/backups` has a `-startup` file and that
    `/api/backups/status` is healthy. Then set `PERSONAL_OS_BACKUP_MIRROR_DIR` and check the mirror
    fills and the banner shows when the second disk is unplugged. Merging #21 adds a migration: a

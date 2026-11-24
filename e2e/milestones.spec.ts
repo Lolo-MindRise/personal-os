@@ -19,7 +19,7 @@ test('add milestones, see them ordered by date, and an overdue one stand out unt
   await expect(row(page, 'Revisar el presupuesto')).toContainText('Hecho');
 
   await test.step('add one in the past and one in the far future', async () => {
-    await page.getByLabel('Título').fill('hito atrasado de prueba'); // lowercase on purpose
+    await page.getByLabel('Título').fill('hito atrasado de prueba');
     await page.getByLabel('Fecha objetivo').fill('2020-01-15');
     await page.getByRole('button', { name: 'Añadir', exact: true }).click();
     await expect(row(page, 'hito atrasado de prueba')).toHaveCount(1);
@@ -50,7 +50,6 @@ test('add milestones, see them ordered by date, and an overdue one stand out unt
     await expect(late).toContainText('Vencido');
     await expect(row(page, 'Revisar el presupuesto')).not.toHaveClass(/overdue-row/); // done
     await expect(row(page, 'hito lejano de prueba')).not.toHaveClass(/overdue-row/); // future
-    await expect(late.locator('td').nth(1)).toHaveCSS('text-transform', 'none');
   });
 
   await test.step('marking it done removes the highlight', async () => {
