@@ -8,3 +8,4 @@ the PR after the reviewer ran; it measures what the reviewer missed.
 |------|----|------------------|------------------|---------------------------------|-------|
 | 0001 | #2 | before reviewer | – | none recorded | Walking skeleton + CI. |
 | 0002 | #4 | before reviewer | – | none recorded | Agent permissions; deviation on `.env.example`. |
+| 0003 | #6 | approve | 0/0/0 | pending | First reviewed task; reviewer ran as `opus` agent from `reviewer.md` (not yet registered in session). |
