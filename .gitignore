@@ -9,3 +9,4 @@ coverage/
 *.db
 *.db-*
 .DS_Store
+.dev-data/
