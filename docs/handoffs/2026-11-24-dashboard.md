@@ -23,8 +23,12 @@ Branch `agent/implementer/dashboard` (from `main`).
   Existing specs that assumed Movimientos as the landing page now click it first.
 
 ## Decisions taken
-- Accumulated savings card = at the end of the selected month (same value as the chart's last
-  point). Next goal and its progress use today (as the Objetivos screen does).
+- Accumulated savings card = the chart's last point (end of the selected month); shows "—" with a
+  note when that month ends before the initial balance date, so card and chart agree.
+- "Today" (goals, overdue milestones) is sent by the page (`?today=`, its own clock), like the month
+  already is; the server defaults to its local date. This keeps server and page consistent and
+  makes the e2e fixed clock effective (the seeded goal's date, 2026-12-31, cannot break the specs
+  later). Goal progress is as of that day, not of the month end, so it can differ from the card.
 - Next goal = nearest target date that is today or later (reached ones count; none -> empty state).
 - Debt progress, no invented baseline: percent of the **recorded balance** repaid by linked extra
   repayments since its date (`repaidSince / balance`). The original loan amount is not stored, so
@@ -35,6 +39,11 @@ Branch `agent/implementer/dashboard` (from `main`).
   the data table (not colour only).
 - No URL routing in the app: "links" are link-styled buttons that switch the screen.
 - Charts are not lazy-loaded; the extra 128 kB gzip is fine for a local app.
+
+## Review
+- Reviewer: changes required. Major: e2e depended on the server's real date for the goal (fixed as
+  above). Minors: card vs chart before the initial date (fixed), hint wording about confirmed vs
+  projected figures (fixed), test-only `today` parameter (now used by the UI, so not test-only).
 
 ## Verification
 - Screenshots in light and dark (1280 px) checked by eye; found and fixed two defects (budget bars

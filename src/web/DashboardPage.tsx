@@ -5,7 +5,7 @@ import type { View } from './App.js';
 import { CategoriesChart, MonthsChart } from './DashboardCharts.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
 import { MonthPicker } from './MonthPicker.js';
-import { currentMonth, formatDate } from './months.js';
+import { currentMonth, formatDate, todayISO } from './months.js';
 
 const defaultApi = createApiClient();
 
@@ -95,9 +95,18 @@ export function KeyFigures({ data, onNavigate }: { data: DashboardDto; onNavigat
     <section aria-label="Cifras clave" className="key-figures">
       <dl className="summary-item" data-testid="figure-accumulated">
         <dt>Ahorro acumulado</dt>
-        <dd className={k.accumulatedSavingsCents < 0 ? 'negative-text' : undefined}>
-          {formatCents(k.accumulatedSavingsCents)}
+        <dd
+          className={
+            k.accumulatedSavingsCents !== null && k.accumulatedSavingsCents < 0
+              ? 'negative-text'
+              : undefined
+          }
+        >
+          {k.accumulatedSavingsCents === null ? '—' : formatCents(k.accumulatedSavingsCents)}
         </dd>
+        {k.accumulatedSavingsCents === null && (
+          <dd className="card-note">Este mes es anterior a la fecha del saldo inicial.</dd>
+        )}
         {!setup.initialBalance && (
           <dd className="card-note">
             Sin saldo inicial: solo suma los movimientos.{' '}
@@ -366,7 +375,7 @@ export function DashboardPage({
 
   useEffect(() => {
     let active = true;
-    api.dashboard(month).then(
+    api.dashboard(month, todayISO()).then(
       (next) => {
         if (active) {
           setData(next);
@@ -388,8 +397,8 @@ export function DashboardPage({
     <main className="page dashboard">
       <h1>Inicio</h1>
       <p className="hint">
-        Tu situación de un vistazo. Las cifras del mes y los gráficos cuentan solo movimientos
-        confirmados.
+        Tu situación de un vistazo. Los gráficos cuentan solo movimientos confirmados; el ahorro
+        previsto suma además los fijos pendientes del mes.
       </p>
       <MonthPicker month={month} onChange={setMonth} />
       {error !== undefined && (

@@ -23,7 +23,7 @@ test('the dashboard is the default page and shows the key figures', async ({ pag
 
   await expect(page.getByTestId('figure-accumulated')).toContainText(/999,30\s€/);
   await expect(page.getByTestId('figure-goal')).toContainText('Fondo de emergencia');
-  await expect(page.getByTestId('figure-goal')).toContainText('16 %');
+  await expect(page.getByTestId('figure-goal')).toContainText('20 %');
   await expect(page.getByTestId('figure-debt')).toContainText(/3\.000,00\s€/);
   // 999,30 − pending 130,00
   await expect(page.getByTestId('figure-projected')).toContainText(/869,30\s€/);
@@ -100,7 +100,7 @@ test('debts, goal and upcoming items, with links to their screens', async ({ pag
   await expect(page.getByTestId('goal-card')).toContainText('Fondo de emergencia');
   await expect(page.getByTestId('goal-card').getByRole('progressbar')).toHaveAttribute(
     'aria-valuenow',
-    '16',
+    '20',
   );
 
   const pending = page.getByTestId('upcoming-pending');

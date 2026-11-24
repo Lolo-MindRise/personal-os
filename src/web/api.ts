@@ -73,8 +73,8 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
   return {
     categories: () => request<CategoryDto[]>(fetchFn, '/api/categories'),
     backupStatus: () => request<BackupStatusDto>(fetchFn, '/api/backups/status'),
-    dashboard: (month: string) =>
-      request<DashboardDto>(fetchFn, `/api/dashboard?month=${enc(month)}`),
+    dashboard: (month: string, today: string) =>
+      request<DashboardDto>(fetchFn, `/api/dashboard?month=${enc(month)}&today=${enc(today)}`),
     budget: (month: string) => request<BudgetMonthDto>(fetchFn, `/api/months/${enc(month)}/budget`),
     addBudgetLine: (payload: BudgetPayload) =>
       request<BudgetMonthDto>(fetchFn, '/api/budget-lines', json('POST', payload)),

@@ -72,6 +72,10 @@ describe('with seed data', () => {
     expect((await dashboard('2026-01')).keyFigures.accumulatedSavingsCents).toBe(599_930);
     expect((await dashboard('2025-12')).keyFigures.accumulatedSavingsCents).toBe(500_000);
     expect((await dashboard('2026-01')).setup.initialBalance).toBe(true);
+    // Before the initial date the card and the chart agree: no figure.
+    const before = await dashboard('2025-11');
+    expect(before.keyFigures.accumulatedSavingsCents).toBeNull();
+    expect(before.months[11]?.accumulatedCents).toBeNull();
   });
 
   it('twelve months ending at the selected one, with the same figures as the yearly summary', async () => {

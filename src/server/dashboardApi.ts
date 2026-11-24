@@ -9,7 +9,6 @@ import {
   upcomingMilestones,
 } from '../shared/dashboard.js';
 import { isoDate, isoMonth } from '../shared/schemas.js';
-import { accumulatedAt } from '../shared/summary.js';
 import { badRequest, MESSAGES as COMMON_MESSAGES } from './apiCommon.js';
 import { budgetMonth } from './budgetApi.js';
 import { listDebts } from './debtsApi.js';
@@ -44,8 +43,8 @@ function countRows(
 export function buildDashboard(db: Db, month: string, today: string): DashboardDto {
   const settings = readSettings(db);
   const all = allMovements(db);
-  const lastDay = `${month}-31`; // the comparison is textual: any day of the month is <= this
   const summary = monthSummary(db, month);
+  const window = monthRows(monthsEnding(month), settings, all);
 
   const debtItems = listDebts(db).map((d) => ({
     id: d.id,
@@ -81,12 +80,12 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
       debts: countRows(db, debts) > 0,
     },
     keyFigures: {
-      accumulatedSavingsCents: accumulatedAt(settings, all, lastDay),
+      accumulatedSavingsCents: window[window.length - 1]?.accumulatedCents ?? null,
       nextGoal: nextGoal(goalDtos(db, today), today),
       totalDebtCents: totalEstimatedCents,
       projectedSavingsCents: summary.projectedSavingsCents,
     },
-    months: monthRows(monthsEnding(month), settings, all),
+    months: window,
     categories,
     debts: { items: debtItems, totalEstimatedCents },
     upcoming: {
@@ -97,7 +96,8 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
 }
 
 export function registerDashboardApi(app: FastifyInstance, db: Db): void {
-  // `today` exists so tests do not depend on the clock; the UI never sends it.
+  // `today` (goals, overdue milestones): the page sends its own date, so the server and the page
+  // agree; it defaults to the server's local date.
   app.get('/api/dashboard', (request, reply) => {
     const query = request.query as { month?: string; today?: string };
     const today = query.today ?? localToday();

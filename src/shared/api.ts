@@ -243,8 +243,11 @@ export interface DashboardDto {
     debts: boolean;
   };
   keyFigures: {
-    /** Accumulated savings at the end of the selected month. */
-    accumulatedSavingsCents: number;
+    /**
+     * Accumulated savings at the end of the selected month (the chart's last point); null when
+     * the month ends before the initial balance date.
+     */
+    accumulatedSavingsCents: number | null;
     /** The goal with the nearest target date that is not in the past, or null. */
     nextGoal: GoalDto | null;
     totalDebtCents: number;
