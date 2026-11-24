@@ -21,7 +21,7 @@ export default tseslint.config(
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
-    files: ['src/server/**/*.ts', '*.config.{ts,js}'],
+    files: ['src/server/**/*.ts', 'src/shared/**/*.ts', '*.config.{ts,js}'],
     languageOptions: { globals: globals.node },
   },
   {
