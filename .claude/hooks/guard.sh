@@ -46,6 +46,27 @@ if [[ "$tool" == "Bash" ]]; then
   grep -Eq 'git[[:space:]]+push[^;&|]*([[:space:]]|:)main([[:space:]]|"|$)' <<<"$target" && block "pushing to main is not allowed"
   grep -Eq 'git[[:space:]]+push[^;&|]*(--force|[[:space:]]-f([[:space:]]|"|$))' <<<"$target" && block "force pushes are not allowed"
 
+  # Files are written with the file tools (Write, Edit), never from the shell.
+  # Scratch output under /tmp and /dev/null is allowed.
+  grep -Eq '(^|[^[:alnum:]_])sed[[:space:]]+(-[[:alnum:]]*i|--in-place)' <<<"$target" \
+    && block "edit files with the file tools (Edit), not sed -i"
+  grep -Eq '(^|[^[:alnum:]_])(perl|ruby)[[:space:]]+-[[:alnum:]]*i' <<<"$target" \
+    && block "edit files with the file tools (Edit), not in-place perl or ruby"
+  grep -Eq '(write_text|write_bytes|writeFileSync|writeFile\(|appendFileSync|createWriteStream|open\([^)]*,[[:space:]]*\\?['"'"'"][wax])' <<<"$target" \
+    && block "write files with the file tools (Write, Edit), not from a script"
+  while read -r dest; do
+    [[ -z "$dest" ]] && continue
+    case "$dest" in
+      /dev/null|/dev/stdout|/dev/stderr|/tmp/*) ;;
+      *) block "write files with the file tools (Write, Edit), not with shell redirection or tee" ;;
+    esac
+  done < <(
+    grep -oE '(^|[[:space:];&|(])([0-9]?>>?|&>)[[:space:]]*(\\?")?[^[:space:]&|;<>()"\\}]+' <<<"$target" \
+      | sed -E 's/^[[:space:];&|(]*([0-9]?>>?|&>)[[:space:]]*(\\?")?//'
+    grep -oE '(^|[^[:alnum:]_])tee[[:space:]]+(-a[[:space:]]+)?(\\?")?[^[:space:]&|;<>()"\\}]+' <<<"$target" \
+      | sed -E 's/.*tee[[:space:]]+(-a[[:space:]]+)?(\\?")?//'
+  )
+
   # No shell writes to the protected agent configuration.
   if grep -Eq "$protected" <<<"$target"; then
     grep -Eq '(>|tee|sed[[:space:]]+-i|perl[[:space:]]+-pi|(^|[[:space:]";&|])(mv|cp|rm|chmod|truncate|ln)[[:space:]]|git[[:space:]]+(checkout|restore|rm|mv)[[:space:]])' <<<"$target" \
