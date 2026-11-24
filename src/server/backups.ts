@@ -1,19 +1,24 @@
 import { copyFile, mkdir, readdir, rename, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type Database from 'better-sqlite3';
-import type { BackupStatusDto } from '../shared/api.js';
+import type { BackupSetStatusDto, BackupStatusDto } from '../shared/api.js';
+import {
+  BACKUP_FILE_PATTERN,
+  DEFAULT_TIME_ZONE,
+  applyRetention,
+  parseBackupName,
+} from './retention.js';
 
 // In-app backups (ADR-0003): SQLite's online backup API, written to a local
 // directory and optionally copied to a mirror. Locations come from the caller
 // (environment variables); nothing here knows a real path.
 
-export const KEEP_LOCAL = 14;
-export const KEEP_MIRROR = 7;
 export const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export type BackupReason = 'startup' | 'daily' | 'pre-migration';
+// `before-restore` copies are written by scripts/restore.sh, never by the app.
 
-const FILE_PATTERN = /^personal-os-(\d{8}T\d{9}Z)-(startup|daily|pre-migration)\.sqlite$/;
+const FILE_PATTERN = BACKUP_FILE_PATTERN;
 
 const pad = (n: number, width = 2) => String(n).padStart(width, '0');
 
@@ -46,11 +51,29 @@ export async function listBackups(dir: string): Promise<string[]> {
   }
 }
 
-async function prune(dir: string, keep: number): Promise<void> {
-  for (const name of (await listBackups(dir)).slice(keep)) {
-    await rm(join(dir, name), { force: true });
+/** Applies the retention policy to a directory; the backup just created is never deleted. */
+async function prune(dir: string, now: Date, timeZone: string, justCreated: string): Promise<void> {
+  const entries = (await listBackups(dir)).flatMap((name) => parseBackupName(name) ?? []);
+  for (const entry of applyRetention(entries, now, timeZone, justCreated).remove) {
+    await rm(join(dir, entry.name), { force: true });
   }
 }
+
+async function describeSet(dir: string, now: Date, timeZone: string): Promise<BackupSetStatusDto> {
+  const entries = (await listBackups(dir)).flatMap((name) => parseBackupName(name) ?? []);
+  const { tiers } = applyRetention(entries, now, timeZone);
+  const oldest = entries.reduce<Date | undefined>(
+    (min, e) => (min === undefined || e.at < min ? e.at : min),
+    undefined,
+  );
+  return { count: entries.length, oldestBackupAt: oldest?.toISOString() ?? null, tiers };
+}
+
+const emptySet = (): BackupSetStatusDto => ({
+  count: 0,
+  oldestBackupAt: null,
+  tiers: { recent: 0, daily: 0, monthly: 0, preMigration: 0 },
+});
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -59,8 +82,8 @@ export interface BackupServiceOptions {
   dir: string;
   mirrorDir?: string | undefined;
   now?: () => Date;
-  keepLocal?: number;
-  keepMirror?: number;
+  /** Calendar days and months for retention; default Europe/Andorra. */
+  timeZone?: string;
   intervalMs?: number;
   /** Replaceable in tests; defaults to `setInterval`. */
   schedule?: (run: () => void, ms: number) => { unref?: () => void; clear: () => void };
@@ -92,8 +115,7 @@ export function createBackupService(options: BackupServiceOptions): BackupServic
     dir,
     mirrorDir,
     now = () => new Date(),
-    keepLocal = KEEP_LOCAL,
-    keepMirror = KEEP_MIRROR,
+    timeZone = DEFAULT_TIME_ZONE,
     intervalMs = BACKUP_INTERVAL_MS,
     log = () => undefined,
   } = options;
@@ -116,7 +138,7 @@ export function createBackupService(options: BackupServiceOptions): BackupServic
   /** Backups never overlap: each waits for the previous one. */
   let queue: Promise<unknown> = Promise.resolve();
 
-  async function copyToMirror(name: string): Promise<void> {
+  async function copyToMirror(name: string, at: Date): Promise<void> {
     if (mirrorDir === undefined) {
       return;
     }
@@ -136,7 +158,7 @@ export function createBackupService(options: BackupServiceOptions): BackupServic
       const target = join(mirrorDir, name);
       await copyFile(join(dir, name), `${target}.partial`);
       await rename(`${target}.partial`, target);
-      await prune(mirrorDir, keepMirror);
+      await prune(mirrorDir, at, timeZone, name);
       mirrorError = undefined;
     } catch (error) {
       mirrorError = messageOf(error);
@@ -145,14 +167,15 @@ export function createBackupService(options: BackupServiceOptions): BackupServic
   }
 
   async function backupNow(reason: BackupReason): Promise<BackupResult> {
-    const name = `personal-os-${stamp(now())}-${reason}.sqlite`;
+    const at = now();
+    const name = `personal-os-${stamp(at)}-${reason}.sqlite`;
     const target = join(dir, name);
     try {
       await mkdir(dir, { recursive: true });
       // Written under a temporary name, so a crash never leaves a half file that counts as a backup.
       await sqlite.backup(`${target}.partial`);
       await rename(`${target}.partial`, target);
-      await prune(dir, keepLocal);
+      await prune(dir, at, timeZone, name);
       localError = undefined;
     } catch (error) {
       // Best effort: the directory itself may be what failed.
@@ -162,7 +185,7 @@ export function createBackupService(options: BackupServiceOptions): BackupServic
       return { ok: false, error: localError };
     }
     // The local copy is safe; the mirror is best effort.
-    await copyToMirror(name);
+    await copyToMirror(name, at);
     return { ok: true, file: name };
   }
 
@@ -204,15 +227,20 @@ export function createBackupService(options: BackupServiceOptions): BackupServic
       if (lastBackupAt === null && localError === undefined) {
         warnings.push('Todavía no hay ninguna copia de seguridad.');
       }
-      const mirrorFiles = mirrorDir === undefined ? [] : await listBackups(mirrorDir);
+      const at = now();
+      const localSet = await describeSet(dir, at, timeZone);
+      const mirrorSet =
+        mirrorDir === undefined ? emptySet() : await describeSet(mirrorDir, at, timeZone);
       return {
         enabled: true,
         lastBackupAt,
-        localCount: local.length,
+        localCount: localSet.count,
+        oldestBackupAt: localSet.oldestBackupAt,
+        tiers: localSet.tiers,
         mirror: {
           configured: mirrorDir !== undefined,
           state: mirrorDir === undefined ? 'disabled' : mirrorError !== undefined ? 'error' : 'ok',
-          count: mirrorFiles.length,
+          ...mirrorSet,
         },
         warnings,
       };

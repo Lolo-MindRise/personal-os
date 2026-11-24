@@ -19,7 +19,15 @@ const DISABLED: BackupStatusDto = {
   enabled: false,
   lastBackupAt: null,
   localCount: 0,
-  mirror: { configured: false, state: 'disabled', count: 0 },
+  oldestBackupAt: null,
+  tiers: { recent: 0, daily: 0, monthly: 0, preMigration: 0 },
+  mirror: {
+    configured: false,
+    state: 'disabled',
+    count: 0,
+    oldestBackupAt: null,
+    tiers: { recent: 0, daily: 0, monthly: 0, preMigration: 0 },
+  },
   warnings: [],
 };
 

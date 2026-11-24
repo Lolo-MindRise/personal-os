@@ -66,31 +66,44 @@ describe('runBackup', () => {
     copy.close();
   });
 
-  it('keeps the 14 most recent local backups and nothing else is touched', async () => {
+  it('applies retention locally and never touches other files', async () => {
     mkdirSync(dirs().local, { recursive: true });
     writeFileSync(join(dirs().local, 'notes.txt'), 'mine');
+    // 5 days old, a second one on the same day: only the newest of that day survives.
+    const old1 = 'personal-os-20261120T080000000Z-startup.sqlite';
+    const old2 = 'personal-os-20261120T090000000Z-startup.sqlite';
+    writeFileSync(join(dirs().local, old1), 'x');
+    writeFileSync(join(dirs().local, old2), 'x');
     const backups = service();
-    for (let i = 0; i < 16; i++) {
-      await backups.runBackup('daily');
-    }
+    await backups.runBackup('daily');
     const files = await listBackups(dirs().local);
-    expect(files).toHaveLength(14);
-    // The two oldest (03:00:01 and 03:00:02) are gone, the newest is kept.
-    expect(files[0]).toContain('20261125T030016');
-    expect(files.at(-1)).toContain('20261125T030003');
+    expect(files).toContain(old2);
+    expect(files).not.toContain(old1);
+    expect(files).toHaveLength(2);
     expect(readdirSync(dirs().local)).toContain('notes.txt');
     expect(readdirSync(dirs().local).some((f) => f.endsWith('.partial'))).toBe(false);
   });
 
-  it('copies to the mirror and keeps its 7 most recent', async () => {
+  it('applies the same policy in the mirror and reports its tiers', async () => {
+    mkdirSync(dirs().mirror, { recursive: true });
+    const old1 = 'personal-os-20261120T080000000Z-startup.sqlite';
+    const old2 = 'personal-os-20261120T090000000Z-startup.sqlite';
+    writeFileSync(join(dirs().mirror, old1), 'x');
+    writeFileSync(join(dirs().mirror, old2), 'x');
     const backups = service({ mirrorDir: dirs().mirror });
-    for (let i = 0; i < 9; i++) {
-      await backups.runBackup('daily');
-    }
-    expect(await listBackups(dirs().mirror)).toHaveLength(7);
-    expect(await listBackups(dirs().local)).toHaveLength(9);
+    await backups.runBackup('daily');
+    expect(await listBackups(dirs().mirror)).toEqual([
+      expect.stringContaining('20261125T030001'),
+      old2,
+    ]);
     const status = await backups.status();
-    expect(status.mirror).toEqual({ configured: true, state: 'ok', count: 7 });
+    expect(status.mirror).toEqual({
+      configured: true,
+      state: 'ok',
+      count: 2,
+      oldestBackupAt: '2026-11-20T09:00:00.000Z',
+      tiers: { recent: 1, daily: 1, monthly: 0, preMigration: 0 },
+    });
     expect(status.warnings).toEqual([]);
   });
 
@@ -133,7 +146,7 @@ describe('runBackup', () => {
   });
 
   it('refuses a mirror that is the local directory, so pruning cannot eat local backups', async () => {
-    const backups = service({ mirrorDir: dirs().local, keepMirror: 1 });
+    const backups = service({ mirrorDir: dirs().local });
     for (let i = 0; i < 3; i++) {
       await backups.runBackup('daily');
     }
@@ -183,14 +196,17 @@ describe('status', () => {
       enabled: true,
       lastBackupAt: null,
       localCount: 0,
-      mirror: { configured: false, state: 'disabled', count: 0 },
+      oldestBackupAt: null,
+      mirror: { configured: false, state: 'disabled', count: 0, oldestBackupAt: null },
     });
     expect(before.warnings[0]).toMatch(/Todavía no hay/);
 
     await backups.runBackup('startup');
     const after = await backups.status();
-    expect(after.lastBackupAt).toBe('2026-11-25T03:00:01.000Z');
+    expect(after.lastBackupAt).toBe('2026-11-25T03:00:02.000Z');
     expect(after.localCount).toBe(1);
+    expect(after.oldestBackupAt).toBe('2026-11-25T03:00:02.000Z');
+    expect(after.tiers).toEqual({ recent: 1, daily: 0, monthly: 0, preMigration: 0 });
     expect(after.warnings).toEqual([]);
   });
 });
