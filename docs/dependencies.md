@@ -30,3 +30,4 @@ entry here must not be merged.
 | `zod` | 4.6.7 | Task 0004 | Validation schemas shared by API and frontend (ADR-0002). | Valibot (smaller, but ADR-0002 chose Zod). |
 | `drizzle-kit` (dev) | 0.31.11 | Task 0004 | Generates SQL migrations from the schema. Not used at runtime. | Hand-written migrations (error-prone, no schema diff). Pulls extra `esbuild` copies, dev only. |
 | `@types/better-sqlite3` (dev) | 9.6.0 | Task 0004 | Type definitions for `better-sqlite3`. | None. |
+| `@playwright/test` (dev) | 1.65.1 | Task 0006 | Browser smoke tests of the dev and production servers (ADR-0002 lists Playwright). Downloads Chromium only, to `~/.cache/ms-playwright`; CI installs it with `--with-deps`. | Cypress (heavier, own runner and server model), Puppeteer (no test runner, no auto-waiting assertions), Vitest browser mode (still needs a browser provider, and does not start the real servers). |
