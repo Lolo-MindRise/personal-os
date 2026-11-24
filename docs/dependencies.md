@@ -30,4 +30,34 @@ entry here must not be merged.
 | `zod` | 4.6.7 | Task 0004 | Validation schemas shared by API and frontend (ADR-0002). | Valibot (smaller, but ADR-0002 chose Zod). |
 | `drizzle-kit` (dev) | 0.31.11 | Task 0004 | Generates SQL migrations from the schema. Not used at runtime. | Hand-written migrations (error-prone, no schema diff). Pulls extra `esbuild` copies, dev only. |
 | `@types/better-sqlite3` (dev) | 9.6.0 | Task 0004 | Type definitions for `better-sqlite3`. | None. |
+| (none added) | | Task 0010 | Task 0010 adds no package and does not touch the lockfile; see the two sections below. | |
+
+## `npm audit` (task 0010, 2026-11-24, npm 11.20)
+
+`npm audit --omit=dev` (what runs in production): **0 vulnerabilities.**
+`npm audit` (everything): 4 moderate findings, all one advisory chain, **development tooling only**.
+
+| Package | Severity | Advisory | Reaches production? | Why it is not fixed |
+|---------|----------|----------|---------------------|---------------------|
+| `esbuild` 0.18.20 (via `@esbuild-kit/core-utils`) | moderate | GHSA-67mh-4wv8-2f99: any website can send requests to esbuild's development server and read the answer | No. Dev dependency of `drizzle-kit`; esbuild's own dev server (`serve`) is never started, only its transform API when `npm run db:generate` runs. | The only fix npm offers is `drizzle-kit@0.18.1`, a major **downgrade** (0.31.11 today) that would break the migration tooling. Wait for a `drizzle-kit` release that drops `@esbuild-kit`. |
+| `@esbuild-kit/core-utils`, `@esbuild-kit/esm-loader` | moderate | Depend on the vulnerable esbuild above | No (same chain) | Same as above. |
+| `drizzle-kit` 0.31.11 | moderate | Depends on the vulnerable chain | No (dev only, not in `dist/`) | Same as above. |
+
+The other two `esbuild` copies (0.25.12 under `drizzle-kit`, 0.28.2 under `vite` and `tsx`) are not affected.
+Revisit at the next dependency update.
+
+## Install scripts (task 0010)
+
+npm 11.20 blocks dependency install scripts unless `allowScripts` in
+`package.json` covers them. Committed decision (`npm install-scripts ...`):
+
+| Package | Decision | Why |
+|---------|----------|-----|
+| `better-sqlite3@13.2.0` | **allowed**, pinned to this version | Its `install` script (`node-gyp rebuild`) builds the native module; it needs `build-essential` (README, Prerequisites). Without approval a platform with no matching prebuilt binary would fail at runtime. A new version needs a new, reviewed approval. |
+| `esbuild` (0.18.20, 0.25.12, 0.28.2) | **denied** (all versions) | The postinstall only checks the binary; the platform binary arrives as an optional dependency. Verified: a clean `npm ci` with it denied still builds and passes all 661 unit tests. |
+
+Any other package that adds an install script is skipped and listed by npm,
+and `npm install-scripts ls` shows it for review. Verified in a clean copy: `npm ci --foreground-scripts`
+runs `better-sqlite3`'s `node-gyp rebuild`, builds and loads it, and leaves no unapproved scripts.
+CI runs the same `npm ci`; its result is in the PR checks.
 | `@playwright/test` (dev) | 1.65.1 | Task 0006 | Browser smoke tests of the dev and production servers (ADR-0002 lists Playwright). Downloads Chromium only, to `~/.cache/ms-playwright`; CI installs it with `--with-deps`. | Cypress (heavier, own runner and server model), Puppeteer (no test runner, no auto-waiting assertions), Vitest browser mode (still needs a browser provider, and does not start the real servers). |

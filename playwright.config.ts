@@ -1,10 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Ports are away from the defaults (API 5310) so a running real instance never
-// collides with the tests. Vite's dev port (5173) is fixed in vite.config.ts.
-const DEV_URL = 'http://127.0.0.1:5173';
-const DEV_API_PORT = '5311';
-const PROD_PORT = '5312';
+// Dedicated ports, away from every default (API 5310, Vite 5173), so the tests never
+// collide with a running `npm run dev` or the real instance.
+const DEV_WEB_PORT = '5321';
+const DEV_URL = `http://127.0.0.1:${DEV_WEB_PORT}`;
+const DEV_API_PORT = '5322';
+const PROD_PORT = '5323';
 const PROD_URL = `http://127.0.0.1:${PROD_PORT}`;
 
 export default defineConfig({
@@ -34,7 +35,7 @@ export default defineConfig({
       // The mode where the task 0005 blank-page bug lived.
       command: 'npm run dev',
       url: DEV_URL,
-      env: { PORT: DEV_API_PORT },
+      env: { PORT: DEV_API_PORT, VITE_PORT: DEV_WEB_PORT },
       reuseExistingServer: false,
       timeout: 60_000,
       gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },

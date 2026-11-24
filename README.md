@@ -7,8 +7,9 @@ Architecture and rules: `docs/decisions/` and `CLAUDE.md`.
 
 ## Requirements
 
-- Node.js LTS, the version in `.nvmrc` (`nvm use`).
+- Node.js, the version in `.nvmrc`, installed with `fnm` (see Prerequisites).
 - npm (bundled with Node.js).
+- On a fresh Ubuntu/WSL: the system packages under Prerequisites.
 
 ## Install
 
@@ -42,7 +43,10 @@ npm run format      # Apply Prettier formatting
 CI (`.github/workflows/ci.yml`) runs two jobs on every pull request: `check`
 (`npm ci`, lint, typecheck, test, build) and `e2e` (Chromium, `npm run test:e2e`).
 Locally, Chromium needs `npx playwright install chromium` once, and on a fresh
-Ubuntu/WSL also its system libraries: `sudo env "PATH=$PATH" npx playwright install-deps chromium`.
+Ubuntu/WSL also its system libraries (see Prerequisites).
+
+The e2e suite uses its own ports (Vite 5321, API 5322, production server 5323)
+and fixed dates, so it can run while `npm run dev` or the real instance is up.
 
 ## Layout
 
@@ -53,6 +57,44 @@ src/server/   Fastify API (health endpoint, static serving in production)
 src/web/      React + Vite frontend (UI text in es-ES)
 e2e/          Playwright smoke tests (dev and production servers)
 ```
+
+## Prerequisites
+
+For a fresh Ubuntu under WSL (the real instance and local e2e runs). Run once.
+
+1. **Build tools.** `better-sqlite3` is compiled during `npm ci` when no
+   prebuilt binary matches the Node version, and the install script is
+   allowed on purpose (`allowScripts` in `package.json`). Without a compiler
+   a deploy fails.
+
+   ```sh
+   sudo apt-get update
+   sudo apt-get install build-essential
+   ```
+
+2. **Node through `fnm`**, using the version in `.nvmrc`. Install `fnm`
+   (<https://github.com/Schniz/fnm>), then from the repository:
+
+   ```sh
+   fnm install      # reads .nvmrc
+   fnm use
+   node -v          # must match .nvmrc
+   ```
+
+   The scripts in `scripts/` initialise `fnm` themselves when `node` is not on
+   `PATH` (as in a non-interactive shell opened from Windows).
+
+3. **Playwright system packages** (only for local e2e runs; CI installs its own).
+   First list what is missing, without installing anything:
+
+   ```sh
+   npx playwright install chromium
+   npx playwright install-deps --dry-run chromium
+   ```
+
+   Then install exactly that list with `sudo apt-get install <packages>`
+   (the dry run prints the command). Avoid running `install-deps` under `sudo`
+   directly: it needs your `PATH` and would run npm's code as root.
 
 ## Run your real instance
 
@@ -70,7 +112,10 @@ the default.
 
    Set `PERSONAL_OS_DATA_DIR` (database, logs, local backups),
    `PERSONAL_OS_BACKUP_MIRROR_DIR` (a folder on the second disk, under `/mnt/...`)
-   and `PORT` (default 5310). Another file can be used with
+   and `PORT`. Use a port other than 5310, the default of `npm run dev`
+   (for example 5380): the development server and the real instance would
+   otherwise fight for it, and a dev server started first would answer the
+   start script's health check as if it were the real app. Another file can be used with
    `PERSONAL_OS_INSTANCE_ENV=/path/to/file`.
 
 2. **First deploy** (clones `main`, `npm ci`, build), from your development clone:
@@ -107,6 +152,6 @@ the default.
    changes (it must stay a clean copy of `main`). Migrations run on start, after
    a `-pre-migration` backup.
 
-Do not start the real instance while a test run (`npm run test:e2e`,
-`npm run dev`) uses the same port: set a different `PORT` in the instance config
-if you need both at once.
+Do not start the real instance on a port another process uses (`npm run dev`
+uses 5310; the e2e suite uses 5321–5323): keep `PORT` in the instance config
+distinct, as in step 1.

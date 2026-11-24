@@ -14,16 +14,17 @@ const monthRow = (page: Page, month: string) =>
 const goalCard = (page: Page, name: string) =>
   page.locator('section.debt-card').filter({ hasText: name });
 
+test.beforeEach(async ({ page }) => {
+  // The page opens on 2026, the year of the seed, whatever the real date is.
+  await page.clock.setFixedTime('2026-06-15T12:00:00');
+});
+
 test('the yearly summary accumulates savings from the initial balance', async ({ page }) => {
   await page.goto('/');
   await nav(page, 'Resumen').click();
   await expect(page.getByRole('heading', { name: 'Resumen', level: 1 })).toBeVisible();
 
-  await test.step('go to 2026, the year of the seed', async () => {
-    const back = new Date().getFullYear() - 2026;
-    for (let i = 0; i < back; i++) {
-      await page.getByRole('button', { name: 'Año anterior' }).click();
-    }
+  await test.step('the year of the seed is shown', async () => {
     await expect(page.locator('.year-label')).toHaveText('2026');
     await expect(page.locator('table.summary-year tbody tr')).toHaveCount(12);
   });
