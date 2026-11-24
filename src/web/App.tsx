@@ -8,6 +8,7 @@ import { GoalsPage } from './GoalsPage.js';
 import { ImportPage } from './ImportPage.js';
 import { MilestonesPage } from './MilestonesPage.js';
 import { MovementsPage } from './MovementsPage.js';
+import { ProjectionPage } from './ProjectionPage.js';
 import { RecurringPage } from './RecurringPage.js';
 import { SummaryPage } from './SummaryPage.js';
 
@@ -19,6 +20,7 @@ export const VIEWS = [
   ['budget', 'Presupuesto'],
   ['debts', 'Deudas'],
   ['summary', 'Resumen'],
+  ['projection', 'Proyección'],
   ['goals', 'Objetivos'],
   ['milestones', 'Hitos'],
   ['categories', 'Categorías'],
@@ -63,6 +65,8 @@ function Screen({ view, onNavigate }: { view: View; onNavigate: (view: View) => 
       return <DebtsPage />;
     case 'summary':
       return <SummaryPage />;
+    case 'projection':
+      return <ProjectionPage />;
     case 'goals':
       return <GoalsPage />;
     case 'milestones':

@@ -713,6 +713,18 @@ table.movements {
   color: var(--income);
 }
 
+/* Projection (task 0013, block 4). */
+.projection-notes ul,
+.goal-projection {
+  margin: 0.5rem 0;
+  padding-left: 1.2rem;
+}
+
+.projection-table {
+  display: block;
+  overflow-x: auto;
+}
+
 /* Movement search (task 0013, block 3). */
 .search-totals {
   margin: 0.5rem 0;

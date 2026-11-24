@@ -100,7 +100,7 @@ stale preview, zero in both debit and credit, rule-reset warning. Left as known 
 
 ## Block 3: search and filter movements
 
-Branch `agent/session/03-movement-search` (from block 2). PR: _pending_ (see the end of this file).
+Branch `agent/session/03-movement-search` (from block 2). PR #35, both CI jobs green.
 
 ### Done
 - `GET /api/movements/search`: text (concept or notes, ignoring case and accents), category, kind,
@@ -136,3 +136,43 @@ leaving the search during a page load, and the missing page-level tests. All min
 
 ### Open questions
 - Should results be editable in place, or exportable?
+
+## Block 4: projection and scenarios
+
+Branch `agent/session/04-projection` (from block 3). PR: _pending_ (see "Where the run ended").
+
+### Done
+- `src/shared/projection.ts` (pure): `projectMonths`, `applyScenarios`, `firstMonthReaching`,
+  `addMonths`, `monthRange`. `GET /api/projection?to=YYYY-MM&today=YYYY-MM-DD` gathers the inputs
+  (recurring items, skips, budgets, the current month's actuals, goals) and returns the base months.
+- "Proyección" screen: end-month selector (default 12 months, at most 120), a Recharts line of the
+  accumulated savings with each goal's target (horizontal) and date (vertical) marked, a goals
+  summary ("se alcanza en …"), a text explanation of what is and is not included, scenarios (extra
+  monthly income from a month; an expense category becomes another amount from a month) that live
+  only in the page, base and scenario side by side in the chart and in a month-by-month table.
+- Tests: arithmetic across years, recurring start/end months (both included), budgets in effect
+  per month, current-month blending, skips, scenarios applied from the right month, order and
+  overrides; the API (real data, initial balance edge cases, validation); the form and screen parts;
+  e2e (chart, range, goals, scenario against the API's base, errors, nothing stored).
+- No migration, no new dependency (Recharts is already in use, ADR-0006).
+
+### Decisions taken
+- The projection starts from the accumulated savings at the end of the previous month, and the
+  current month is projected as: confirmed movements as they are + pending fixed items + the part
+  of a budget still missing (budget − actual, never below zero). So "current accumulated savings"
+  and this month's real figures are never counted twice.
+- A category with a fixed item due that month never uses its budget (the brief: "budget of
+  categories without recurring items"); only expense categories have budgets in the projection.
+- Skipped fixed items are left out of their own month only.
+- Movements dated on or before the initial balance's date are inside that balance and are not
+  counted in the current month; if the initial date is after last month's end, the projection
+  starts from the initial balance.
+- Scenarios: income adjustments add up; for a category the last scenario that applies to a month
+  sets that month's total (later `fromMonth` wins). A scenario must start inside the projected
+  range; one that starts after a shortened end month is kept in the list but not applied.
+- Debt installments appear only through their fixed items (block 1); debt balances are not projected.
+- Goals are marked, never deducted from savings.
+
+### Open questions
+- Should the projection also reduce the debts' balances, or include interest on savings?
+- Should scenarios be saveable (out of scope for this task)?
