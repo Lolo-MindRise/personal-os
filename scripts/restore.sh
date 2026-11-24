@@ -113,12 +113,19 @@ cmp -s -- "$backup_file" "$staged" || die "could not copy the backup into $PERSO
 if [[ -f "$DB_FILE" ]]; then
   stamp="$(node -e 'console.log(new Date().toISOString().replace(/[-:]/g, "").replace(".", ""))')"
   safety="$LOCAL_BACKUPS/personal-os-${stamp}-before-restore.sqlite"
-  if node "$APP_DIR/scripts/lib/sqlite-tool.mjs" snapshot "$DB_FILE" "$safety" >/dev/null 2>&1; then
+  # Written under a temporary name, so an interrupted run never leaves a half file that counts as a backup.
+  if node "$APP_DIR/scripts/lib/sqlite-tool.mjs" snapshot "$DB_FILE" "$safety.partial" >/dev/null 2>&1; then
+    mv -f -- "$safety.partial" "$safety"
     info "current database saved as $safety"
   else
     # The current database may be exactly what is broken: keep a raw copy rather than refuse.
-    rm -f "$safety"
-    cp -f -- "$DB_FILE" "$safety" || die "could not save the current database before replacing it. Nothing was changed."
+    rm -f "$safety.partial"
+    cp -f -- "$DB_FILE" "$safety.partial" || die "could not save the current database before replacing it. Nothing was changed."
+    mv -f -- "$safety.partial" "$safety"
+    # Keep the WAL too: committed data may still be only there.
+    if [[ -f "$DB_FILE-wal" ]]; then
+      cp -f -- "$DB_FILE-wal" "$safety-wal" || true
+    fi
     info "warning: the current database could not be read as SQLite; a raw copy was saved as $safety"
   fi
 else

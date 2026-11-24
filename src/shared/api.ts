@@ -286,7 +286,7 @@ export interface BackupSetStatusDto {
 export interface BackupStatusDto {
   /** False when backups do not run (development, or no data directory). */
   enabled: boolean;
-  /** ISO timestamp of the newest local backup, or null if there is none. */
+  /** ISO timestamp of the newest local backup file (a `-before-restore` copy counts), or null. */
   lastBackupAt: string | null;
   localCount: number;
   /** ISO timestamp of the oldest local backup (the furthest back Manuel can restore), or null. */

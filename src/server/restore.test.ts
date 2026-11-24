@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   readdirSync,
   rmSync,
   symlinkSync,
@@ -263,5 +264,5 @@ describe('restoring', () => {
 });
 
 function readFileBytes(file: string): Buffer {
-  return Buffer.from(spawnSync('cat', [file]).stdout);
+  return readFileSync(file);
 }
