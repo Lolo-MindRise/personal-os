@@ -98,6 +98,6 @@ scheduler (chosen: one place, runs whenever the app is used).
 ## Action Items
 
 1. [ ] Manuel: confirm WSL version and distro name (`wsl -l -v`).
-2. [ ] Agent task: `scripts/start.sh`, `scripts/deploy-local.sh`, in-app backups.
+2. [x] Agent task: `scripts/start.sh`, `scripts/deploy-local.sh`, in-app backups (backups: task 0008; scripts: task 0009).
 3. [ ] Manuel: create the Windows shortcut and set power settings.
 4. [ ] Manuel: decide off-site backup (outside the PC).
