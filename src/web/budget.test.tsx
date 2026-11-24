@@ -167,9 +167,7 @@ describe('differenceTone', () => {
 
 describe('navigation and api client', () => {
   it('has a Presupuesto section', () => {
-    expect(renderToStaticMarkup(<Navigation view="budget" onChange={noop} />)).toContain(
-      'Presupuesto',
-    );
+    expect(renderToStaticMarkup(<Navigation view="budget" />)).toContain('Presupuesto');
   });
 
   it('reads the month budget and posts a line', async () => {

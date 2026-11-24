@@ -281,7 +281,7 @@ describe('MovementForm: linking a repayment to a debt', () => {
 
 describe('navigation and api client: debts', () => {
   it('has a Deudas section', () => {
-    expect(renderToStaticMarkup(<Navigation view="debts" onChange={noop} />)).toContain('Deudas');
+    expect(renderToStaticMarkup(<Navigation view="debts" />)).toContain('Deudas');
   });
 
   it('uses the right URLs and methods', async () => {

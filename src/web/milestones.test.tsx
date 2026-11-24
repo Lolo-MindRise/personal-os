@@ -145,9 +145,7 @@ describe('validateMilestoneForm', () => {
 
 describe('navigation and api client', () => {
   it('has a Hitos section', () => {
-    expect(renderToStaticMarkup(<Navigation view="milestones" onChange={noop} />)).toContain(
-      'Hitos',
-    );
+    expect(renderToStaticMarkup(<Navigation view="milestones" />)).toContain('Hitos');
   });
 
   it('uses the right URLs and methods', async () => {

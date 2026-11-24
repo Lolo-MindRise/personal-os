@@ -42,7 +42,7 @@ test('the dev page renders and no request fails', async ({ page }) => {
   // The other screens still load through the proxy.
   await page
     .getByRole('navigation', { name: 'Secciones' })
-    .getByRole('button', { name: 'Movimientos' })
+    .getByRole('link', { name: 'Movimientos' })
     .click();
   await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Añadir movimiento' })).toBeVisible();

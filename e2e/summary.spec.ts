@@ -6,7 +6,7 @@ import { expect, test, type Page } from '@playwright/test';
 // balance and adds a goal; neither can be removed, and no other spec reads them.
 
 const nav = (page: Page, name: string) =>
-  page.getByRole('navigation', { name: 'Secciones' }).getByRole('button', { name });
+  page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name });
 const monthRow = (page: Page, month: string) =>
   page
     .locator('table.summary-year tbody tr')
@@ -63,7 +63,11 @@ test('goals: the seeded one, add one, and edit it', async ({ page, request }) =>
   });
   expect(saved.status()).toBe(200);
   await page.goto('/');
-  await nav(page, 'Objetivos').click();
+  await nav(page, 'Objetivos y resumen').click();
+  await page
+    .getByRole('navigation', { name: 'Vistas' })
+    .getByRole('link', { name: 'Objetivos' })
+    .click();
   await expect(page.getByRole('heading', { name: 'Objetivos', level: 1 })).toBeVisible();
 
   await test.step('the seeded goal', async () => {

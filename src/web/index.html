@@ -6,7 +6,16 @@
     <title>Personal OS</title>
     <!-- Installable app (task 0014): manifest and icons. No service worker: nothing is cached. -->
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#1f6feb" />
+    <meta name="theme-color" content="#1f3b2d" />
+    <!-- Apply the saved theme before the first paint (dark by default). -->
+    <script>
+      try {
+        document.documentElement.dataset.theme =
+          localStorage.getItem('personal-os-theme') === 'light' ? 'light' : 'dark';
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    </script>
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   </head>

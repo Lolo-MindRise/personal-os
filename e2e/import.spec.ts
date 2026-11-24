@@ -5,7 +5,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 // 700,00 on day 2), so both are pending that month. The test removes what it creates.
 
 const nav = (page: Page, name: string) =>
-  page.getByRole('navigation', { name: 'Secciones' }).getByRole('button', { name });
+  page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name });
 
 const CSV = [
   'Fecha;Concepto;Importe',

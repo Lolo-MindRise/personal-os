@@ -13,6 +13,9 @@ import {
   type SettingsFormValues,
 } from './summaryForms.js';
 
+import { PageHeader, SubNav } from './PageHeader.js';
+import { hrefFor } from './router.js';
+
 const defaultApi = createApiClient();
 
 const messageOf = (error: unknown) => (error instanceof ApiError ? error.message : NETWORK_ERROR);
@@ -242,7 +245,14 @@ export function SummaryPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <h1>Resumen</h1>
+      <PageHeader title="Resumen" />
+      <SubNav
+        current="summary"
+        items={[
+          { id: 'summary', label: 'Resumen del año', href: hrefFor('summary') },
+          { id: 'goals', label: 'Objetivos', href: hrefFor('goals') },
+        ]}
+      />
       <p className="hint">
         Ingresos, gastos, amortizaciones y ahorro de cada mes del año, con el ahorro acumulado. Solo
         cuentan los movimientos confirmados.

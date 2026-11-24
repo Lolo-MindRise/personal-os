@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { DashboardDebtDto, DashboardDto, GoalDto } from '../shared/api.js';
 import { formatCents } from '../shared/money.js';
-import type { View } from './App.js';
+import { navigate, type View } from './router.js';
 import { CategoriesChart, MonthsChart } from './DashboardCharts.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
-import { MonthPicker } from './MonthPicker.js';
-import { currentMonth, formatDate, todayISO } from './months.js';
+import { formatDate, todayISO } from './months.js';
+import { PageHeader } from './PageHeader.js';
+import { useMonth } from './router.js';
 
 const defaultApi = createApiClient();
 
@@ -367,12 +368,14 @@ export function DashboardView({ data, onNavigate }: { data: DashboardDto; onNavi
 /** The "Inicio" screen: the financial situation at a glance, for the selected month. */
 export function DashboardPage({
   api = defaultApi,
-  onNavigate,
+  onNavigate = (view) => {
+    navigate(view);
+  },
 }: {
   api?: ApiClient;
-  onNavigate: Navigate;
+  onNavigate?: Navigate;
 }) {
-  const [month, setMonth] = useState(() => currentMonth());
+  const [month, setMonth] = useMonth();
   const [data, setData] = useState<DashboardDto | undefined>();
   const [error, setError] = useState<string | undefined>();
 
@@ -398,12 +401,12 @@ export function DashboardPage({
 
   return (
     <main className="page dashboard">
-      <h1>Inicio</h1>
-      <p className="hint">
-        Tu situación de un vistazo. Los gráficos cuentan solo movimientos confirmados; el ahorro
-        previsto suma además los fijos pendientes del mes.
-      </p>
-      <MonthPicker month={month} onChange={setMonth} />
+      <PageHeader
+        title="Inicio"
+        month={month}
+        onMonthChange={setMonth}
+        hint="Tu situación de un vistazo. Los gráficos cuentan solo movimientos confirmados; el ahorro previsto suma además los fijos pendientes del mes."
+      />
       {error !== undefined && (
         <p className="form-error" role="alert">
           {error}

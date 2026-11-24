@@ -9,7 +9,7 @@ const summaryItem = (page: Page, label: string) =>
 const goToMovements = (page: Page) =>
   page
     .getByRole('navigation', { name: 'Secciones' })
-    .getByRole('button', { name: 'Movimientos' })
+    .getByRole('link', { name: 'Movimientos' })
     .click();
 const rows = (page: Page) => page.locator('table.movements tbody tr');
 

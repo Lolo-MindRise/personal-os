@@ -18,7 +18,7 @@ const NOW = '2027-03-15T12:00:00';
 const MONTH = '2027-03';
 
 const nav = (page: Page, name: 'Movimientos' | 'Fijos') =>
-  page.getByRole('navigation', { name: 'Secciones' }).getByRole('button', { name });
+  page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name });
 const summaryItem = (page: Page, label: string) =>
   page.locator('.summary-item').filter({ hasText: label });
 const pendingItem = (page: Page, label: string) =>

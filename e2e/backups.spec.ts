@@ -32,7 +32,7 @@ test('the warning banner is visible on every screen and the app still works', as
 
   await page
     .getByRole('navigation', { name: 'Secciones' })
-    .getByRole('button', { name: 'Categorías' })
+    .getByRole('link', { name: 'Categorías' })
     .click();
   await expect(banner).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Categorías', level: 1 })).toBeVisible();

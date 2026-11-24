@@ -12,6 +12,8 @@ import {
   type RecurringPayload,
 } from './recurringForm.js';
 
+import { PageHeader } from './PageHeader.js';
+
 const defaultApi = createApiClient();
 
 const messageOf = (error: unknown) => (error instanceof ApiError ? error.message : NETWORK_ERROR);
@@ -117,7 +119,7 @@ export function RecurringPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <h1>Fijos</h1>
+      <PageHeader title="Fijos" />
       <p className="hint">
         Ingresos y gastos que se repiten cada mes. Cada mes aparecen como pendientes en
         «Movimientos» y los confirmas cuando se pagan o se cobran.

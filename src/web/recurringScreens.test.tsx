@@ -237,7 +237,7 @@ describe('RecurringForm', () => {
 
 describe('Navigation', () => {
   const render = (view: 'movements' | 'recurring') =>
-    renderToStaticMarkup(<Navigation view={view} onChange={noop} />);
+    renderToStaticMarkup(<Navigation view={view} />);
 
   it('has the two sections and marks the current one', () => {
     const movements = render('movements');

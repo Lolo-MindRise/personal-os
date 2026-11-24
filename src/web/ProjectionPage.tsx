@@ -38,6 +38,8 @@ import {
   type ScenarioFormValues,
 } from './projectionForm.js';
 
+import { PageHeader } from './PageHeader.js';
+
 const defaultApi = createApiClient();
 
 const messageOf = (error: unknown) => (error instanceof ApiError ? error.message : NETWORK_ERROR);
@@ -354,7 +356,7 @@ export function ProjectionPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <h1>Proyección</h1>
+      <PageHeader title="Proyección" />
       <p className="hint">¿Cuánto tendré ahorrado en una fecha? Elige hasta qué mes proyectar.</p>
 
       <div className="field">

@@ -15,6 +15,8 @@ import {
 } from './milestoneForm.js';
 import { formatDate, todayISO } from './months.js';
 
+import { PageHeader } from './PageHeader.js';
+
 const defaultApi = createApiClient();
 
 const messageOf = (error: unknown) => (error instanceof ApiError ? error.message : NETWORK_ERROR);
@@ -238,7 +240,7 @@ export function MilestonesPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <h1>Hitos</h1>
+      <PageHeader title="Hitos" />
       <p className="hint">
         Pasos con fecha hacia tus objetivos, ordenados por fecha. Los que han pasado de fecha sin
         estar hechos aparecen marcados como vencidos.

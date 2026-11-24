@@ -8,7 +8,7 @@ const NOW = '2028-03-15T12:00:00';
 const TODAY = '2028-03-15';
 
 const nav = (page: Page, name: string) =>
-  page.getByRole('navigation', { name: 'Secciones' }).getByRole('button', { name });
+  page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name });
 const tableRows = (page: Page) => page.locator('table.projection-table tbody tr');
 const row = (page: Page, label: string) => tableRows(page).filter({ hasText: label });
 

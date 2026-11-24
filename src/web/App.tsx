@@ -1,88 +1,152 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { BackupBanner } from './BackupBanner.js';
-import { BudgetPage } from './BudgetPage.js';
-import { CategoriesPage } from './CategoriesPage.js';
-import { DashboardPage } from './DashboardPage.js';
-import { DebtsPage } from './DebtsPage.js';
-import { GoalsPage } from './GoalsPage.js';
-import { ImportPage } from './ImportPage.js';
-import { MilestonesPage } from './MilestonesPage.js';
-import { MovementsPage } from './MovementsPage.js';
-import { ProjectionPage } from './ProjectionPage.js';
-import { RecurringPage } from './RecurringPage.js';
-import { SummaryPage } from './SummaryPage.js';
+import { hrefFor, useRoute, type View } from './router.js';
+import { ThemeToggle } from './theme.js';
 
-export const VIEWS = [
-  ['dashboard', 'Inicio'],
-  ['movements', 'Movimientos'],
-  ['import', 'Importar'],
-  ['recurring', 'Fijos'],
-  ['budget', 'Presupuesto'],
-  ['debts', 'Deudas'],
-  ['summary', 'Resumen'],
-  ['projection', 'Proyección'],
-  ['goals', 'Objetivos'],
-  ['milestones', 'Hitos'],
-  ['categories', 'Categorías'],
-] as const;
+export type { View } from './router.js';
 
-export type View = (typeof VIEWS)[number][0];
+const named = <K extends string>(load: () => Promise<Record<K, React.ComponentType>>, key: K) =>
+  lazy(async () => ({ default: (await load())[key] }));
 
-/** The top-level sections, switched with a navigation bar. */
-export function Navigation({ view, onChange }: { view: View; onChange: (view: View) => void }) {
+const DashboardPage = named(() => import('./DashboardPage.js'), 'DashboardPage');
+const MovementsPage = named(() => import('./MovementsPage.js'), 'MovementsPage');
+const ImportPage = named(() => import('./ImportPage.js'), 'ImportPage');
+const BudgetPage = named(() => import('./BudgetPage.js'), 'BudgetPage');
+const RecurringPage = named(() => import('./RecurringPage.js'), 'RecurringPage');
+const ProjectionPage = named(() => import('./ProjectionPage.js'), 'ProjectionPage');
+const DebtsPage = named(() => import('./DebtsPage.js'), 'DebtsPage');
+const SummaryPage = named(() => import('./SummaryPage.js'), 'SummaryPage');
+const GoalsPage = named(() => import('./GoalsPage.js'), 'GoalsPage');
+const MilestonesPage = named(() => import('./MilestonesPage.js'), 'MilestonesPage');
+const CategoriesPage = named(() => import('./CategoriesPage.js'), 'CategoriesPage');
+const BackupsPage = named(() => import('./BackupsPage.js'), 'BackupsPage');
+
+const SCREENS: Record<View, React.LazyExoticComponent<React.ComponentType>> = {
+  dashboard: DashboardPage,
+  movements: MovementsPage,
+  import: ImportPage,
+  budget: BudgetPage,
+  recurring: RecurringPage,
+  projection: ProjectionPage,
+  debts: DebtsPage,
+  summary: SummaryPage,
+  goals: GoalsPage,
+  milestones: MilestonesPage,
+  categories: CategoriesPage,
+  backups: BackupsPage,
+};
+
+interface NavItem {
+  /** The screen the link opens. */
+  view: View;
+  label: string;
+  /** Other screens that keep this item marked as the active one. */
+  also?: View[];
+}
+
+interface NavGroup {
+  title?: string;
+  items: NavItem[];
+}
+
+export const NAV_GROUPS: NavGroup[] = [
+  { items: [{ view: 'dashboard', label: 'Inicio' }] },
+  {
+    title: 'Día a día',
+    items: [
+      { view: 'movements', label: 'Movimientos' },
+      { view: 'import', label: 'Importar' },
+    ],
+  },
+  {
+    title: 'Planificar',
+    items: [
+      { view: 'budget', label: 'Presupuesto' },
+      { view: 'recurring', label: 'Fijos' },
+      { view: 'projection', label: 'Proyección' },
+    ],
+  },
+  {
+    title: 'Seguimiento',
+    items: [
+      { view: 'debts', label: 'Deudas' },
+      { view: 'summary', label: 'Objetivos y resumen', also: ['goals'] },
+      { view: 'milestones', label: 'Hitos' },
+    ],
+  },
+  {
+    title: 'Ajustes',
+    items: [
+      { view: 'categories', label: 'Categorías' },
+      { view: 'backups', label: 'Copias' },
+    ],
+  },
+];
+
+/** The sidebar: grouped links, one per screen, with the active one marked. */
+export function Navigation({ view }: { view: View }) {
   return (
     <nav className="main-nav" aria-label="Secciones">
-      {VIEWS.map(([id, label]) => (
-        <button
-          key={id}
-          type="button"
-          aria-current={view === id ? 'page' : undefined}
-          className={view === id ? 'nav-tab active' : 'nav-tab'}
-          onClick={() => {
-            onChange(id);
-          }}
-        >
-          {label}
-        </button>
+      {NAV_GROUPS.map((group) => (
+        <div key={group.title ?? 'main'} className="nav-group">
+          {group.title !== undefined && <p className="nav-title">{group.title}</p>}
+          <ul>
+            {group.items.map((item) => {
+              const active = view === item.view || (item.also?.includes(view) ?? false);
+              return (
+                <li key={item.view}>
+                  <a
+                    href={hrefFor(item.view)}
+                    aria-current={active ? 'page' : undefined}
+                    className={active ? 'nav-link active' : 'nav-link'}
+                  >
+                    {item.label}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       ))}
     </nav>
   );
 }
 
-function Screen({ view, onNavigate }: { view: View; onNavigate: (view: View) => void }) {
-  switch (view) {
-    case 'dashboard':
-      return <DashboardPage onNavigate={onNavigate} />;
-    case 'movements':
-      return <MovementsPage />;
-    case 'import':
-      return <ImportPage />;
-    case 'recurring':
-      return <RecurringPage />;
-    case 'budget':
-      return <BudgetPage />;
-    case 'debts':
-      return <DebtsPage />;
-    case 'summary':
-      return <SummaryPage />;
-    case 'projection':
-      return <ProjectionPage />;
-    case 'goals':
-      return <GoalsPage />;
-    case 'milestones':
-      return <MilestonesPage />;
-    case 'categories':
-      return <CategoriesPage />;
-  }
-}
-
 export function App() {
-  const [view, setView] = useState<View>('dashboard');
+  const { view } = useRoute();
+  // On a phone the menu folds away. It is open only for the screen it was opened on, so
+  // choosing another screen closes it.
+  const [openOn, setOpenOn] = useState<View | undefined>();
+  const menuOpen = openOn === view;
+  const Screen = SCREENS[view];
   return (
-    <>
-      <BackupBanner />
-      <Navigation view={view} onChange={setView} />
-      <Screen view={view} onNavigate={setView} />
-    </>
+    <div className="app-shell">
+      <aside className={menuOpen ? 'sidebar open' : 'sidebar'}>
+        <div className="sidebar-top">
+          <p className="brand">Personal OS</p>
+          <button
+            type="button"
+            className="menu-button"
+            aria-expanded={menuOpen}
+            aria-controls="sidebar-body"
+            onClick={() => {
+              setOpenOn(menuOpen ? undefined : view);
+            }}
+          >
+            Menú
+          </button>
+        </div>
+        <div className="sidebar-body" id="sidebar-body">
+          <Navigation view={view} />
+          <ThemeToggle />
+        </div>
+      </aside>
+      <div className="content">
+        <BackupBanner />
+        <Suspense fallback={<p className="page loading">Cargando…</p>}>
+          <Screen />
+        </Suspense>
+      </div>
+    </div>
   );
 }
