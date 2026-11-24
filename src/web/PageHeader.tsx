@@ -26,7 +26,7 @@ export function PageHeader({
   return (
     <header className="page-header">
       <div className="page-header-row">
-        <h1 ref={headingRef} tabIndex={headingRef === undefined ? undefined : -1}>
+        <h1 ref={headingRef} tabIndex={-1}>
           {title}
         </h1>
         {action !== undefined && <div className="page-action">{action}</div>}

@@ -288,6 +288,7 @@ export function BudgetPage({ api = defaultApi }: { api?: ApiClient }) {
         open={panel.open}
         title="Cambiar presupuesto"
         onClose={() => {
+          setForm(emptyBudgetForm(month));
           setErrors({});
           setFormError(undefined);
           panel.hide();

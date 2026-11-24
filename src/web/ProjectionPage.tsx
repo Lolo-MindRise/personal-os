@@ -450,6 +450,7 @@ export function ProjectionPage({ api = defaultApi }: { api?: ApiClient }) {
             open={panel.open}
             title="Añadir ajuste"
             onClose={() => {
+              setForm(emptyScenarioForm(currentMonth));
               setErrors({});
               panel.hide();
             }}

@@ -295,7 +295,7 @@ test('a failed action keeps its error visible, and confirm all cancels a confirm
       await expect(page.getByRole('alert').filter({ hasText: 'ya está confirmado' })).toBeVisible();
     });
 
-    await test.step('a confirmation in a side panel can be abandoned, then confirm all', async () => {
+    await test.step('a confirmation whose entry stops being pending is cancelled, with a message', async () => {
       await pendingRow(page, 'Gimnasio').getByRole('button', { name: 'Confirmar' }).click();
       await expect(page.getByRole('dialog', { name: 'Confirmar fijo' })).toBeVisible();
       // Starting a new confirmation clears the previous action's error.
@@ -303,13 +303,28 @@ test('a failed action keeps its error visible, and confirm all cancels a confirm
         0,
       );
 
-      // The panel is modal: the rest of the page cannot be used until it is closed.
-      await page.keyboard.press('Escape');
-      await expect(page.getByRole('dialog')).toHaveCount(0);
-      await page.getByRole('button', { name: 'Confirmar todos' }).click();
+      // Out of band (another tab): the same entry is confirmed through the API.
+      const items = (await (await request.get('/api/recurring-items')).json()) as ItemRow[];
+      const gym = items.find((item) => item.concept === 'Gimnasio');
+      const done = await request.post(
+        `/api/recurring-items/${String(gym?.id)}/months/${month}/confirm`,
+        { data: {} },
+      );
+      expect(done.ok()).toBe(true);
 
-      await expect(movementRows(page)).toHaveCount(5);
+      // Saving in the panel fails (409), the list reloads, and the confirmation is cancelled.
+      await page.getByRole('button', { name: 'Confirmar fijo' }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(
+        page.getByRole('alert').filter({ hasText: 'Se ha cancelado la confirmación' }),
+      ).toBeVisible();
+      // Focus is not lost: it goes to the page title.
+      await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeFocused();
+    });
+
+    await test.step('confirm all', async () => {
+      await page.getByRole('button', { name: 'Confirmar todos' }).click();
+      await expect(movementRows(page)).toHaveCount(5);
     });
   } finally {
     await cleanUp(request, month, []);

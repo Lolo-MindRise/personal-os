@@ -36,7 +36,25 @@ function PanelBody({
     return () => {
       if (opener instanceof HTMLElement && opener.isConnected) {
         opener.focus();
+      } else {
+        // The opener is gone (a pending row that was confirmed): land on the page title.
+        document.querySelector<HTMLElement>('h1')?.focus();
       }
+    };
+  }, []);
+
+  // The page behind is out of reach: focus that lands outside is pulled back in.
+  useEffect(() => {
+    const onFocusIn = (event: FocusEvent) => {
+      const panelEl = panel.current;
+      if (panelEl !== null && event.target instanceof Node && !panelEl.contains(event.target)) {
+        const first = panelEl.querySelector<HTMLElement>(FOCUSABLE);
+        (first ?? panelEl).focus();
+      }
+    };
+    document.addEventListener('focusin', onFocusIn);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
     };
   }, []);
 

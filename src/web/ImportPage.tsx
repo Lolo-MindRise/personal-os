@@ -30,6 +30,7 @@ import { KIND_LABELS } from './labels.js';
 import { formatDate } from './months.js';
 
 import { PageHeader } from './PageHeader.js';
+import { SidePanel, usePanel } from './SidePanel.js';
 
 const defaultApi = createApiClient();
 
@@ -278,61 +279,85 @@ export function RulesPanel(props: {
 }) {
   const [pattern, setPattern] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const panel = usePanel();
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
     if (pattern.trim() !== '' && categoryId !== '') {
       props.onAdd(pattern, Number(categoryId));
       setPattern('');
+      panel.hide();
     }
+  };
+  const close = () => {
+    setPattern('');
+    setCategoryId('');
+    panel.hide();
   };
   return (
     <section className="movement-form" aria-label="Reglas de categoría">
-      <h2>Reglas de categoría</h2>
+      <div className="section-header">
+        <h2>Reglas de categoría</h2>
+        <button type="button" onClick={panel.show}>
+          Añadir regla
+        </button>
+      </div>
       <p className="hint">
         «Si el concepto contiene X, la categoría es Y». No distingue mayúsculas ni acentos; vale la
         primera regla que encaje. Se aplican en la vista previa. Al añadir o quitar una regla se
         recalcula la vista previa y se pierden las categorías y marcas que hayas cambiado a mano.
       </p>
-      <form className="form-grid" onSubmit={submit} noValidate>
-        <Field id="rule-pattern" label="El concepto contiene" error={undefined}>
-          <input
-            id="rule-pattern"
-            type="text"
-            value={pattern}
-            onChange={(e) => {
-              setPattern(e.target.value);
-            }}
-          />
-        </Field>
-        <Field id="rule-category" label="Categoría" error={undefined}>
-          <select
-            id="rule-category"
-            value={categoryId}
-            onChange={(e) => {
-              setCategoryId(e.target.value);
-            }}
-          >
-            <option value="">Elige una categoría</option>
-            {props.categories.map((c) => (
-              <option key={c.id} value={String(c.id)}>
-                {c.name} ({KIND_LABELS[c.kind].toLowerCase()})
-              </option>
-            ))}
-          </select>
-        </Field>
-        <div className="form-actions">
-          <button type="submit" disabled={props.busy || pattern.trim() === '' || categoryId === ''}>
-            Añadir regla
-          </button>
-        </div>
-      </form>
+      <SidePanel open={panel.open} title="Añadir regla" onClose={close}>
+        <form className="movement-form" onSubmit={submit} noValidate>
+          <h2>Añadir regla</h2>
+          <div className="form-grid">
+            <Field id="rule-pattern" label="El concepto contiene" error={undefined}>
+              <input
+                id="rule-pattern"
+                type="text"
+                value={pattern}
+                onChange={(e) => {
+                  setPattern(e.target.value);
+                }}
+              />
+            </Field>
+            <Field id="rule-category" label="Categoría" error={undefined}>
+              <select
+                id="rule-category"
+                value={categoryId}
+                onChange={(e) => {
+                  setCategoryId(e.target.value);
+                }}
+              >
+                <option value="">Elige una categoría</option>
+                {props.categories.map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.name} ({KIND_LABELS[c.kind].toLowerCase()})
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <div className="form-actions">
+            <button
+              type="submit"
+              className="primary"
+              disabled={props.busy || pattern.trim() === '' || categoryId === ''}
+            >
+              Guardar regla
+            </button>
+          </div>
+        </form>
+      </SidePanel>
       {props.error !== undefined && (
         <p className="form-error" role="alert">
           {props.error}
         </p>
       )}
       {props.rules.length === 0 ? (
-        <p className="empty">Todavía no hay reglas.</p>
+        <p className="empty">
+          Todavía no hay reglas. Pulsa «Añadir regla» para que una palabra del concepto elija la
+          categoría.
+        </p>
       ) : (
         <ul className="rule-list">
           {props.rules.map((rule) => (

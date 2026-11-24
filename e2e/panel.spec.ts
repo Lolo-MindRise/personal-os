@@ -57,8 +57,9 @@ test('editing from a row returns focus to that row when it closes', async ({ pag
 });
 
 test('an empty month says what is missing and offers the way to add it', async ({ page }) => {
-  await page.goto('/#/movements?month=2031-05');
+  // Before any fixed item starts: no movements and nothing pending.
+  await page.goto('/#/movements?month=2020-05');
   await expect(page.getByText('No hay movimientos este mes.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'importa un extracto' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Fijos' }).last()).toBeVisible();
+  await expect(page.locator('.empty').getByRole('link', { name: 'Fijos' })).toBeVisible();
 });
