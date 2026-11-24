@@ -25,6 +25,7 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:seed": "tsx src/server/db/seed.ts",
+    "db:reset": "tsx src/server/db/reset.ts",
     "test:e2e": "npm run build && playwright test"
   },
   "dependencies": {
