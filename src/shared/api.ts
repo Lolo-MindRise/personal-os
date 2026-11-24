@@ -29,6 +29,24 @@ export interface MovementDto {
   recurringItemId: number | null;
 }
 
+/** One page of the movement search, with the totals of the whole filtered set (task 0013). */
+export interface MovementSearchDto {
+  /** The page asked for, newest first. */
+  rows: MovementDto[];
+  page: number;
+  pageSize: number;
+  /** Movements matching the filters, across all pages. */
+  count: number;
+  pageCount: number;
+  /** Over every matching movement, not just this page. `netCents` = income − expenses − repayments. */
+  totals: {
+    incomeCents: number;
+    expenseCents: number;
+    repaymentCents: number;
+    netCents: number;
+  };
+}
+
 /** A fixed income or expense, defined once (ADR-0005). */
 export interface RecurringItemDto {
   id: number;

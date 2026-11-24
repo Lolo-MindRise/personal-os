@@ -4,11 +4,19 @@ import type {
   DebtDto,
   MonthSummaryDto,
   MovementDto,
+  MovementSearchDto,
   PendingEntryDto,
 } from '../shared/api.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
 import { MovementForm, type FieldErrors, type FormMode } from './MovementForm.js';
 import { MovementList } from './MovementList.js';
+import { MovementFilters, SearchResults, type FilterErrors } from './MovementSearch.js';
+import {
+  emptyFilters,
+  validateFilters,
+  type FilterValues,
+  type SearchQuery,
+} from './movementSearch.js';
 import {
   emptyForm,
   formFromEntry,
@@ -51,6 +59,15 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+
+  const [filters, setFilters] = useState<FilterValues>(() => emptyFilters());
+  const [filterErrors, setFilterErrors] = useState<FilterErrors>({});
+  const [showFilters, setShowFilters] = useState(false);
+  /** The active search, or undefined in the monthly view. */
+  const [search, setSearch] = useState<{ query: SearchQuery; page: number } | undefined>();
+  const [searchResult, setSearchResult] = useState<MovementSearchDto | undefined>();
+  const [searchError, setSearchError] = useState<string | undefined>();
+  const [searchBusy, setSearchBusy] = useState(false);
 
   const mode: FormMode =
     confirmingId !== undefined ? 'confirm' : editingId !== undefined ? 'edit' : 'add';
@@ -95,6 +112,53 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   const reload = useCallback(() => {
     setReloads((n) => n + 1);
   }, []);
+
+  // The search across all months (task 0013, block 3). While a search is active, the monthly
+  // view (pending entries, form, list) is hidden; "Volver a la vista mensual" restores it.
+  useEffect(() => {
+    if (search === undefined) {
+      return;
+    }
+    let active = true;
+    api.searchMovements(search.query, search.page).then(
+      (result) => {
+        if (active) {
+          setSearchResult(result);
+          setSearchError(undefined);
+          setSearchBusy(false);
+        }
+      },
+      (error: unknown) => {
+        if (active) {
+          setSearchError(messageOf(error));
+          setSearchBusy(false);
+        }
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [api, search]);
+
+  const runSearch = () => {
+    const result = validateFilters(filters);
+    if (!result.ok) {
+      setFilterErrors(result.errors);
+      return;
+    }
+    // A new search starts on page 1 and drops the previous results while it loads.
+    setSearchResult(undefined);
+    setSearchError(undefined);
+    setSearchBusy(true);
+    setSearch({ query: result.query, page: 1 });
+  };
+
+  const leaveSearch = () => {
+    setSearch(undefined);
+    setSearchResult(undefined);
+    setSearchError(undefined);
+    setShowFilters(false);
+  };
 
   // If the entry being confirmed is no longer pending (skipped, or confirmed by
   // "Confirmar todos" or elsewhere), a later submit would fail with a 409: cancel
@@ -211,84 +275,145 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     <main className="page">
       <h1>Movimientos</h1>
 
-      <nav className="month-picker" aria-label="Mes">
-        <button
-          type="button"
-          aria-label="Mes anterior"
-          onClick={() => {
-            changeMonth(shiftMonth(month, -1));
+      {!showFilters && search === undefined && (
+        <div className="form-actions">
+          <button
+            type="button"
+            onClick={() => {
+              setShowFilters(true);
+            }}
+          >
+            Buscar y filtrar
+          </button>
+        </div>
+      )}
+
+      {(showFilters || search !== undefined) && (
+        <MovementFilters
+          values={filters}
+          categories={categories}
+          errors={filterErrors}
+          busy={searchBusy}
+          onChange={(values) => {
+            setFilters(values);
+            setFilterErrors({});
           }}
-        >
-          ←
-        </button>
-        <input
-          type="month"
-          aria-label="Mes"
-          value={month}
-          onChange={(e) => {
-            if (e.target.value !== '') {
-              changeMonth(e.target.value);
-            }
+          onSearch={runSearch}
+          onClear={() => {
+            setFilters(emptyFilters());
+            setFilterErrors({});
           }}
         />
-        <button
-          type="button"
-          aria-label="Mes siguiente"
-          onClick={() => {
-            changeMonth(shiftMonth(month, 1));
+      )}
+
+      {searchError !== undefined && (
+        <p className="form-error" role="alert">
+          {searchError}
+        </p>
+      )}
+
+      {search !== undefined && searchResult !== undefined && (
+        <SearchResults
+          result={searchResult}
+          query={search.query}
+          categories={categories}
+          onPage={(page) => {
+            setSearchBusy(true);
+            setSearch({ query: search.query, page });
           }}
-        >
-          →
-        </button>
-        <span className="month-label">{monthLabel(month)}</span>
-      </nav>
-
-      {loadError !== undefined && (
-        <p className="form-error" role="alert">
-          {loadError}
-        </p>
+          onGoToMonth={(movement) => {
+            leaveSearch();
+            changeMonth(movement.date.slice(0, 7));
+          }}
+          onBack={leaveSearch}
+        />
+      )}
+      {search !== undefined && searchResult === undefined && searchError === undefined && (
+        <p className="empty">Buscando…</p>
       )}
 
-      {actionError !== undefined && (
-        <p className="form-error" role="alert">
-          {actionError}
-        </p>
+      {search === undefined && (
+        <>
+          <nav className="month-picker" aria-label="Mes">
+            <button
+              type="button"
+              aria-label="Mes anterior"
+              onClick={() => {
+                changeMonth(shiftMonth(month, -1));
+              }}
+            >
+              ←
+            </button>
+            <input
+              type="month"
+              aria-label="Mes"
+              value={month}
+              onChange={(e) => {
+                if (e.target.value !== '') {
+                  changeMonth(e.target.value);
+                }
+              }}
+            />
+            <button
+              type="button"
+              aria-label="Mes siguiente"
+              onClick={() => {
+                changeMonth(shiftMonth(month, 1));
+              }}
+            >
+              →
+            </button>
+            <span className="month-label">{monthLabel(month)}</span>
+          </nav>
+
+          {loadError !== undefined && (
+            <p className="form-error" role="alert">
+              {loadError}
+            </p>
+          )}
+
+          {actionError !== undefined && (
+            <p className="form-error" role="alert">
+              {actionError}
+            </p>
+          )}
+
+          {summary !== undefined && <SummaryBar summary={summary} />}
+
+          <PendingList
+            pending={pending}
+            skipped={skipped}
+            busy={busy}
+            onConfirm={confirm}
+            onSkip={(entry) => void act(() => api.skipRecurring(entry.recurringItemId, month))}
+            onUndo={(entry) => void act(() => api.undoSkip(entry.recurringItemId, month))}
+            onConfirmAll={() => void act(() => api.confirmAll(month))}
+          />
+
+          <MovementForm
+            values={form}
+            categories={categories}
+            debts={debts}
+            errors={fieldErrors}
+            formError={formError}
+            mode={mode}
+            busy={busy}
+            onChange={(values) => {
+              setForm(values);
+              setFieldErrors({});
+            }}
+            onSubmit={(payload) => void save(payload)}
+            onInvalid={setFieldErrors}
+            onCancel={resetForm}
+          />
+
+          <MovementList
+            movements={movements}
+            onEdit={edit}
+            onDelete={(movement) => void remove(movement)}
+          />
+        </>
       )}
-
-      {summary !== undefined && <SummaryBar summary={summary} />}
-
-      <PendingList
-        pending={pending}
-        skipped={skipped}
-        busy={busy}
-        onConfirm={confirm}
-        onSkip={(entry) => void act(() => api.skipRecurring(entry.recurringItemId, month))}
-        onUndo={(entry) => void act(() => api.undoSkip(entry.recurringItemId, month))}
-        onConfirmAll={() => void act(() => api.confirmAll(month))}
-      />
-
-      <MovementForm
-        values={form}
-        categories={categories}
-        debts={debts}
-        errors={fieldErrors}
-        formError={formError}
-        mode={mode}
-        busy={busy}
-        onChange={(values) => {
-          setForm(values);
-          setFieldErrors({});
-        }}
-        onSubmit={(payload) => void save(payload)}
-        onInvalid={setFieldErrors}
-        onCancel={resetForm}
-      />
-
-      <MovementList
-        movements={movements}
-        onEdit={edit}
-        onDelete={(movement) => void remove(movement)}
-      />
     </main>
   );
 }

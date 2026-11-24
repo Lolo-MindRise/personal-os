@@ -15,6 +15,7 @@ import type {
   YearSummaryDto,
   MonthSummaryDto,
   MovementDto,
+  MovementSearchDto,
   PendingEntryDto,
   RecurringItemDto,
 } from '../shared/api.js';
@@ -25,6 +26,7 @@ import type { CommitRow } from './importState.js';
 import type { DebtPayload } from './debtForm.js';
 import type { MilestonePayload } from './milestoneForm.js';
 import type { ConfirmPayload, MovementPayload } from './movementForm.js';
+import { searchParams, type SearchQuery } from './movementSearch.js';
 import type { GoalPayload, SettingsPayload } from './summaryForms.js';
 import type { RecurringPayload } from './recurringForm.js';
 
@@ -112,6 +114,8 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
       request<undefined>(fetchFn, `/api/categories/${String(id)}`, { method: 'DELETE' }),
     movements: (month: string) =>
       request<MovementDto[]>(fetchFn, `/api/movements?month=${enc(month)}`),
+    searchMovements: (query: SearchQuery, page: number) =>
+      request<MovementSearchDto>(fetchFn, `/api/movements/search?${searchParams(query, page)}`),
     summary: (month: string) =>
       request<MonthSummaryDto>(fetchFn, `/api/months/${enc(month)}/summary`),
     createMovement: (payload: MovementPayload) =>

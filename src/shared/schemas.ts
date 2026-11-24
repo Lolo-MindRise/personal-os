@@ -183,6 +183,48 @@ export const importCommitSchema = z.strictObject({
     .max(MAX_IMPORT_ROWS),
 });
 
+/** Page sizes of the movement search (task 0013, block 3). */
+export const SEARCH_DEFAULT_PAGE_SIZE = 50;
+export const SEARCH_MAX_PAGE_SIZE = 200;
+
+/** Query strings send empty fields as ''; treat them as "not given". */
+const queryOptional = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (value === '' ? undefined : value), schema.optional());
+
+const queryInt = (min: number, max = Number.MAX_SAFE_INTEGER) =>
+  z.coerce.number().int().min(min).max(max);
+
+/**
+ * Filters of `GET /api/movements/search`, across all months. Amounts are stored cents (always
+ * positive), so the range compares absolute amounts. Text matches concept or notes ignoring case
+ * and accents.
+ */
+export const movementSearchSchema = z
+  .strictObject({
+    q: queryOptional(z.string().trim().max(100)),
+    categoryId: queryOptional(queryInt(1)),
+    kind: queryOptional(kindSchema),
+    from: queryOptional(isoDate),
+    to: queryOptional(isoDate),
+    minAmountCents: queryOptional(queryInt(0)),
+    maxAmountCents: queryOptional(queryInt(0)),
+    page: queryOptional(queryInt(1)),
+    pageSize: queryOptional(queryInt(1, SEARCH_MAX_PAGE_SIZE)),
+  })
+  .refine((f) => f.from === undefined || f.to === undefined || f.from <= f.to, {
+    path: ['to'],
+    error: 'La fecha final no puede ser anterior a la inicial.',
+  })
+  .refine(
+    (f) =>
+      f.minAmountCents === undefined ||
+      f.maxAmountCents === undefined ||
+      f.minAmountCents <= f.maxAmountCents,
+    { path: ['maxAmountCents'], error: 'El importe máximo no puede ser menor que el mínimo.' },
+  );
+
+export type MovementSearch = z.infer<typeof movementSearchSchema>;
+
 export const milestoneCreateSchema = z.strictObject({
   title: text,
   targetDate: isoDate,
