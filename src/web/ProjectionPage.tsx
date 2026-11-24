@@ -20,7 +20,13 @@ import {
 } from '../shared/projection.js';
 import { monthsBetween } from '../shared/summary.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
-import { shortMonth } from './DashboardCharts.js';
+import {
+  axisTick,
+  shortMonth,
+  tickEuros,
+  tooltipAmount,
+  tooltipStyles,
+} from './DashboardCharts.js';
 import { Field } from './Field.js';
 import { monthLabel, todayISO } from './months.js';
 import {
@@ -36,11 +42,8 @@ const defaultApi = createApiClient();
 
 const messageOf = (error: unknown) => (error instanceof ApiError ? error.message : NETWORK_ERROR);
 
-const euros = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 });
-const tickEuros = (cents: number) => `${euros.format(Math.round(cents / 100))} €`;
-const tooltipAmount = (value: unknown) =>
-  typeof value === 'number' && Number.isSafeInteger(value) ? formatCents(value) : '—';
-const axisTick = { fill: 'var(--muted)', fontSize: 12 };
+/** One dash pattern per goal, so the lines are told apart by shape as well as by their label. */
+const GOAL_DASHES = ['6 3', '2 4', '10 3 2 3', '1 5'];
 
 const BASE_LABEL = 'Sin cambios';
 const SCENARIO_LABEL = 'Con escenario';
@@ -92,24 +95,17 @@ export function ProjectionChart(props: {
             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" tick={axisTick} stroke="var(--border)" />
             <YAxis tick={axisTick} stroke="var(--border)" tickFormatter={tickEuros} width={80} />
-            <Tooltip
-              formatter={tooltipAmount}
-              contentStyle={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 6,
-                color: 'var(--text)',
-              }}
-              labelStyle={{ color: 'var(--text)', fontWeight: 600 }}
-              itemStyle={{ color: 'var(--text)' }}
-            />
+            <Tooltip formatter={tooltipAmount} {...tooltipStyles} />
             <Legend wrapperStyle={{ color: 'var(--text)' }} />
-            {goals.map((goal) => (
+            {goals.map((goal, index) => (
+              // `extendDomain`: a target above everything projected (or below, when savings go
+              // negative) must still be drawn; Recharts would otherwise discard it.
               <ReferenceLine
                 key={`target-${String(goal.id)}`}
                 y={goal.targetAmountCents}
+                ifOverflow="extendDomain"
                 stroke="var(--repayment)"
-                strokeDasharray="6 3"
+                strokeDasharray={GOAL_DASHES[index % GOAL_DASHES.length]}
                 label={{
                   value: goal.name,
                   fill: 'var(--repayment)',
@@ -118,16 +114,24 @@ export function ProjectionChart(props: {
                 }}
               />
             ))}
-            {goals
-              .filter((goal) => names.has(shortMonth(goal.targetDate.slice(0, 7))))
-              .map((goal) => (
-                <ReferenceLine
-                  key={`date-${String(goal.id)}`}
-                  x={shortMonth(goal.targetDate.slice(0, 7))}
-                  stroke="var(--repayment)"
-                  strokeDasharray="2 4"
-                />
-              ))}
+            {goals.flatMap((goal, index) =>
+              names.has(shortMonth(goal.targetDate.slice(0, 7)))
+                ? [
+                    <ReferenceLine
+                      key={`date-${String(goal.id)}`}
+                      x={shortMonth(goal.targetDate.slice(0, 7))}
+                      stroke="var(--repayment)"
+                      strokeDasharray={GOAL_DASHES[index % GOAL_DASHES.length]}
+                      label={{
+                        value: `${goal.name} (fecha)`,
+                        fill: 'var(--repayment)',
+                        fontSize: 12,
+                        position: 'insideTopRight',
+                      }}
+                    />,
+                  ]
+                : [],
+            )}
             <Line
               type="monotone"
               dataKey={BASE_LABEL}
@@ -274,6 +278,10 @@ export function ProjectionExplanation() {
           evolución de las deudas más allá de sus cuotas fijas.
         </li>
         <li>
+          <strong>Escenarios:</strong> un ajuste de una categoría sustituye el total de cada mes
+          desde el mes elegido; si es el mes actual, también lo ya gastado en él.
+        </li>
+        <li>
           <strong>Objetivos:</strong> se marcan en el gráfico, pero no se descuentan del ahorro.
         </li>
       </ul>
@@ -358,6 +366,10 @@ export function ProjectionPage({ api = defaultApi }: { api?: ApiClient }) {
           aria-describedby={rangeError === undefined ? undefined : 'projection-end-error'}
           onChange={(e) => {
             if (e.target.value !== '') {
+              // The old months belong to the old range: drop them (and their error) while the
+              // new ones load, so the screen never shows a range the input no longer says.
+              setData(undefined);
+              setLoadError(undefined);
               setEndMonth(e.target.value);
             }
           }}

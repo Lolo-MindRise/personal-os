@@ -186,6 +186,9 @@ describe('projection screen parts', () => {
     expect(html).toContain('<figcaption>');
   });
 
+  // The goal lines are SVG, which static rendering does not draw: the e2e test checks that a
+  // target far above the projection still shows (`ifOverflow="extendDomain"`).
+
   it('the scenario form offers expense categories only, and income needs no category', () => {
     const render = (type: 'income' | 'category') =>
       renderToStaticMarkup(

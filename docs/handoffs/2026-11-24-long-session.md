@@ -173,6 +173,16 @@ Branch `agent/session/04-projection` (from block 3). PR: _pending_ (see "Where t
 - Debt installments appear only through their fixed items (block 1); debt balances are not projected.
 - Goals are marked, never deducted from savings.
 
+### Review
+Reviewer: changes required (0 blockers, 1 major, 5 minors), all fixed: goal targets outside the
+projected range were silently not drawn (now `ifOverflow="extendDomain"`; the e2e test creates a goal
+far above the projection and fails without the fix), the goal date lines are labelled and have their
+own dash pattern, the old months are dropped while a new end month loads, the explanation says a
+category scenario replaces the current month's total (including what was already spent), chart
+helpers are shared with the dashboard, and this file ends with the summary below.
+The e2e goal "meta lejana de prueba" stays in the temporary e2e database (goals cannot be deleted);
+its target date is far away, so no other spec's "next goal" changes.
+
 ### Open questions
 - Should the projection also reduce the debts' balances, or include interest on savings?
 - Should scenarios be saveable (out of scope for this task)?

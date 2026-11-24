@@ -37,6 +37,7 @@ test.beforeEach(async ({ page }) => {
 
 test('the projection shows the chart, the months, the goals and what it includes', async ({
   page,
+  request,
 }) => {
   await expect(page.getByTestId('chart-projection')).toBeVisible();
   await expect(page.getByTestId('chart-projection').locator('.chart-box')).toHaveAttribute(
@@ -52,6 +53,27 @@ test('the projection shows the chart, the months, the goals and what it includes
   await expect(page.getByRole('region', { name: 'Objetivos en la proyección' })).toContainText(
     'Fondo de emergencia',
   );
+
+  await test.step('a goal far above everything projected is still drawn, by name', async () => {
+    // Recharts drops reference lines outside the axis unless told to extend it. Goals cannot be
+    // deleted; this one has a far date, so no other spec's "next goal" changes.
+    const created = await request.post('/api/goals', {
+      data: {
+        name: 'meta lejana de prueba',
+        targetAmountCents: 500_000_000,
+        targetDate: '2040-01-31',
+      },
+    });
+    expect(created.status()).toBe(201);
+    await page.reload();
+    await nav(page, 'Proyección').click();
+    await expect(
+      page.getByTestId('chart-projection').getByText('meta lejana de prueba'),
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('chart-projection').getByText('Fondo de emergencia'),
+    ).toBeVisible();
+  });
 
   await test.step('the end month changes the range, and an earlier one is refused', async () => {
     await page.getByLabel('Proyectar hasta (mes)').fill('2028-08');
