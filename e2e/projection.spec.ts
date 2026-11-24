@@ -100,9 +100,10 @@ test('scenarios are compared with the base from the right month, and are not sav
   const type = page.getByLabel('Ajuste', { exact: true });
 
   await test.step('extra income from May: April is unchanged, June has two extra months', async () => {
+    await page.getByRole('button', { name: 'Añadir ajuste' }).click();
     await page.getByLabel('Desde (mes)').fill('2028-05');
     await page.getByLabel('Ingresos al mes: más o menos (€)').fill('+200');
-    await page.getByRole('button', { name: 'Añadir ajuste' }).click();
+    await page.getByRole('button', { name: 'Guardar ajuste' }).click();
     await expect(page.getByText('Desde 05/2028: ingresos +200,00 € al mes')).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'Acumulado con escenario' })).toBeVisible();
     // Columns: month, income, expenses, repayments, savings, accumulated, accumulated with scenario.
@@ -121,11 +122,12 @@ test('scenarios are compared with the base from the right month, and are not sav
   });
 
   await test.step('an expense category can be set to another amount', async () => {
+    await page.getByRole('button', { name: 'Añadir ajuste' }).click();
     await type.selectOption({ label: 'Una categoría de gasto pasa a otro importe' });
     await page.getByLabel('Categoría de gasto').selectOption({ label: 'Ocio' });
     await page.getByLabel('Desde (mes)').fill('2028-04');
     await page.getByLabel('Nuevo gasto al mes (€)').fill('0');
-    await page.getByRole('button', { name: 'Añadir ajuste' }).click();
+    await page.getByRole('button', { name: 'Guardar ajuste' }).click();
     await expect(page.getByText('Desde 04/2028: «Ocio» pasa a 0,00 € al mes')).toBeVisible();
     await expect(
       page.getByRole('region', { name: 'Ajustes del escenario' }).getByRole('listitem'),
@@ -133,15 +135,18 @@ test('scenarios are compared with the base from the right month, and are not sav
   });
 
   await test.step('a scenario outside the range or with a bad amount shows its error', async () => {
+    await page.getByRole('button', { name: 'Añadir ajuste' }).click();
     await type.selectOption({ label: 'Cambio en los ingresos mensuales' });
     await page.getByLabel('Desde (mes)').fill('2027-01');
     await page.getByLabel('Ingresos al mes: más o menos (€)').fill('10');
-    await page.getByRole('button', { name: 'Añadir ajuste' }).click();
+    await page.getByRole('button', { name: 'Guardar ajuste' }).click();
     await expect(page.getByText('El mes debe estar entre 03/2028 y 08/2028.')).toBeVisible();
     await page.getByLabel('Desde (mes)').fill('2028-05');
     await page.getByLabel('Ingresos al mes: más o menos (€)').fill('0');
-    await page.getByRole('button', { name: 'Añadir ajuste' }).click();
+    await page.getByRole('button', { name: 'Guardar ajuste' }).click();
     await expect(page.getByText('Importe cero.')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 
   await test.step('removing the adjustments goes back to the base only', async () => {

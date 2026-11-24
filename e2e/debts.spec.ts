@@ -40,13 +40,14 @@ test('add a debt, link a repayment from the movement form, and update the balanc
     });
 
     await test.step('add a debt', async () => {
+      await page.getByRole('button', { name: 'Añadir deuda' }).click();
       await page.getByLabel('Nombre').fill('tarjeta de prueba'); // lowercase on purpose
       await page.getByLabel('Saldo pendiente (€)').fill('1.200,00');
       await page.getByLabel('Saldo a fecha de').fill('2026-02-01');
       await page.getByLabel('Cuota mensual (€)').fill('50');
       await page.getByLabel('Cuotas restantes').fill('24');
       await page.getByLabel('Interés anual (%)').fill('19,99');
-      await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+      await page.getByRole('button', { name: 'Guardar deuda' }).click();
       const added = card(page, 'tarjeta de prueba');
       await expect(added).toContainText(/1\.200,00\s€/);
       await expect(added).toContainText('19,99');
@@ -58,6 +59,7 @@ test('add a debt, link a repayment from the movement form, and update the balanc
 
     await test.step('link a repayment to the seeded debt in the movement form', async () => {
       await nav(page, 'Movimientos').click();
+      await page.getByRole('button', { name: 'Añadir movimiento' }).click();
       await page.getByLabel('Tipo').selectOption({ label: 'Amortización' });
       await page.getByLabel('Categoría').selectOption({ label: 'Amortización extra' });
       await page
@@ -66,8 +68,8 @@ test('add a debt, link a repayment from the movement form, and update the balanc
       await page.getByLabel('Fecha').fill('2026-02-10');
       await page.getByLabel('Concepto').fill('extra de prueba');
       await page.getByLabel('Importe (€)').fill('200');
-      await page.getByRole('button', { name: 'Añadir', exact: true }).click();
-      await expect(page.getByLabel('Concepto')).toHaveValue('');
+      await page.getByRole('button', { name: 'Guardar movimiento' }).click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
     });
 
     await test.step('the estimated balance drops by the extra repayment', async () => {
@@ -83,7 +85,7 @@ test('add a debt, link a repayment from the movement form, and update the balanc
       // Editing the balance moves the as-of date to today.
       await expect(page.getByLabel('Saldo a fecha de')).not.toHaveValue('2026-01-31');
       await page.getByLabel('Saldo a fecha de').fill('2026-02-28');
-      await page.getByRole('button', { name: 'Guardar cambios' }).click();
+      await page.getByRole('button', { name: 'Guardar deuda' }).click();
       await expect(seeded).toContainText('a fecha 28/02/2026');
       await expect(seeded.locator('.debt-estimate')).toContainText(/2\.500,00\s€/);
       await expect(seeded).toContainText(/Amortizado con extras\s*0,00\s€/);
@@ -114,6 +116,7 @@ test('a fixed installment linked to a debt reduces its balance by the principal 
     await page.goto('/');
     await nav(page, 'Fijos').click();
     await test.step('add the fixed installment, linked to the debt', async () => {
+      await page.getByRole('button', { name: 'Añadir fijo' }).click();
       await page.getByLabel('Tipo').selectOption({ label: 'Amortización' });
       await page.getByLabel('Categoría').selectOption({ label: 'Amortización extra' });
       await page.getByLabel('Deuda (opcional)').selectOption({ label: 'préstamo con cuota' });
@@ -123,7 +126,7 @@ test('a fixed installment linked to a debt reduces its balance by the principal 
       // Only February 2026: the current month's pending list must stay as other specs expect.
       await page.getByLabel('Desde (mes)').fill('2026-02');
       await page.getByLabel('Hasta (mes, opcional)').fill('2026-02');
-      await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+      await page.getByRole('button', { name: 'Guardar fijo' }).click();
       await expect(page.getByText('Cuota de la deuda «préstamo con cuota»')).toBeVisible();
     });
 

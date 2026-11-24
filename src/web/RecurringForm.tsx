@@ -191,7 +191,7 @@ export function RecurringForm(props: Props) {
       )}
       <div className="form-actions">
         <button type="submit" className="primary" disabled={props.busy ?? false}>
-          {editing ? 'Guardar cambios' : 'Añadir'}
+          Guardar fijo
         </button>
         {editing && (
           <button type="button" onClick={props.onCancel}>

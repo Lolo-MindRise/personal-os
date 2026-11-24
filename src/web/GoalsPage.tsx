@@ -14,6 +14,7 @@ import {
 } from './summaryForms.js';
 
 import { PageHeader, SubNav } from './PageHeader.js';
+import { SidePanel, usePanel } from './SidePanel.js';
 import { hrefFor } from './router.js';
 
 const defaultApi = createApiClient();
@@ -29,7 +30,11 @@ const STATUS_NOTES = {
 
 export function GoalList({ goals, onEdit }: { goals: GoalDto[]; onEdit: (goal: GoalDto) => void }) {
   if (goals.length === 0) {
-    return <p className="empty">Todavía no hay objetivos. Añade el primero arriba.</p>;
+    return (
+      <p className="empty">
+        Todavía no hay objetivos. Pulsa «Añadir objetivo» para crear el primero.
+      </p>
+    );
   }
   return (
     <div className="goal-list">
@@ -159,7 +164,7 @@ export function GoalForm(props: {
       )}
       <div className="form-actions">
         <button type="submit" className="primary" disabled={props.busy}>
-          {editing ? 'Guardar cambios' : 'Añadir'}
+          Guardar objetivo
         </button>
         {editing && (
           <button type="button" onClick={props.onCancel}>
@@ -203,11 +208,13 @@ export function GoalsPage({ api = defaultApi }: { api?: ApiClient }) {
     };
   }, [api, reloads]);
 
+  const panel = usePanel();
   const resetForm = () => {
     setForm(emptyGoalForm());
     setEditingId(undefined);
     setErrors({});
     setFormError(undefined);
+    panel.hide();
   };
 
   const submit = async (values: GoalFormValues) => {
@@ -238,7 +245,21 @@ export function GoalsPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <PageHeader title="Objetivos" />
+      <PageHeader
+        title="Objetivos"
+        action={
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              resetForm();
+              panel.show();
+            }}
+          >
+            Añadir objetivo
+          </button>
+        }
+      />
       <SubNav
         current="goals"
         items={[
@@ -258,25 +279,32 @@ export function GoalsPage({ api = defaultApi }: { api?: ApiClient }) {
         </p>
       )}
 
-      <GoalForm
-        values={form}
-        errors={errors}
-        formError={formError}
-        editing={editingId !== undefined}
-        busy={busy}
-        onChange={(values) => {
-          setForm(values);
-          setErrors({});
-        }}
-        onSubmit={(values) => void submit(values)}
-        onCancel={resetForm}
-      />
+      <SidePanel
+        open={panel.open}
+        title={editingId === undefined ? 'Añadir objetivo' : 'Editar objetivo'}
+        onClose={resetForm}
+      >
+        <GoalForm
+          values={form}
+          errors={errors}
+          formError={formError}
+          editing={editingId !== undefined}
+          busy={busy}
+          onChange={(values) => {
+            setForm(values);
+            setErrors({});
+          }}
+          onSubmit={(values) => void submit(values)}
+          onCancel={resetForm}
+        />
+      </SidePanel>
 
       <GoalList
         goals={goals}
         onEdit={(goal) => {
           setForm(formFromGoal(goal));
           setEditingId(goal.id);
+          panel.show();
           setErrors({});
           setFormError(undefined);
         }}

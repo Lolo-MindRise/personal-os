@@ -505,6 +505,47 @@ td.amount {
   margin-top: var(--space-4);
 }
 
+/* Side panel for add and edit forms. Motion only to show what changed: no entrance animation. */
+.panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: var(--overlay);
+}
+
+.side-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 11;
+  width: min(32rem, 100%);
+  padding: var(--space-4);
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.side-panel:focus {
+  outline: none;
+}
+
+.side-panel .panel-close {
+  float: right;
+  margin-left: var(--space-3);
+}
+
+.side-panel .movement-form {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.side-panel .form-grid {
+  grid-template-columns: 1fr;
+}
+
 /* Which filter a screen was opened with, and how to clear it */
 .filter-bar {
   display: flex;

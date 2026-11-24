@@ -14,6 +14,7 @@ import { Field } from './Field.js';
 import { KIND_LABELS } from './labels.js';
 import { currentMonth, formatMonth } from './months.js';
 import { PageHeader } from './PageHeader.js';
+import { SidePanel, usePanel } from './SidePanel.js';
 import { hrefFor, useMonth } from './router.js';
 
 const defaultApi = createApiClient();
@@ -30,7 +31,11 @@ export function BudgetTable({
   onChange: (categoryId: number) => void;
 }) {
   if (data.rows.length === 0) {
-    return <p className="empty">No hay categorías de gasto. Créalas en «Categorías».</p>;
+    return (
+      <p className="empty">
+        No hay categorías de gasto. Añade una en <a href={hrefFor('categories')}>Categorías</a>.
+      </p>
+    );
   }
   const { totals } = data;
   return (
@@ -220,6 +225,7 @@ export function BudgetPage({ api = defaultApi }: { api?: ApiClient }) {
     };
   }, [api, month, reloads]);
 
+  const panel = usePanel();
   const changeMonth = (next: string) => {
     setMonth(next);
     setForm((current) => ({ ...current, validFrom: next }));
@@ -238,6 +244,7 @@ export function BudgetPage({ api = defaultApi }: { api?: ApiClient }) {
       await api.addBudgetLine(result.payload);
       setForm(emptyBudgetForm(month));
       setReloads((n) => n + 1);
+      panel.hide();
     } catch (error) {
       const mapped = mapBudgetApiErrors(error instanceof ApiError ? error.fields : {});
       setErrors(mapped);
@@ -255,6 +262,20 @@ export function BudgetPage({ api = defaultApi }: { api?: ApiClient }) {
         month={month}
         onMonthChange={changeMonth}
         hint="Presupuesto vigente en el mes frente a lo gastado y confirmado. Diferencia = presupuesto − real: en ámbar, te has pasado."
+        action={
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              setForm(emptyBudgetForm(month));
+              setErrors({});
+              setFormError(undefined);
+              panel.show();
+            }}
+          >
+            Cambiar presupuesto
+          </button>
+        }
       />
 
       {loadError !== undefined && (
@@ -263,19 +284,29 @@ export function BudgetPage({ api = defaultApi }: { api?: ApiClient }) {
         </p>
       )}
 
-      <BudgetForm
-        values={form}
-        categories={categories}
-        errors={errors}
-        formError={formError}
-        busy={busy}
-        onChange={(values) => {
-          setForm(values);
+      <SidePanel
+        open={panel.open}
+        title="Cambiar presupuesto"
+        onClose={() => {
           setErrors({});
           setFormError(undefined);
+          panel.hide();
         }}
-        onSubmit={(values) => void submit(values)}
-      />
+      >
+        <BudgetForm
+          values={form}
+          categories={categories}
+          errors={errors}
+          formError={formError}
+          busy={busy}
+          onChange={(values) => {
+            setForm(values);
+            setErrors({});
+            setFormError(undefined);
+          }}
+          onSubmit={(values) => void submit(values)}
+        />
+      </SidePanel>
 
       {data !== undefined && (
         <BudgetTable
@@ -284,6 +315,7 @@ export function BudgetPage({ api = defaultApi }: { api?: ApiClient }) {
             setForm({ ...form, categoryId: String(categoryId), validFrom: month });
             setErrors({});
             setFormError(undefined);
+            panel.show();
           }}
         />
       )}

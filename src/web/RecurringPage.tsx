@@ -13,6 +13,7 @@ import {
 } from './recurringForm.js';
 
 import { PageHeader } from './PageHeader.js';
+import { SidePanel, usePanel } from './SidePanel.js';
 
 const defaultApi = createApiClient();
 
@@ -65,11 +66,13 @@ export function RecurringPage({ api = defaultApi }: { api?: ApiClient }) {
     setReloads((n) => n + 1);
   }, []);
 
+  const panel = usePanel();
   const resetForm = () => {
     setForm(emptyRecurringForm());
     setEditingId(undefined);
     setErrors({});
     setFormError(undefined);
+    panel.hide();
   };
 
   const save = async (payload: RecurringPayload) => {
@@ -100,6 +103,7 @@ export function RecurringPage({ api = defaultApi }: { api?: ApiClient }) {
     setEditingId(item.id);
     setErrors({});
     setFormError(undefined);
+    panel.show();
   };
 
   /** Ends an item this month (or its start month, if that is later). */
@@ -119,7 +123,21 @@ export function RecurringPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <PageHeader title="Fijos" />
+      <PageHeader
+        title="Fijos"
+        action={
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              resetForm();
+              panel.show();
+            }}
+          >
+            Añadir fijo
+          </button>
+        }
+      />
       <p className="hint">
         Ingresos y gastos que se repiten cada mes. Cada mes aparecen como pendientes en
         «Movimientos» y los confirmas cuando se pagan o se cobran.
@@ -131,22 +149,28 @@ export function RecurringPage({ api = defaultApi }: { api?: ApiClient }) {
         </p>
       )}
 
-      <RecurringForm
-        values={form}
-        categories={categories}
-        debts={debts}
-        errors={errors}
-        formError={formError}
-        editing={editingId !== undefined}
-        busy={busy}
-        onChange={(values) => {
-          setForm(values);
-          setErrors({});
-        }}
-        onSubmit={(payload) => void save(payload)}
-        onInvalid={setErrors}
-        onCancel={resetForm}
-      />
+      <SidePanel
+        open={panel.open}
+        title={editingId === undefined ? 'Añadir fijo' : 'Editar fijo'}
+        onClose={resetForm}
+      >
+        <RecurringForm
+          values={form}
+          categories={categories}
+          debts={debts}
+          errors={errors}
+          formError={formError}
+          editing={editingId !== undefined}
+          busy={busy}
+          onChange={(values) => {
+            setForm(values);
+            setErrors({});
+          }}
+          onSubmit={(payload) => void save(payload)}
+          onInvalid={setErrors}
+          onCancel={resetForm}
+        />
+      </SidePanel>
 
       <RecurringList items={items} debts={debts} onEdit={edit} onEnd={(item) => void end(item)} />
     </main>

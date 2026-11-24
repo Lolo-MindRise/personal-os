@@ -27,9 +27,9 @@ const TITLES: Record<FormMode, string> = {
 };
 
 const SUBMIT_LABELS: Record<FormMode, string> = {
-  add: 'Añadir',
-  edit: 'Guardar cambios',
-  confirm: 'Confirmar',
+  add: 'Guardar movimiento',
+  edit: 'Guardar movimiento',
+  confirm: 'Confirmar fijo',
 };
 
 interface Props {

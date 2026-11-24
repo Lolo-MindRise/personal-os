@@ -2,6 +2,7 @@ import type { MovementDto } from '../shared/api.js';
 import { formatCents } from '../shared/money.js';
 import { KIND_LABELS } from './labels.js';
 import { formatDate } from './months.js';
+import { hrefFor } from './router.js';
 
 interface Props {
   movements: MovementDto[];
@@ -11,7 +12,12 @@ interface Props {
 
 export function MovementList({ movements, onEdit, onDelete }: Props) {
   if (movements.length === 0) {
-    return <p className="empty">No hay movimientos este mes.</p>;
+    return (
+      <p className="empty">
+        No hay movimientos este mes. Pulsa «Añadir movimiento» o{' '}
+        <a href={hrefFor('import')}>importa un extracto</a>.
+      </p>
+    );
   }
   return (
     <table className="movements">

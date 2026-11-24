@@ -24,6 +24,7 @@ import {
   type MovementPayload,
 } from './movementForm.js';
 import { LinkedMovements } from './LinkedMovements.js';
+import { SidePanel, usePanel } from './SidePanel.js';
 import { monthLabel } from './months.js';
 import { FilterBar, PageHeader } from './PageHeader.js';
 import { hrefFor, useMonth, useRoute } from './router.js';
@@ -74,6 +75,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
           : undefined,
     [debtParam, fixedParam],
   );
+  const panel = usePanel();
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [debts, setDebts] = useState<DebtDto[]>([]);
   const [movements, setMovements] = useState<MovementDto[]>([]);
@@ -200,6 +202,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     setFieldErrors({});
     setFormError(undefined);
     setActionError(CONFIRMATION_CANCELLED);
+    panel.hide();
   }
 
   const resetForm = () => {
@@ -208,6 +211,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     setConfirmingId(undefined);
     setFieldErrors({});
     setFormError(undefined);
+    panel.hide();
   };
 
   const changeMonth = (next: string) => {
@@ -256,6 +260,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     setConfirmingId(undefined);
     setFieldErrors({});
     setFormError(undefined);
+    panel.show();
   };
 
   const confirm = (entry: PendingEntryDto) => {
@@ -265,6 +270,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     setFieldErrors({});
     setFormError(undefined);
     setActionError(undefined);
+    panel.show();
   };
 
   const remove = async (movement: MovementDto) => {
@@ -335,6 +341,20 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
         headingRef={headingRef}
         month={search === undefined ? month : undefined}
         onMonthChange={changeMonth}
+        action={
+          search === undefined ? (
+            <button
+              type="button"
+              className="primary"
+              onClick={() => {
+                resetForm();
+                panel.show();
+              }}
+            >
+              Añadir movimiento
+            </button>
+          ) : undefined
+        }
       />
 
       {categoryFilter !== undefined && search === undefined && (
@@ -438,22 +458,34 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
             onConfirmAll={() => void act(() => api.confirmAll(month))}
           />
 
-          <MovementForm
-            values={form}
-            categories={categories}
-            debts={debts}
-            errors={fieldErrors}
-            formError={formError}
-            mode={mode}
-            busy={busy}
-            onChange={(values) => {
-              setForm(values);
-              setFieldErrors({});
-            }}
-            onSubmit={(payload) => void save(payload)}
-            onInvalid={setFieldErrors}
-            onCancel={resetForm}
-          />
+          <SidePanel
+            open={panel.open}
+            title={
+              mode === 'confirm'
+                ? 'Confirmar fijo'
+                : mode === 'edit'
+                  ? 'Editar movimiento'
+                  : 'Añadir movimiento'
+            }
+            onClose={resetForm}
+          >
+            <MovementForm
+              values={form}
+              categories={categories}
+              debts={debts}
+              errors={fieldErrors}
+              formError={formError}
+              mode={mode}
+              busy={busy}
+              onChange={(values) => {
+                setForm(values);
+                setFieldErrors({});
+              }}
+              onSubmit={(payload) => void save(payload)}
+              onInvalid={setFieldErrors}
+              onCancel={resetForm}
+            />
+          </SidePanel>
 
           <MovementList
             movements={shownMovements}

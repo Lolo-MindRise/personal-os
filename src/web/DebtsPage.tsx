@@ -16,6 +16,7 @@ import { Field } from './Field.js';
 import { formatDate } from './months.js';
 
 import { FilterBar, PageHeader } from './PageHeader.js';
+import { SidePanel, usePanel } from './SidePanel.js';
 import { hrefFor, useRoute } from './router.js';
 
 const defaultApi = createApiClient();
@@ -35,7 +36,11 @@ export function DebtList({
   expanded?: boolean;
 }) {
   if (debts.length === 0) {
-    return <p className="empty">Todavía no hay deudas. Añade la primera arriba.</p>;
+    return (
+      <p className="empty">
+        Todavía no hay deudas. Pulsa «Añadir deuda» para registrar la primera.
+      </p>
+    );
   }
   return (
     <div className="debt-list">
@@ -203,7 +208,7 @@ export function DebtForm(props: {
       )}
       <div className="form-actions">
         <button type="submit" className="primary" disabled={props.busy}>
-          {editing ? 'Guardar cambios' : 'Añadir'}
+          Guardar deuda
         </button>
         {editing && (
           <button type="button" onClick={props.onCancel}>
@@ -252,11 +257,13 @@ export function DebtsPage({ api = defaultApi }: { api?: ApiClient }) {
     };
   }, [api, reloads]);
 
+  const panel = usePanel();
   const resetForm = () => {
     setForm(emptyDebtForm());
     setEditing(undefined);
     setErrors({});
     setFormError(undefined);
+    panel.hide();
   };
 
   const submit = async (values: DebtFormValues) => {
@@ -287,7 +294,21 @@ export function DebtsPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <PageHeader title="Deudas" />
+      <PageHeader
+        title="Deudas"
+        action={
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              resetForm();
+              panel.show();
+            }}
+          >
+            Añadir deuda
+          </button>
+        }
+      />
       <p className="hint">
         El saldo estimado parte del saldo registrado y descuenta, por orden de fecha y solo desde la
         fecha del saldo, la parte de capital de cada cuota confirmada (cuota menos intereses, con el
@@ -302,26 +323,32 @@ export function DebtsPage({ api = defaultApi }: { api?: ApiClient }) {
         </p>
       )}
 
-      <DebtForm
-        values={form}
-        errors={errors}
-        formError={formError}
-        editing={editing !== undefined}
-        busy={busy}
-        onChange={(next) => {
-          setForm((current) =>
-            applyDebtChange(
-              current,
-              next,
-              editing === undefined ? undefined : formFromDebt(editing),
-            ),
-          );
-          setErrors({});
-          setFormError(undefined);
-        }}
-        onSubmit={(values) => void submit(values)}
-        onCancel={resetForm}
-      />
+      <SidePanel
+        open={panel.open}
+        title={editing === undefined ? 'Añadir deuda' : 'Editar deuda'}
+        onClose={resetForm}
+      >
+        <DebtForm
+          values={form}
+          errors={errors}
+          formError={formError}
+          editing={editing !== undefined}
+          busy={busy}
+          onChange={(next) => {
+            setForm((current) =>
+              applyDebtChange(
+                current,
+                next,
+                editing === undefined ? undefined : formFromDebt(editing),
+              ),
+            );
+            setErrors({});
+            setFormError(undefined);
+          }}
+          onSubmit={(values) => void submit(values)}
+          onCancel={resetForm}
+        />
+      </SidePanel>
 
       {onlyDebt === undefined && params.debt !== undefined && loaded && (
         <FilterBar
@@ -346,6 +373,7 @@ export function DebtsPage({ api = defaultApi }: { api?: ApiClient }) {
           setEditing(debt);
           setErrors({});
           setFormError(undefined);
+          panel.show();
         }}
       />
     </main>

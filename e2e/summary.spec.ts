@@ -40,6 +40,7 @@ test('the yearly summary accumulates savings from the initial balance', async ({
   });
 
   await test.step('save an initial balance: January accumulates from it', async () => {
+    await page.getByRole('button', { name: 'Editar saldo inicial' }).click();
     await page.getByLabel('Saldo inicial (€)').fill('5.000,00');
     await page.getByLabel('Saldo a fecha de').fill('2026-01-31');
     await page.getByRole('button', { name: 'Guardar saldo inicial' }).click();
@@ -50,6 +51,7 @@ test('the yearly summary accumulates savings from the initial balance', async ({
   });
 
   await test.step('an invalid balance is refused next to the field', async () => {
+    await page.getByRole('button', { name: 'Editar saldo inicial' }).click();
     await page.getByLabel('Saldo inicial (€)').fill('mucho');
     await page.getByRole('button', { name: 'Guardar saldo inicial' }).click();
     await expect(page.getByText(/Importe no válido/)).toBeVisible();
@@ -78,10 +80,11 @@ test('goals: the seeded one, add one, and edit it', async ({ page, request }) =>
   });
 
   await test.step('add a goal: progress against the initial balance saved in Resumen', async () => {
+    await page.getByRole('button', { name: 'Añadir objetivo' }).click();
     await page.getByLabel('Nombre').fill('viaje de prueba'); // lowercase on purpose
     await page.getByLabel('Importe objetivo (€)').fill('10.000,00');
     await page.getByLabel('Fecha objetivo').fill('2099-12-31');
-    await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+    await page.getByRole('button', { name: 'Guardar objetivo' }).click();
     const added = goalCard(page, 'viaje de prueba');
     await expect(added).toContainText(/5\.000,00\s€ de\s*10\.000,00\s€/);
     await expect(added).toContainText('50 %');
@@ -97,7 +100,7 @@ test('goals: the seeded one, add one, and edit it', async ({ page, request }) =>
   await test.step('edit it: a reached goal needs no monthly saving', async () => {
     await goalCard(page, 'viaje de prueba').getByRole('button', { name: 'Editar' }).click();
     await page.getByLabel('Importe objetivo (€)').fill('4.000,00');
-    await page.getByRole('button', { name: 'Guardar cambios' }).click();
+    await page.getByRole('button', { name: 'Guardar objetivo' }).click();
     const edited = goalCard(page, 'viaje de prueba');
     await expect(edited).toContainText('Objetivo conseguido.');
     await expect(edited).toContainText('100 %');

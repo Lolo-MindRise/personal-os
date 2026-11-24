@@ -54,7 +54,9 @@ describe('api client', () => {
     );
     const error = await api.createMovement(payload).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ApiError);
-    expect((error as ApiError).message).toBe('Datos no válidos.');
+    expect((error as ApiError).message).toBe(
+      'Datos no válidos. Revisa lo escrito y vuelve a intentarlo.',
+    );
     expect((error as ApiError).fields).toEqual({ amountCents: 'mal' });
   });
 

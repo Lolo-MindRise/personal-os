@@ -80,5 +80,34 @@ Build no longer warns about chunks over 500 kB.
   linked view names the fixed item and has one clear control; category filter says totals are the
   month's; `SummaryBar` label follows the glossary.
 
-## Next
-Block 3: side-panel forms, button names, empty states, error messages.
+## Block 3: forms and states (`agent/ui/03-forms-and-states`)
+
+### Done
+- `SidePanel` + `usePanel`: add/edit forms of Movimientos (add, edit, confirm a fixed item),
+  Presupuesto, Categorías, Deudas, Objetivos, Resumen (saldo inicial), Hitos, Fijos and Proyección
+  (scenario adjustments) open in a modal panel. Esc (anywhere), overlay and "Cerrar" close it;
+  Tab stays inside; focus returns to the element that opened it. Forms, validation and messages
+  are the same components as before.
+- Each screen has its primary action in the page header ("Añadir movimiento", "Añadir deuda",
+  "Cambiar presupuesto", "Editar saldo inicial"…). Submit buttons say what they save: "Guardar
+  movimiento / categoría / deuda / objetivo / hito / fijo / ajuste", "Confirmar fijo".
+- Empty states say what is missing and where to add it (links to Importar, Fijos, Categorías).
+- Errors: the network message says what to check; the server's bare "Datos no válidos." gets
+  "Revisa lo escrito y vuelve a intentarlo." (client side only, API untouched).
+- Tests: `sidePanel.test.tsx`, `e2e/panel.spec.ts` (focus kept inside, Esc, focus returns, overlay,
+  empty state); every existing e2e opens the panel first and uses the new button names.
+
+### Decisions taken
+- The panel is modal, so "Confirmar todos" while a confirmation is open is no longer possible from
+  the UI. The e2e step that did it now closes the panel first; the guard that cancels a confirmation
+  whose entry is no longer pending stays for out-of-band changes (another tab).
+- Resumen: saving the initial balance closes the panel and shows "Guardado." on the page.
+- The scenario adjustments of Proyección are in a panel too, for one consistent pattern.
+
+### Not verified
+- Screen reader behaviour of the dialog; only keyboard behaviour is tested.
+
+## End of run
+Blocks 1, 2 and 3 are PRs #42, #43 and the block 3 PR (see the PR list), stacked in that order.
+Merge in order. Open items: search-panel filters not in the URL; `useMonth` syncs module state
+while reading; git author email is a placeholder (`TU_EMAIL_DE_GITHUB`) in the local config.

@@ -7,6 +7,7 @@ import { Field } from './Field.js';
 import { KIND_LABELS } from './labels.js';
 
 import { PageHeader } from './PageHeader.js';
+import { SidePanel, usePanel } from './SidePanel.js';
 import { hrefFor } from './router.js';
 
 const defaultApi = createApiClient();
@@ -74,7 +75,7 @@ export function CategoryForm(props: {
       )}
       <div className="form-actions">
         <button type="submit" className="primary" disabled={props.busy}>
-          {props.editing ? 'Guardar cambios' : 'Añadir'}
+          Guardar categoría
         </button>
         {props.editing && (
           <button type="button" onClick={props.onCancel}>
@@ -98,7 +99,7 @@ export function CategoryTable(props: {
         <section key={kind} className="category-group" aria-label={KIND_HEADINGS[kind]}>
           <h2>{KIND_HEADINGS[kind]}</h2>
           {rows.length === 0 ? (
-            <p className="empty">No hay categorías de este tipo.</p>
+            <p className="empty">No hay categorías de este tipo. Pulsa «Añadir categoría».</p>
           ) : (
             <table className="movements categories">
               <thead>
@@ -189,12 +190,14 @@ export function CategoriesPage({ api = defaultApi }: { api?: ApiClient }) {
     setReloads((n) => n + 1);
   }, []);
 
+  const panel = usePanel();
   const resetForm = () => {
     setName('');
     setKind('expense');
     setEditingId(undefined);
     setNameError(undefined);
     setFormError(undefined);
+    panel.hide();
   };
 
   const submit = async () => {
@@ -247,7 +250,21 @@ export function CategoriesPage({ api = defaultApi }: { api?: ApiClient }) {
 
   return (
     <main className="page">
-      <PageHeader title="Categorías" />
+      <PageHeader
+        title="Categorías"
+        action={
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              resetForm();
+              panel.show();
+            }}
+          >
+            Añadir categoría
+          </button>
+        }
+      />
       <p className="hint">
         Las categorías clasifican movimientos, fijos y presupuestos. Una categoría con datos
         asociados no se puede eliminar, pero sí renombrar.
@@ -264,21 +281,27 @@ export function CategoriesPage({ api = defaultApi }: { api?: ApiClient }) {
         </p>
       )}
 
-      <CategoryForm
-        name={name}
-        kind={kind}
-        editing={editingId !== undefined}
-        busy={busy}
-        error={nameError}
-        formError={formError}
-        onName={(value) => {
-          setName(value);
-          setNameError(undefined);
-        }}
-        onKind={setKind}
-        onSubmit={() => void submit()}
-        onCancel={resetForm}
-      />
+      <SidePanel
+        open={panel.open}
+        title={editingId === undefined ? 'Añadir categoría' : 'Renombrar categoría'}
+        onClose={resetForm}
+      >
+        <CategoryForm
+          name={name}
+          kind={kind}
+          editing={editingId !== undefined}
+          busy={busy}
+          error={nameError}
+          formError={formError}
+          onName={(value) => {
+            setName(value);
+            setNameError(undefined);
+          }}
+          onKind={setKind}
+          onSubmit={() => void submit()}
+          onCancel={resetForm}
+        />
+      </SidePanel>
 
       <CategoryTable
         categories={categories}
@@ -288,6 +311,7 @@ export function CategoriesPage({ api = defaultApi }: { api?: ApiClient }) {
           setKind(category.kind);
           setNameError(undefined);
           setFormError(undefined);
+          panel.show();
         }}
         onDelete={(category) => void remove(category)}
       />

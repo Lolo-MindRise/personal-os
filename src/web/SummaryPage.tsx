@@ -14,6 +14,7 @@ import {
 } from './summaryForms.js';
 
 import { PageHeader, SubNav } from './PageHeader.js';
+import { SidePanel, usePanel } from './SidePanel.js';
 import { hrefFor, updateParams, useRoute } from './router.js';
 
 const defaultApi = createApiClient();
@@ -192,6 +193,7 @@ export function SummaryPage({ api = defaultApi }: { api?: ApiClient }) {
   const [formError, setFormError] = useState<string | undefined>();
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const panel = usePanel();
 
   useEffect(() => {
     api.settings().then(
@@ -237,6 +239,7 @@ export function SummaryPage({ api = defaultApi }: { api?: ApiClient }) {
     try {
       await api.saveSettings(result.payload);
       setSaved(true);
+      panel.hide();
       setReloads((n) => n + 1);
     } catch (error) {
       const mapped = mapSettingsApiErrors(error instanceof ApiError ? error.fields : {});
@@ -252,6 +255,18 @@ export function SummaryPage({ api = defaultApi }: { api?: ApiClient }) {
     <main className="page">
       <PageHeader
         title="Resumen"
+        action={
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              setSaved(false);
+              panel.show();
+            }}
+          >
+            Editar saldo inicial
+          </button>
+        }
         hint="Ingresos, gastos, amortizaciones y ahorro de cada mes del año, con el ahorro acumulado. Solo cuentan los movimientos confirmados."
         period={
           <nav className="month-picker" aria-label="Año">
@@ -295,19 +310,35 @@ export function SummaryPage({ api = defaultApi }: { api?: ApiClient }) {
 
       {summary !== undefined && <YearTable summary={summary} />}
 
-      <SettingsForm
-        values={form}
-        errors={errors}
-        formError={formError}
-        saved={saved}
-        busy={busy}
-        onChange={(values) => {
-          setForm(values);
+      {saved && !panel.open && (
+        <p className="saved-note" role="status">
+          Guardado.
+        </p>
+      )}
+
+      <SidePanel
+        open={panel.open}
+        title="Saldo inicial de ahorro"
+        onClose={() => {
           setErrors({});
-          setSaved(false);
+          setFormError(undefined);
+          panel.hide();
         }}
-        onSubmit={(values) => void save(values)}
-      />
+      >
+        <SettingsForm
+          values={form}
+          errors={errors}
+          formError={formError}
+          saved={false}
+          busy={busy}
+          onChange={(values) => {
+            setForm(values);
+            setErrors({});
+            setSaved(false);
+          }}
+          onSubmit={(values) => void save(values)}
+        />
+      </SidePanel>
     </main>
   );
 }

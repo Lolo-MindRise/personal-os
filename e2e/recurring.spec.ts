@@ -71,11 +71,12 @@ test('define a fixed item, see it pending, confirm it with another amount, skip 
     });
 
     await test.step('an invalid day shows its error next to the field and saves nothing', async () => {
+      await page.getByRole('button', { name: 'Añadir fijo' }).click();
       await page.getByLabel('Categoría').selectOption({ label: 'Ocio' });
       await page.getByLabel('Concepto').fill(created);
       await page.getByLabel('Importe previsto (€)').fill('9,99');
       await page.getByLabel('Día del mes').fill('40');
-      await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+      await page.getByRole('button', { name: 'Guardar fijo' }).click();
 
       await expect(page.locator('#recurring-expectedDay-error')).toHaveText(/del 1 al 31/);
       await expect(page.getByLabel('Día del mes')).toHaveAttribute(
@@ -87,7 +88,8 @@ test('define a fixed item, see it pending, confirm it with another amount, skip 
 
     await test.step('add the item', async () => {
       await page.getByLabel('Día del mes').fill('28');
-      await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+      await page.getByRole('button', { name: 'Guardar fijo' }).click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
 
       await expect(itemRows(page)).toHaveCount(6);
       const row = itemRows(page).filter({ hasText: created });
@@ -126,7 +128,7 @@ test('define a fixed item, see it pending, confirm it with another amount, skip 
       await expect(page.getByLabel('Categoría')).toBeDisabled();
 
       await page.getByLabel('Importe (€)').fill('12,50');
-      await form.getByRole('button', { name: 'Confirmar', exact: true }).click();
+      await form.getByRole('button', { name: 'Confirmar fijo' }).click();
 
       await expect(movementRows(page)).toHaveCount(1);
       await expect(movementRows(page).first()).toContainText(created);
@@ -139,7 +141,7 @@ test('define a fixed item, see it pending, confirm it with another amount, skip 
       await expect(pendingItem(page, 'Gastos pendientes')).toContainText(/830,00\s€/);
       // −12,50 confirmed + 2.000,00 pending income − 830,00 pending expenses
       await expect(pendingItem(page, 'Ahorro previsto')).toContainText(/1\.157,50\s€/);
-      await expect(form.getByRole('heading', { name: 'Añadir movimiento' })).toBeVisible();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
     });
 
     await test.step('skip one, undo it, skip it again', async () => {
@@ -209,11 +211,12 @@ test('edit a fixed item, end it, and see it stop appearing as pending', async ({
     // Let the list finish loading first: the screen is now loaded on demand, and a slow first
     // load must not land after the new item and replace the list.
     await expect(itemRows(page)).toHaveCount(5);
+    await page.getByRole('button', { name: 'Añadir fijo' }).click();
     await page.getByLabel('Categoría').selectOption({ label: 'Ocio' });
     await page.getByLabel('Concepto').fill(concept);
     await page.getByLabel('Importe previsto (€)').fill('20');
     await page.getByLabel('Día del mes').fill('3');
-    await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+    await page.getByRole('button', { name: 'Guardar fijo' }).click();
     await expect(itemRows(page)).toHaveCount(6);
 
     await test.step('edit it', async () => {
@@ -225,9 +228,9 @@ test('edit a fixed item, end it, and see it stop appearing as pending', async ({
       await expect(page.getByLabel('Importe previsto (€)')).toHaveValue('20,00');
 
       await page.getByLabel('Importe previsto (€)').fill('25');
-      await page.getByRole('button', { name: 'Guardar cambios' }).click();
+      await page.getByRole('button', { name: 'Guardar fijo' }).click();
 
-      await expect(page.getByRole('heading', { name: 'Añadir fijo' })).toBeVisible();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
       await expect(itemRows(page).filter({ hasText: concept })).toContainText(/25,00\s€/);
     });
 
@@ -237,7 +240,7 @@ test('edit a fixed item, end it, and see it stop appearing as pending', async ({
         .getByRole('button', { name: 'Editar' })
         .click();
       await page.getByLabel('Hasta (mes, opcional)').fill(`${String(Number(yyyy) - 1)}-12`);
-      await page.getByRole('button', { name: 'Guardar cambios' }).click();
+      await page.getByRole('button', { name: 'Guardar fijo' }).click();
       await expect(page.locator('#recurring-endMonth-error')).toHaveText(/anterior al mes inicial/);
       await page.getByRole('button', { name: 'Cancelar' }).click();
     });
@@ -292,22 +295,21 @@ test('a failed action keeps its error visible, and confirm all cancels a confirm
       await expect(page.getByRole('alert').filter({ hasText: 'ya está confirmado' })).toBeVisible();
     });
 
-    await test.step('confirm all while confirming one cancels that confirmation, with a message', async () => {
+    await test.step('a confirmation in a side panel can be abandoned, then confirm all', async () => {
       await pendingRow(page, 'Gimnasio').getByRole('button', { name: 'Confirmar' }).click();
-      await expect(page.getByRole('heading', { name: 'Confirmar fijo' })).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Confirmar fijo' })).toBeVisible();
       // Starting a new confirmation clears the previous action's error.
       await expect(page.getByRole('alert').filter({ hasText: 'ya está confirmado' })).toHaveCount(
         0,
       );
 
+      // The panel is modal: the rest of the page cannot be used until it is closed.
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
       await page.getByRole('button', { name: 'Confirmar todos' }).click();
 
       await expect(movementRows(page)).toHaveCount(5);
-      await expect(page.getByRole('heading', { name: 'Añadir movimiento' })).toBeVisible();
-      await expect(
-        page.getByRole('alert').filter({ hasText: 'Se ha cancelado la confirmación' }),
-      ).toBeVisible();
-      await expect(page.getByLabel('Concepto')).toHaveValue('');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
     });
   } finally {
     await cleanUp(request, month, []);

@@ -2,6 +2,7 @@ import type { PendingEntryDto } from '../shared/api.js';
 import { formatCents } from '../shared/money.js';
 import { KIND_LABELS } from './labels.js';
 import { formatDate } from './months.js';
+import { hrefFor } from './router.js';
 
 interface Props {
   pending: PendingEntryDto[];
@@ -40,7 +41,10 @@ export function PendingList({
       </div>
 
       {pending.length === 0 && skipped.length === 0 ? (
-        <p className="empty">No hay fijos pendientes este mes.</p>
+        <p className="empty">
+          No hay fijos pendientes este mes. Define los tuyos en{' '}
+          <a href={hrefFor('recurring')}>Fijos</a>.
+        </p>
       ) : (
         <table className="pending">
           <thead>
