@@ -125,6 +125,15 @@ describe('POST /api/debts', () => {
     expect(response.statusCode).toBe(400);
     expect(response.json<{ fields: Record<string, string> }>().fields).toHaveProperty(field);
   });
+
+  it.each([
+    ['rate above 100 %', { annualRateBps: 10_001 }, 'annualRateBps'],
+    ['installments above 9999', { remainingInstallments: 10_000 }, 'remainingInstallments'],
+  ])('rejects %s, as the form does', async (_label, override, field) => {
+    const response = await send('POST', '/api/debts', { ...newDebt, ...override });
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ fields: Record<string, string> }>().fields).toHaveProperty(field);
+  });
 });
 
 describe('PATCH /api/debts/:id', () => {
@@ -237,5 +246,29 @@ describe('linking a repayment movement to a debt', () => {
       debtId: 9999,
     });
     expect(unknown.statusCode).toBe(400);
+  });
+
+  it('turning a linked repayment into an expense needs debtId null (the web client sends it)', async () => {
+    const [debt] = await list();
+    await repay(debt?.id ?? 0, '2026-02-10', 5_000, 'Para convertir');
+    const movements = (
+      await app.inject({ method: 'GET', url: '/api/movements?month=2026-02' })
+    ).json<{ id: number }[]>();
+    const id = movements[0]?.id ?? 0;
+    const expense = (await app.inject({ method: 'GET', url: '/api/categories' }))
+      .json<CategoryDto[]>()
+      .find((c) => c.kind === 'expense');
+    const toExpense = { kind: 'expense', categoryId: expense?.id };
+
+    // Without clearing the debt, the merged movement is invalid: the stored debt stays.
+    expect((await send('PATCH', `/api/movements/${String(id)}`, toExpense)).statusCode).toBe(400);
+    const ok = await send('PATCH', `/api/movements/${String(id)}`, { ...toExpense, debtId: null });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json<{ kind: string; debtId: number | null }>()).toMatchObject({
+      kind: 'expense',
+      debtId: null,
+    });
+    // It no longer counts as a repayment of the debt.
+    expect((await list())[0]?.repayments.some((r) => r.concept === 'Para convertir')).toBe(false);
   });
 });

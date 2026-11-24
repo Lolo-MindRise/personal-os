@@ -116,6 +116,9 @@ Branch `agent/overnight/03-budget`, stacked on block 2.
   (and a test asserted it); now expense rows only. Minors: dead `signed` helper removed, stale
   form error cleared on edit; two minors above left as is.
 
+### Open questions
+- None.
+
 ### PR
 https://github.com/Lolo-MindRise/personal-os/pull/19 (both CI jobs green)
 
@@ -143,9 +146,12 @@ Branch `agent/overnight/04-debts`, stacked on block 3.
 - No delete for debts (not asked). Rate is typed in percent with at most two decimals, 0 to 100.
 - A repayment confirmed from a fixed item cannot be linked to a debt (the confirm payload has no
   debt); link it by editing the movement afterwards.
+- The API caps the rate at 100 % and installments at 9999, matching the form.
 
-### Open questions
-- None.
+### Review
+- Reviewer: changes required, fixed. Major: the `debtId: null` on a repayment turned into
+  another kind had no test; now a pure helper (`payloadForUpdate`) with unit tests plus an API
+  test of the transition. Minors: handoff section order, API bounds for rate and installments.
 
 ### Open questions
 - None.

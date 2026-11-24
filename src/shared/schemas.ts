@@ -103,8 +103,9 @@ export const debtCreateSchema = z.strictObject({
   monthlyPaymentCents: cents,
   balanceCents: z.number().int().nonnegative(),
   balanceAsOf: isoDate,
-  remainingInstallments: z.number().int().nonnegative(),
-  annualRateBps: z.number().int().nonnegative(),
+  remainingInstallments: z.number().int().nonnegative().max(9_999),
+  // 0 to 100 %, as the form allows.
+  annualRateBps: z.number().int().nonnegative().max(10_000),
   notes: optionalNotes,
 });
 

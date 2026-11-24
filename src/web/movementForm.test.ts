@@ -5,6 +5,7 @@ import {
   FORM_ERRORS,
   formFromMovement,
   mapApiFieldErrors,
+  payloadForUpdate,
   unmappedApiMessage,
   validateMovementForm,
   type MovementFormValues,
@@ -167,5 +168,27 @@ describe('unmappedApiMessage', () => {
   it('returns nothing when every field is on the form', () => {
     expect(unmappedApiMessage({ amountCents: 'mal', kind: 'no coincide' })).toBeUndefined();
     expect(unmappedApiMessage({})).toBeUndefined();
+  });
+});
+
+describe('payloadForUpdate', () => {
+  const expense = () => {
+    const result = validateMovementForm(valid);
+    if (!result.ok) {
+      throw new Error('fixture invalid');
+    }
+    return result.payload;
+  };
+
+  it('clears the stored debt when a linked repayment becomes another kind', () => {
+    expect(payloadForUpdate(expense(), 3)).toEqual({ ...expense(), debtId: null });
+  });
+
+  it('leaves the payload alone when there was no debt, or the kind is still repayment', () => {
+    expect(payloadForUpdate(expense(), null)).toEqual(expense());
+    const repayment = { ...expense(), kind: 'repayment' as const, debtId: 3 };
+    expect(payloadForUpdate(repayment, 3)).toEqual(repayment);
+    const unlinked = { ...repayment, debtId: null };
+    expect(payloadForUpdate(unlinked, 3)).toEqual(unlinked);
   });
 });

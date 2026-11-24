@@ -142,6 +142,20 @@ export function validateMovementForm(values: MovementFormValues): FormResult {
   };
 }
 
+/**
+ * The body of an edit. A repayment that had a debt and is turned into another
+ * kind must say `debtId: null`, or the API (which merges with the stored row)
+ * would refuse a debt on a non-repayment movement.
+ */
+export function payloadForUpdate(
+  payload: MovementPayload,
+  storedDebtId: number | null,
+): MovementPayload {
+  return payload.debtId === undefined && storedDebtId !== null
+    ? { ...payload, debtId: null }
+    : payload;
+}
+
 const API_FIELD_TO_FORM: Record<string, MovementField> = {
   date: 'date',
   kind: 'kind',

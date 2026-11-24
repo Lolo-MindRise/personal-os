@@ -14,6 +14,7 @@ import {
   formFromEntry,
   formFromMovement,
   mapApiFieldErrors,
+  payloadForUpdate,
   toConfirmPayload,
   unmappedApiMessage,
   type MovementFormValues,
@@ -135,12 +136,8 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
       } else if (editingId === undefined) {
         await api.createMovement(payload);
       } else {
-        // A repayment turned into another kind must drop its debt, or the API refuses it.
-        const had = movements.find((m) => m.id === editingId)?.debtId ?? null;
-        await api.updateMovement(
-          editingId,
-          payload.debtId === undefined && had !== null ? { ...payload, debtId: null } : payload,
-        );
+        const stored = movements.find((m) => m.id === editingId)?.debtId ?? null;
+        await api.updateMovement(editingId, payloadForUpdate(payload, stored));
       }
       resetForm();
       setActionError(undefined);
