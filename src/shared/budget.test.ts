@@ -91,12 +91,18 @@ describe('buildBudgetMonth', () => {
     expect(before.rows.map((r) => r.categoryName)).toEqual(['Ocio', 'Vivienda']);
   });
 
-  it('totals budget and actual over all rows; the difference is budget − actual', () => {
-    const month = buildBudgetMonth('2026-02', cats, lines, actual);
+  it('totals only the expense rows: income and repayment amounts never mix into them', () => {
+    const withOthers = new Map([...actual, [3, 200_000], [4, 9_000]]);
+    const month = buildBudgetMonth('2026-02', cats, lines, withOthers);
+    // The Nómina row (budget 5.000, actual 200.000) is listed but not added up.
+    expect(month.rows.find((r) => r.categoryName === 'Nómina')).toMatchObject({
+      budgetCents: 5_000,
+      actualCents: 200_000,
+    });
     expect(month.totals).toEqual({
-      budgetCents: 75_000, // 70.000 (Vivienda) + 5.000 (Nómina)
-      actualCents: 77_400,
-      differenceCents: -2_400,
+      budgetCents: 70_000, // Vivienda only; Ocio has no budget
+      actualCents: 77_400, // Vivienda 75.000 + Ocio 2.400
+      differenceCents: -7_400,
     });
   });
 

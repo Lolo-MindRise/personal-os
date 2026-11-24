@@ -92,7 +92,7 @@ export interface BudgetRowDto {
 export interface BudgetMonthDto {
   month: string;
   rows: BudgetRowDto[];
-  /** Over all rows; the difference is total budget − total actual. */
+  /** Expense rows only; the difference is total budget − total actual. */
   totals: { budgetCents: number; actualCents: number; differenceCents: number };
 }
 

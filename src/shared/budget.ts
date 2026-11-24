@@ -41,7 +41,7 @@ export function lineInEffect(
 /**
  * One row per expense category, plus any other category that has a budget in
  * effect that month (a budget on an income category would otherwise be invisible).
- * Rows are ordered by name. `actualByCategory` holds confirmed movement totals.
+ * Totals only add the expense rows. Rows are ordered by name. `actualByCategory` holds confirmed movement totals.
  */
 export function buildBudgetMonth(
   month: string,
@@ -67,8 +67,11 @@ export function buildBudgetMonth(
     });
   }
   rows.sort((a, b) => a.categoryName.localeCompare(b.categoryName, 'es'));
-  const budgetCents = rows.reduce((sum, r) => sum + (r.budgetCents ?? 0), 0);
-  const actualCents = rows.reduce((sum, r) => sum + r.actualCents, 0);
+  // Totals cover expense rows only: income and repayment amounts are positive too, and adding
+  // them to spending would make the totals meaningless.
+  const expenseRows = rows.filter((r) => r.kind === 'expense');
+  const budgetCents = expenseRows.reduce((sum, r) => sum + (r.budgetCents ?? 0), 0);
+  const actualCents = expenseRows.reduce((sum, r) => sum + r.actualCents, 0);
   return {
     month,
     rows,

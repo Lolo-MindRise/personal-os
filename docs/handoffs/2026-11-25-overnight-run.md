@@ -98,14 +98,23 @@ Branch `agent/overnight/03-budget`, stacked on block 2.
 - Rows: every expense category, plus any other category that has a budget in effect that month.
   Income and repayment categories without a budget are left out.
 - Difference = budget − actual (positive = under budget, green; negative = over, red).
-  Categories without a budget show no difference. Totals: budget and actual over all rows, and
-  difference = total budget − total actual (so unbudgeted spending lowers it).
+  Categories without a budget show no difference. "Total de gastos" adds the expense rows only
+  (a budgeted income or repayment row is listed, marked "no entra en el total"); difference =
+  total budget − total actual, so unbudgeted spending lowers it.
 - "Actual" = confirmed movements of the category in the month; pending fixed items do not count.
 - A second line for the same category and month is a `409` ("history is not edited"): a typo in
   a month's amount can only be fixed by adding a line from the next month on. There is no way
   to remove a budget (amount must be positive). Say if you want either.
 - The e2e test adds a line in 2030 and cannot clean up (append-only); the e2e database is
   fresh per run.
+- `POST /api/budget-lines` returns the month budget it starts from (the client reloads anyway);
+  `lineInEffect` (shared) and `budgetForMonth` (db) are two implementations of the same rule,
+  cross-checked by a test. Left as is.
+
+### Review
+- Reviewer: changes required, fixed. Major: totals mixed income/repayment rows with expenses
+  (and a test asserted it); now expense rows only. Minors: dead `signed` helper removed, stale
+  form error cleared on edit; two minors above left as is.
 
 ### Open questions
 - None.

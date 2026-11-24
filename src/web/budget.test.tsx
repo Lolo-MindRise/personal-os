@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import type { BudgetMonthDto, CategoryDto } from '../shared/api.js';
+import type { BudgetMonthDto, BudgetRowDto, CategoryDto } from '../shared/api.js';
 import { createApiClient } from './api.js';
 import {
   differenceTone,
@@ -74,9 +74,22 @@ describe('BudgetTable', () => {
   it('ends with a totals row', () => {
     expect(html).toContain('<tfoot>');
     expect(html).toMatch(
-      /Total<\/th><td class="amount">800,00\s€<\/td><td class="amount">774,00\s€/,
+      /Total de gastos<\/th><td class="amount">800,00\s€<\/td><td class="amount">774,00\s€/,
     );
     expect(html).toMatch(/26,00\s€/);
+  });
+
+  it('lists a non-expense row with a note that it is outside the total', () => {
+    const other = renderToStaticMarkup(
+      <BudgetTable
+        data={{
+          ...data,
+          rows: [{ ...(data.rows[0] as BudgetRowDto), kind: 'income', categoryName: 'Nómina' }],
+        }}
+        onChange={noop}
+      />,
+    );
+    expect(other).toContain('Ingreso · no entra en el total');
   });
 
   it('explains an empty list', () => {

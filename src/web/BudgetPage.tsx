@@ -21,8 +21,6 @@ const messageOf = (error: unknown) => (error instanceof ApiError ? error.message
 
 type Errors = Partial<Record<BudgetField, string>>;
 
-const signed = (cents: number) => formatCents(cents);
-
 export function BudgetTable({
   data,
   onChange,
@@ -52,7 +50,9 @@ export function BudgetTable({
           <tr key={row.categoryId}>
             <td>
               {row.categoryName}
-              {row.kind !== 'expense' && <span className="notes">{KIND_LABELS[row.kind]}</span>}
+              {row.kind !== 'expense' && (
+                <span className="notes">{KIND_LABELS[row.kind]} · no entra en el total</span>
+              )}
             </td>
             <td className="amount">
               {row.budgetCents === null ? (
@@ -68,7 +68,7 @@ export function BudgetTable({
             </td>
             <td className="amount">{formatCents(row.actualCents)}</td>
             <td className={`amount diff-${differenceTone(row.differenceCents)}`}>
-              {row.differenceCents === null ? '—' : signed(row.differenceCents)}
+              {row.differenceCents === null ? '—' : formatCents(row.differenceCents)}
             </td>
             <td className="actions">
               <button
@@ -85,11 +85,11 @@ export function BudgetTable({
       </tbody>
       <tfoot>
         <tr>
-          <th scope="row">Total</th>
+          <th scope="row">Total de gastos</th>
           <td className="amount">{formatCents(totals.budgetCents)}</td>
           <td className="amount">{formatCents(totals.actualCents)}</td>
           <td className={`amount diff-${differenceTone(totals.differenceCents)}`}>
-            {signed(totals.differenceCents)}
+            {formatCents(totals.differenceCents)}
           </td>
           <td />
         </tr>
@@ -270,6 +270,7 @@ export function BudgetPage({ api = defaultApi }: { api?: ApiClient }) {
         onChange={(values) => {
           setForm(values);
           setErrors({});
+          setFormError(undefined);
         }}
         onSubmit={(values) => void submit(values)}
       />
