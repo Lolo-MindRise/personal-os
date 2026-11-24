@@ -16,7 +16,7 @@
 - Screen (`src/web`): month picker (default current month), totals, list,
   add/edit form with per-field Spanish errors, delete with `confirm`, plain CSS.
 - `CLAUDE.md`: two rules (no permission edits; no editing committed migrations).
-- Tests: 185 total (health tests removed with the helper): money, API (in-memory DB), form validation,
+- Tests: 196 total (health tests removed with the helper): money, API (in-memory DB), form validation,
   list/summary/form rendering, API client, month helpers.
 
 ## Decisions taken
@@ -29,6 +29,25 @@
 - Validation messages are Spanish (Zod `es` locale set in `src/shared/schemas.ts`, a global side effect of importing it).
 - Removed `src/web/health.ts` and its test: the screen replaced the health
   page and nothing used them. `GET /api/health` stays.
+
+## Defect found in manual testing (fixed)
+- `npm run dev` showed a blank page: `GET /api.ts 404`. Cause: the Vite proxy
+  key `'/api'` is a prefix match, so the module `src/web/api.ts` (served as
+  `/api.ts`) was forwarded to Fastify. Tests, typecheck and build cannot see
+  it: none of them go through the dev server. `npm start` was never affected.
+- Fix: `src/web/devProxy.ts` anchors the key to `^/api/`; `vite.config.ts` uses
+  it. `devProxy.test.ts` fails with the old key (checked) and also asserts that
+  no module file in `src/web` matches the proxy.
+- Verified like a browser: with `npm run dev`, fetched `/` and every module it
+  imports (25 resources, parsed with `es-module-lexer`), none 404. Before the
+  fix `/api.ts` returned Fastify's 404 JSON. `npm run build` + `npm start`
+  (scratch data dir): page, JS, CSS and API all 200.
+- Not verified: no browser on this machine, so the page was never rendered.
+- My earlier "smoke through the dev proxy" only called the API; I did not
+  fetch the modules, so that check could not have caught this.
+- Process gap for Manuel to decide: "shows the screen working" has no
+  automated check. Options: a Playwright smoke test (brief 0005 put it out of
+  scope), or the module-crawl check as a `npm run` script.
 
 ## Notes
 - The seed is January 2026, the default month is the current one: pick
