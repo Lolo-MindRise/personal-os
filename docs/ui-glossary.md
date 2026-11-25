@@ -26,7 +26,9 @@ screen needs a concept, add it here first.
 | Account type: bank account / cash in hand / savings account | cuenta bancaria / efectivo / ahorro | corriente, caja |
 | Money moved between two accounts (not income or expense) | transferencia | traspaso, movimiento entre cuentas |
 | Balance of an account: opening balance plus later movements and transfers | saldo de la cuenta | saldo actual |
-| Amount an account starts with, and its date (not the savings "saldo inicial") | saldo inicial de la cuenta | |
+| Amount an account starts with (not the savings "saldo inicial") | saldo inicial de la cuenta | |
+| Date of that opening balance | fecha del saldo inicial de la cuenta | fecha del saldo inicial |
+| Account a transfer takes money from / puts money into | cuenta de origen / cuenta de destino | |
 | The account every movement gets unless another is chosen | Principal | por defecto, general |
 | A monthly recurring income or expense | fijo (plural fijos) | gasto fijo, recurrente, suscripción |
 | A fixed item waiting to be confirmed this month | pendiente | previsto |

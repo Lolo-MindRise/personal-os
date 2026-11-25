@@ -61,12 +61,13 @@ export function categoryError(
 export function accountError(
   db: Db,
   accountId: number | undefined,
+  field = 'accountId',
 ): { error: string; field: string } | undefined {
   if (
     accountId !== undefined &&
     db.select().from(accounts).where(eq(accounts.id, accountId)).get() === undefined
   ) {
-    return { error: 'La cuenta no existe.', field: 'accountId' };
+    return { error: 'La cuenta no existe.', field };
   }
   return undefined;
 }

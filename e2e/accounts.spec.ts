@@ -37,8 +37,8 @@ test('create an account, move money into it and see the balance', async ({ page,
 
     await page.getByRole('button', { name: 'Añadir cuenta' }).click();
     await page.getByLabel('Nombre').fill(name);
-    await page.getByLabel('Saldo inicial de la cuenta').fill('50');
-    await page.getByLabel('Fecha del saldo inicial').fill('2020-01-01');
+    await page.getByLabel('Saldo inicial de la cuenta', { exact: true }).fill('50');
+    await page.getByLabel('Fecha del saldo inicial de la cuenta').fill('2020-01-01');
     await page.getByRole('button', { name: 'Guardar cuenta' }).click();
     const row = page
       .getByRole('region', { name: 'Cuentas', exact: true })

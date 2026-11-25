@@ -1,5 +1,6 @@
 import type { AccountDto } from '../shared/api.js';
 import type { AccountType } from '../shared/constants.js';
+import { transferDateError } from '../shared/accountBalance.js';
 import { centsToInput, parseMoney } from '../shared/money.js';
 import { isoDate } from '../shared/schemas.js';
 import { todayISO } from './months.js';
@@ -112,11 +113,22 @@ export const emptyTransferForm = (
   notes: '',
 });
 
-export function validateTransferForm(values: TransferFormValues): FormResult<TransferPayload> {
+export function validateTransferForm(
+  values: TransferFormValues,
+  accounts: readonly AccountDto[] = [],
+): FormResult<TransferPayload> {
   const errors: Record<string, string> = {};
   const date = isoDate.safeParse(values.date);
   if (!date.success) {
     errors.date = 'Elige una fecha válida.';
+  } else {
+    const chosen = accounts.filter(
+      (a) => a.id === Number(values.fromAccountId) || a.id === Number(values.toAccountId),
+    );
+    const late = transferDateError(values.date, chosen);
+    if (late !== undefined) {
+      errors.date = late;
+    }
   }
   const amount = parseMoney(values.amount);
   if (!amount.ok) {

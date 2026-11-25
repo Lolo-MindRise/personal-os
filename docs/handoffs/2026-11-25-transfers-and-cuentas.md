@@ -23,9 +23,20 @@ Branch `agent/0002/03-transfers-cuentas` (from `integration/0002-insights-and-ac
 - `src/web/router.ts` got `'accounts'` in `VIEW_IDS` (needed for the route; App.tsx alone is not enough).
 
 ## Open
-- Principal is dated on the earliest movement with balance 0, so with the "after" rule movements on
-  that first day are not in its balance. Manuel may want to edit Principal's opening date/balance.
 - Reviewer not run by me; the orchestrator runs it.
+
+## Fix round 1
+- Migration 0006 (task 01, integration branch only) now dates Principal the day before the
+  earliest movement (`date(min(date), '-1 day')`, else 2025-12-31): its balance includes every
+  existing movement. Data-only change; journal and snapshot untouched, 0007 still applies. Test
+  with movements on the first day added.
+- A transfer dated on or before either account's opening date is refused (create and update, field
+  `date`, Spanish message naming the account), mirrored in the form (`transferDateError`).
+- Account-not-found errors map to `fromAccountId` / `toAccountId`. "Eliminar" hidden for Principal.
+- Label "Fecha del saldo inicial de la cuenta"; glossary has it and origin/destination accounts.
+- Known limit, follow-up: a movement dated before an account's opening date (backdated entry or
+  imported older history) is still left out of the balance without warning. Follow-up: show a
+  count of excluded movements.
 
 ## Next step
 - Task 05 (dashboard balances) can use `GET /api/accounts/balances`.

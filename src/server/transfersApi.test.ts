@@ -96,7 +96,9 @@ describe('transfers API', () => {
   it('rejects an unknown account', async () => {
     const response = await send('POST', '/api/transfers', transfer({ toAccountId: 999 }));
     expect(response.statusCode).toBe(400);
-    expect(response.json<{ fields: Record<string, string> }>().fields.accountId).toBeDefined();
+    expect(response.json<{ fields: Record<string, string> }>().fields.toAccountId).toBeDefined();
+    const origin = await send('POST', '/api/transfers', transfer({ fromAccountId: 999 }));
+    expect(origin.json<{ fields: Record<string, string> }>().fields.fromAccountId).toBeDefined();
   });
 
   it('re-checks the merged accounts on update', async () => {
@@ -134,12 +136,43 @@ describe('account balances', () => {
     expect(after[efectivo.id]).toBe((before[efectivo.id] ?? 0) + 10_000);
   });
 
-  it('ignores a transfer dated on or before the opening date of an account', async () => {
+  it('refuses a transfer dated on or before the opening date of either account', async () => {
     const before = await balances();
-    await send('POST', '/api/transfers', transfer({ date: efectivo.openingBalanceDate }));
-    const after = await balances();
-    // Origin Principal may count it, the destination already has it in its opening balance.
-    expect(after[efectivo.id]).toBe(before[efectivo.id]);
+    const fields = (r: { json: () => unknown }) =>
+      (r.json() as { fields: Record<string, string> }).fields;
+    // Destination (Efectivo) and origin side.
+    for (const body of [
+      transfer({ date: efectivo.openingBalanceDate }),
+      transfer({ date: '2000-01-01' }),
+      transfer({ date: efectivo.openingBalanceDate, fromAccountId: efectivo.id, toAccountId: 1 }),
+    ]) {
+      const response = await send('POST', '/api/transfers', body);
+      expect(response.statusCode).toBe(400);
+      expect(fields(response).date).toMatch(/posterior a la fecha del saldo inicial de la cuenta/);
+    }
+    expect(await balances()).toEqual(before);
+    expect((await get('/api/transfers')).json()).toEqual([]);
+  });
+
+  it('refuses moving an existing transfer to such a date, or to such an account', async () => {
+    const created = (await send('POST', '/api/transfers', transfer())).json<TransferDto>();
+    const url = `/api/transfers/${String(created.id)}`;
+    const early = await send('PATCH', url, { date: efectivo.openingBalanceDate });
+    expect(early.statusCode).toBe(400);
+    expect(early.json<{ fields: Record<string, string> }>().fields.date).toBeDefined();
+    // A new account opening later than the transfer date.
+    const late = (
+      await send('POST', '/api/accounts', {
+        name: 'Tarjeta',
+        type: 'bank',
+        openingBalanceCents: 0,
+        openingBalanceDate: '2026-06-01',
+      })
+    ).json<AccountDto>();
+    const toLate = await send('PATCH', url, { toAccountId: late.id });
+    expect(toLate.statusCode).toBe(400);
+    expect(toLate.json<{ fields: Record<string, string> }>().fields.date).toBeDefined();
+    expect((await get('/api/transfers')).json<TransferDto[]>()).toEqual([created]);
   });
 });
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type SubmitEvent } from 'react';
 import type { AccountBalanceDto, AccountDto, TransferDto } from '../shared/api.js';
-import { ACCOUNT_TYPES, type AccountType } from '../shared/constants.js';
+import { ACCOUNT_TYPES, DEFAULT_ACCOUNT_ID, type AccountType } from '../shared/constants.js';
 import { centsToInput, formatCents } from '../shared/money.js';
 import {
   ACCOUNT_TYPE_LABELS,
@@ -80,7 +80,11 @@ export function AccountForm(props: {
             }}
           />
         </Field>
-        <Field id="account-opening-date" label="Fecha del saldo inicial" error={errors.openingDate}>
+        <Field
+          id="account-opening-date"
+          label="Fecha del saldo inicial de la cuenta"
+          error={errors.openingDate}
+        >
           <input
             id="account-opening-date"
             type="date"
@@ -311,7 +315,7 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
   };
 
   const submitTransfer = async () => {
-    const checked = validateTransferForm(transferValues);
+    const checked = validateTransferForm(transferValues, accounts);
     if (!checked.ok) {
       setErrors(checked.errors);
       return;
@@ -450,9 +454,15 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
                     >
                       Editar
                     </button>
-                    <button type="button" className="danger" onClick={() => void removeAccount(a)}>
-                      Eliminar
-                    </button>
+                    {a.id !== DEFAULT_ACCOUNT_ID && (
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => void removeAccount(a)}
+                      >
+                        Eliminar
+                      </button>
+                    )}
                   </td>
                 </tr>
               );

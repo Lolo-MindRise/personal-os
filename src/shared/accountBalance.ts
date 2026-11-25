@@ -16,6 +16,23 @@ export interface BalanceTransfer {
 }
 
 /**
+ * A transfer must be dated after the opening date of both accounts, otherwise one side would be
+ * dropped from the balances. Returns the Spanish field error, or undefined when the date is fine.
+ */
+export function transferDateError(
+  date: string,
+  accounts: readonly Pick<AccountDto, 'name' | 'openingBalanceDate'>[],
+): string | undefined {
+  for (const account of accounts) {
+    if (date <= account.openingBalanceDate) {
+      const [year, month, day] = account.openingBalanceDate.split('-');
+      return `La fecha debe ser posterior a la fecha del saldo inicial de la cuenta «${account.name}» (${day ?? ''}/${month ?? ''}/${year ?? ''}).`;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Balance of one account: its opening balance plus the movements and transfers dated after the
  * opening date (the opening balance is valid at the end of its own day, as for the savings
  * balance). Movements use the app's sign (income in; expenses and repayments out); a transfer

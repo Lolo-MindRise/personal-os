@@ -119,6 +119,13 @@ describe('transfer form', () => {
     expect(validateTransferForm({ ...valid, amount: '0' }).ok).toBe(false);
     expect(validateTransferForm({ ...valid, amount: '' }).ok).toBe(false);
   });
+  it('refuses a date on or before either account opening date', () => {
+    const early = validateTransferForm({ ...valid, date: '2026-01-01' }, accounts);
+    expect(early.ok ? undefined : early.errors.date).toMatch(
+      /posterior a la fecha del saldo inicial de la cuenta «Principal» \(01\/01\/2026\)/,
+    );
+    expect(validateTransferForm({ ...valid, date: '2026-01-02' }, accounts).ok).toBe(true);
+  });
   it('renders both account selectors', () => {
     const html = renderToStaticMarkup(
       <TransferForm

@@ -1,6 +1,7 @@
 import { desc, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { TransferDto } from '../shared/api.js';
+import { transferDateError } from '../shared/accountBalance.js';
 import { transferCreateSchema, transferUpdateSchema } from '../shared/schemas.js';
 import {
   accountError,
@@ -11,7 +12,7 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
-import { transfers } from './db/schema.js';
+import { accounts, transfers } from './db/schema.js';
 
 const MESSAGES = {
   ...COMMON_MESSAGES,
@@ -36,6 +37,30 @@ export function listTransfers(db: Db): TransferDto[] {
   return db.select(columns).from(transfers).orderBy(desc(transfers.date), desc(transfers.id)).all();
 }
 
+/** Both accounts must exist and the date must be after both opening dates. */
+function checkTransfer(
+  db: Db,
+  from: number,
+  to: number,
+  date: string,
+): { error: string; field: string } | undefined {
+  const missing = accountError(db, from, 'fromAccountId') ?? accountError(db, to, 'toAccountId');
+  if (missing !== undefined) {
+    return missing;
+  }
+  for (const [id, field] of [
+    [from, 'date'],
+    [to, 'date'],
+  ] as const) {
+    const account = db.select().from(accounts).where(eq(accounts.id, id)).get();
+    const error = account === undefined ? undefined : transferDateError(date, [account]);
+    if (error !== undefined) {
+      return { error, field };
+    }
+  }
+  return undefined;
+}
+
 /** Transfers are never movements: they appear in no income, expense, budget or savings total. */
 export function registerTransfersApi(app: FastifyInstance, db: Db): void {
   app.get('/api/transfers', () => listTransfers(db));
@@ -45,8 +70,12 @@ export function registerTransfersApi(app: FastifyInstance, db: Db): void {
     if (!parsed.success) {
       return badRequest(reply, MESSAGES.invalid, fieldErrors(parsed.error));
     }
-    const problem =
-      accountError(db, parsed.data.fromAccountId) ?? accountError(db, parsed.data.toAccountId);
+    const problem = checkTransfer(
+      db,
+      parsed.data.fromAccountId,
+      parsed.data.toAccountId,
+      parsed.data.date,
+    );
     if (problem !== undefined) {
       return badRequest(reply, problem.error, { [problem.field]: problem.error });
     }
@@ -69,7 +98,7 @@ export function registerTransfersApi(app: FastifyInstance, db: Db): void {
     if (from === to) {
       return badRequest(reply, MESSAGES.same, { toAccountId: MESSAGES.same });
     }
-    const problem = accountError(db, from) ?? accountError(db, to);
+    const problem = checkTransfer(db, from, to, parsed.data.date ?? current.date);
     if (problem !== undefined) {
       return badRequest(reply, problem.error, { [problem.field]: problem.error });
     }
