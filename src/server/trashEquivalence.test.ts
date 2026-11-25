@@ -139,6 +139,13 @@ const ENDPOINTS: Endpoint[] = [
   },
   { name: 'debts', method: 'GET', url: '/api/debts', affected: true },
   { name: 'year summary', method: 'GET', url: '/api/years/2026/summary', affected: true },
+  {
+    // Only the trashed income "Extra ingreso" (category Nómina) is similar: live data suggests none.
+    name: 'category suggestion',
+    method: 'GET',
+    url: '/api/movements/suggest-category?kind=income&concept=Extra%20ingreso',
+    affected: true,
+  },
   { name: 'goals', method: 'GET', url: `/api/goals?today=${TODAY}`, affected: true },
   {
     name: 'projection',

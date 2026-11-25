@@ -35,6 +35,8 @@ import {
   type MovementPayload,
 } from './movementForm.js';
 import { LinkedMovements } from './LinkedMovements.js';
+import { openQuickAdd } from './quickAdd.js';
+import { useMovementSaved } from './QuickAdd.js';
 import { SidePanel, usePanel } from './SidePanel.js';
 import { monthLabel } from './months.js';
 import { FilterBar, PageHeader } from './PageHeader.js';
@@ -207,6 +209,8 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     setReloads((n) => n + 1);
   }, []);
   const undo = useUndo(reload, setActionError);
+  // A movement saved from the quick-add panel (key N) refreshes the list shown here.
+  useMovementSaved(reload);
 
   // The search across all months (task 0013, block 3). While a search is active, the monthly
   // view (pending entries, form, list) is hidden; "Volver a la vista mensual" restores it.
@@ -463,10 +467,9 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
             <button
               type="button"
               className="primary"
-              onClick={() => {
-                resetForm();
-                panel.show();
-              }}
+              title="Atajo de teclado: N"
+              aria-keyshortcuts="N"
+              onClick={openQuickAdd}
             >
               Añadir movimiento
             </button>

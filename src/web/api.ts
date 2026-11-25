@@ -20,6 +20,7 @@ import type {
   YearSummaryDto,
   MonthSummaryDto,
   MovementDto,
+  CategorySuggestionDto,
   MovementSearchDto,
   ConfirmAllResultDto,
   PendingEntryDto,
@@ -179,6 +180,11 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
       request<ProjectionDto>(fetchFn, `/api/projection?to=${enc(to)}&today=${enc(today)}`),
     searchMovements: (query: SearchQuery, page: number) =>
       request<MovementSearchDto>(fetchFn, `/api/movements/search?${searchParams(query, page)}`),
+    suggestCategory: (kind: 'income' | 'expense', concept: string) =>
+      request<CategorySuggestionDto>(
+        fetchFn,
+        `/api/movements/suggest-category?kind=${enc(kind)}&concept=${enc(concept)}`,
+      ),
     summary: (month: string) =>
       request<MonthSummaryDto>(fetchFn, `/api/months/${enc(month)}/summary`),
     createMovement: (payload: MovementPayload) =>

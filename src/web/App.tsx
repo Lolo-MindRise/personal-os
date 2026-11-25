@@ -1,5 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import { BackupBanner } from './BackupBanner.js';
+import { openQuickAdd } from './quickAdd.js';
+import { QuickAdd } from './QuickAdd.js';
 import { hrefFor, useRoute, type View } from './router.js';
 import { ThemeToggle } from './theme.js';
 
@@ -149,12 +151,22 @@ export function App() {
           </button>
         </div>
         <div className="sidebar-body" id="sidebar-body">
+          <button
+            type="button"
+            className="quick-add-button"
+            title="Atajo de teclado: N"
+            aria-keyshortcuts="N"
+            onClick={openQuickAdd}
+          >
+            Nuevo movimiento <kbd>N</kbd>
+          </button>
           <Navigation view={view} />
           <ThemeToggle />
         </div>
       </aside>
       <div className="content">
         <BackupBanner />
+        <QuickAdd />
         <Suspense fallback={<p className="page loading">Cargando…</p>}>
           <Screen />
         </Suspense>

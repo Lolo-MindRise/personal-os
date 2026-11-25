@@ -1061,3 +1061,25 @@ td.amount {
   padding: var(--space-1) 0;
   border-bottom: 1px solid var(--border);
 }
+
+/* Quick add (key N): the sidebar button with its key, the "saved" line and the suggestion. */
+.quick-add-button kbd {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font-size: var(--text-sm);
+}
+
+.quick-add-saved {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+}
+
+.quick-add-saved:empty {
+  display: none;
+}
+
+.suggestion:empty {
+  display: none;
+}

@@ -45,6 +45,10 @@ interface Props {
   /** Names of the existing tags, offered while typing. */
   tagNames?: string[];
   errors: FieldErrors;
+  /** Name of the suggested category, shown with a "Usar" button; never applied on its own. */
+  suggestionName?: string | undefined;
+  /** Chooses the suggestion. When absent the suggestion area is not rendered at all. */
+  onUseSuggestion?: () => void;
   /** Message not tied to a field (for example a network failure). */
   formError?: string | undefined;
   mode: FormMode;
@@ -189,6 +193,19 @@ export function MovementForm(props: Props) {
             }}
           />
         </Field>
+        {props.onUseSuggestion !== undefined && (
+          // Always rendered so a screen reader announces the suggestion when it appears.
+          <div className="field suggestion" role="status" aria-live="polite">
+            {props.suggestionName !== undefined && (
+              <>
+                <span>Sugerencia: {props.suggestionName}</span>{' '}
+                <button type="button" onClick={props.onUseSuggestion}>
+                  Usar
+                </button>
+              </>
+            )}
+          </div>
+        )}
         <Field id="movement-amount" label="Importe (€)" error={errors.amount}>
           <input
             id="movement-amount"

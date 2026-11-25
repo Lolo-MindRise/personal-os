@@ -116,6 +116,11 @@ export interface MovementDto {
 }
 
 /** One page of the movement search, with the totals of the whole filtered set (task 0013). */
+/** The category a concept suggests; null when no similar past movement exists. */
+export interface CategorySuggestionDto {
+  categoryId: number | null;
+}
+
 export interface MovementSearchDto {
   /** The page asked for, newest first. */
   rows: MovementDto[];
