@@ -232,6 +232,9 @@ export const DATA_MESSAGES = {
   tooBig: 'El archivo es demasiado grande (máximo 25 MB).',
   notEmpty:
     'Solo se pueden importar datos en una instalación vacía: ya hay datos guardados (movimientos, categorías, fijos u otros). Para recuperar una copia de seguridad sigue «Restore a backup» del README.',
+  principalEdited:
+    'La cuenta «Principal» ya se ha modificado (nombre, tipo o saldo inicial): importar la sustituiría y perdería esos cambios. Usa una instalación recién creada.',
+  wrongType: 'El archivo debe enviarse como JSON.',
   invalid: 'El archivo no es válido y no se ha importado nada.',
   failed: 'No se ha podido importar el archivo y no se ha cambiado nada.',
 } as const;
@@ -402,7 +405,7 @@ export function referenceProblems(file: DataFile): string[] {
   }
 
   for (const [table, seq] of Object.entries(file.sequences)) {
-    if (!(table in ROW_SCHEMAS) || table === 'movement_tags') {
+    if (!Object.hasOwn(ROW_SCHEMAS, table) || table === 'movement_tags') {
       add(`sequences: la tabla ${table} no existe`);
       continue;
     }

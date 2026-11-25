@@ -17,7 +17,7 @@ import {
 import { tagKey } from '../shared/schemas.js';
 import { buildApp } from './app.js';
 import { exportData } from './dataExportApi.js';
-import { hasData, importData } from './dataImportApi.js';
+import { hasData, importData, safeErrorSummary } from './dataImportApi.js';
 import { SCHEMA_TABLES, tableOf } from './dataTables.js';
 import { openDatabase, type DbHandle } from './db/index.js';
 import { resetDevDatabase } from './db/reset.js';
@@ -153,6 +153,17 @@ describe('the table list comes from the schema', () => {
     const schemaNames = SCHEMA_TABLES.map((t) => getTableName(t)).sort();
     expect(Object.keys(ROW_SCHEMAS).sort()).toEqual(schemaNames);
     expect([...TABLE_INSERT_ORDER].sort()).toEqual(schemaNames);
+    const target = open('tables.db');
+    const created = (
+      target.sqlite
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE '\\_\\_%' ESCAPE '\\' AND name <> 'sqlite_sequence'",
+        )
+        .all() as { name: string }[]
+    )
+      .map((r) => r.name)
+      .sort();
+    expect(created).toEqual(schemaNames);
     expect(schemaNames).toContain('tags');
     expect(schemaNames).toContain('movement_tags');
     expect(schemaNames).toContain('accounts');
@@ -313,6 +324,65 @@ describe('refusals', () => {
     expect(hasData(fresh.db)).toBe(true);
   });
 
+  it('accepts an untouched Principal and refuses an edited one, writing nothing', async () => {
+    const source = populatedSource();
+    const file = exportData(source.db);
+    const edits = [
+      "UPDATE accounts SET name = 'Mi cuenta' WHERE id = 1",
+      'UPDATE accounts SET opening_balance_cents = 500 WHERE id = 1',
+      "UPDATE accounts SET type = 'cash' WHERE id = 1",
+      "UPDATE accounts SET opening_balance_date = '2026-01-01' WHERE id = 1",
+    ];
+    for (const edit of edits) {
+      const target = open(`edited-${String(edits.indexOf(edit))}.db`);
+      target.sqlite.exec(edit);
+      const before = dumpAll(target);
+      const response = await post(target, file);
+      expect(response.statusCode, edit).toBe(409);
+      expect(response.json<{ error: string }>().error).toBe(DATA_MESSAGES.principalEdited);
+      expect(dumpAll(target), edit).toEqual(before);
+    }
+    expect((await post(open('untouched.db'), file)).statusCode).toBe(200);
+  });
+
+  it('rejects inherited names in sequences as invalid file content, writing nothing', async () => {
+    const source = populatedSource();
+    const target = open('target.db');
+    const before = dumpAll(target);
+    for (const name of ['constructor', '__proto__', 'toString']) {
+      const file = JSON.parse(JSON.stringify(exportData(source.db))) as DataFile;
+      Object.defineProperty(file.sequences, name, { value: 5, enumerable: true });
+      const response = await post(target, JSON.parse(JSON.stringify(file)));
+      expect(response.statusCode, name).toBe(400);
+      // Fastify's secure JSON parser already refuses "__proto__" keys as a malformed body.
+      expect(response.json<{ error: string }>().error, name).toContain(
+        name === '__proto__' ? DATA_MESSAGES.notJson : DATA_MESSAGES.invalid,
+      );
+      expect(dumpAll(target), name).toEqual(before);
+    }
+  });
+
+  it('does not put the query, parameters or row contents in the failure log', () => {
+    const source = populatedSource();
+    const file = clone(exportData(source.db));
+    const first = file.tables.movements.find((m) => m.recurringItemId !== null);
+    if (first === undefined) {
+      throw new Error('fixture has no confirmed fixed item');
+    }
+    file.tables.movements.push({ ...first, id: 9_999 });
+    let caught: unknown;
+    try {
+      importData(open('target.db').db, file);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeDefined();
+    const summary = safeErrorSummary(caught);
+    expect(summary).not.toContain(first.concept);
+    expect(summary).not.toMatch(/insert into|values|params/i);
+    expect(summary.length).toBeLessThan(200);
+  });
+
   it('refuses an invalid file and leaves the database untouched', async () => {
     const source = populatedSource();
     await tagSomeMovements(source);
@@ -373,8 +443,9 @@ describe('refusals', () => {
   it('rolls everything back when the database rejects a row the checks did not foresee', () => {
     const source = populatedSource();
     const file = clone(exportData(source.db));
-    // Valid for the shape and references, rejected by a composite unique index in the database
-    // only if two movements confirm the same item in a month; force it through importData directly.
+    // Valid for the shape, but referenceProblems reports it (two movements confirming the same
+    // item in a month); the database's composite unique index rejects it too. Force it through
+    // importData directly to prove the rollback.
     const withItem = file.tables.movements.filter((m) => m.recurringItemId !== null);
     const first = withItem[0];
     if (first === undefined) {

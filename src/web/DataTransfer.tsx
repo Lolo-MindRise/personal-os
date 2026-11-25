@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MAX_IMPORT_BYTES } from '../shared/dataFile.js';
 import { ApiError, NETWORK_ERROR, type ApiClient } from './api.js';
 import { dataFileName, downloadJson, importSummary, readImportText } from './dataTransfer.js';
 import { todayISO } from './months.js';
@@ -46,7 +47,9 @@ export function DataTransferSection({ api }: { api: ApiClient }) {
     }
     setMessage(undefined);
     setError(undefined);
-    const read = readImportText(file.size > 0 ? await file.text() : '', file.size);
+    // Check the size before reading: a huge file is never loaded into memory.
+    const readable = file.size > 0 && file.size <= MAX_IMPORT_BYTES;
+    const read = readImportText(readable ? await file.text() : '', file.size);
     if (!read.ok) {
       setError(read.error);
       return;

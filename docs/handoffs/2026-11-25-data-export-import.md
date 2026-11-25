@@ -26,6 +26,23 @@ Branch `agent/0002/06-data-export-import` (from `integration/0002-insights-and-a
 - Tables keyed by SQL name; row keys are Drizzle property names (camelCase).
 - Body limit 25 MiB (route option); the client also checks the size.
 
+## Fix round 1
+- Privacy: failed imports log only a short code plus the innermost cause message
+  (`safeErrorSummary`), never Drizzle's query, params or rows. Unit-tested (logger is a boolean in
+  `buildApp`, so the helper is tested, not captured output).
+- Error handler: only body-parse errors (400, `FST_ERR_CTP_*`) say "no es un JSON válido"; 415 and
+  others keep their status with a generic Spanish message. `Object.hasOwn` in `referenceProblems`
+  sequences ("constructor" gives a clean 400). A `__proto__` key is refused earlier by Fastify's
+  secure parser as malformed JSON (400).
+- The emptiness check now runs inside the import transaction (`ImportRefusedError`, mapped to 409).
+- Account 1 edited (name, type, opening balance or date differing from the migration default,
+  `2025-12-31`) is refused with 409 `principalEdited`; tests cover each edit and an untouched one.
+- Client checks `file.size` before `file.text()`.
+- Test asserts sqlite_master tables equal `SCHEMA_TABLES`; misleading rollback comment fixed.
+- Known limits, not changed on purpose: no confirmation dialog before importing; the size limit
+  compares the file bytes, so a pretty-printed export near the limit may be refused or accepted
+  differently from its compact form.
+
 ## Open
 - Reviewer not run by me; the orchestrator runs it.
 - Adding a table later: update `ROW_SCHEMAS`, `TABLE_INSERT_ORDER`, `referenceProblems`; tests fail
