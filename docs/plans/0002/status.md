@@ -4,7 +4,7 @@ Integration branch: `integration/0002-insights-and-accounts`
 
 | Task | Depends on | State | PR | Notes |
 |------|-----------|-------|----|-------|
-| 00 housekeeping | – | pending | – | alone, first |
+| 00 housekeeping | – | merged | #53 | approve (1 round); plain lint passes with 9 worktrees |
 | 01 accounts-model | 00 | pending | – | owns the migration slot |
 | 02 reports | 00 | pending | – | no migration |
 | 03 transfers-cuentas | 01 | pending | – | owns the migration slot |

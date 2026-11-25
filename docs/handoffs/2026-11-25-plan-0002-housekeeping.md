@@ -1,4 +1,4 @@
-# Handoff 2026-11-28: Plan 0002 housekeeping (task 00)
+# Handoff 2026-11-25: Plan 0002 housekeeping (task 00)
 
 Branch `agent/0002/00-housekeeping` (from `integration/0002-insights-and-accounts`).
 
