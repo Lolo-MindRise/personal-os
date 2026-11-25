@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import type { DashboardDto } from '../shared/api.js';
+import type { DashboardBudgetAlertDto, DashboardDto } from '../shared/api.js';
+import { budgetAlert } from '../shared/budget.js';
 import {
   debtProgressPercent,
   monthRows,
@@ -108,8 +109,33 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
       categoryName: r.categoryName,
       budgetCents: r.budgetCents,
       actualCents: r.actualCents,
+      // Strictly above budget. The alert state in shared/budget.ts is `over` from 100 %: deliberate.
       overBudget: r.budgetCents !== null && r.actualCents > r.budgetCents,
     }));
+
+  // Same figures as the chart above and the budget screen: the alert only classifies them.
+  const budgetAlerts: DashboardBudgetAlertDto[] = [];
+  for (const c of categories) {
+    const alert = budgetAlert(c.budgetCents, c.actualCents);
+    if (c.budgetCents !== null && alert.percent !== null) {
+      if (alert.state === 'warning' || alert.state === 'over') {
+        budgetAlerts.push({
+          categoryId: c.categoryId,
+          categoryName: c.categoryName,
+          budgetCents: c.budgetCents,
+          actualCents: c.actualCents,
+          percent: alert.percent,
+          state: alert.state,
+        });
+      }
+    }
+  }
+  budgetAlerts.sort(
+    (a, b) =>
+      Number(b.state === 'over') - Number(a.state === 'over') ||
+      b.percent - a.percent ||
+      a.categoryName.localeCompare(b.categoryName, 'es'),
+  );
 
   const ahead = next30DaysWindow(today);
   const accountNames = new Map(
@@ -145,6 +171,7 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
     },
     months: window,
     categories,
+    budgetAlerts,
     debts: { items: debtItems, totalEstimatedCents },
     upcoming: {
       pending: dueEntries(db, month).pending,

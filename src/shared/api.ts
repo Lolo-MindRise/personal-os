@@ -398,6 +398,8 @@ export interface DashboardDto {
   /** The 12 months ending at `month`, oldest first. */
   months: DashboardMonthDto[];
   categories: DashboardCategoryDto[];
+  /** Categories at or above 80 % of their budget; over first, then by percent. */
+  budgetAlerts: DashboardBudgetAlertDto[];
   debts: { items: DashboardDebtDto[]; totalEstimatedCents: number };
   upcoming: {
     pending: PendingEntryDto[];
@@ -415,6 +417,17 @@ export interface DashboardDto {
     /** Milestones not done with a target date in the window. */
     milestones: MilestoneDto[];
   };
+}
+
+/** An expense category at or above 80 % of its budget in the selected month. */
+export interface DashboardBudgetAlertDto {
+  categoryId: number;
+  categoryName: string;
+  budgetCents: number;
+  actualCents: number;
+  /** Whole percent spent, rounded down; can exceed 100. */
+  percent: number;
+  state: 'warning' | 'over';
 }
 
 export interface DashboardAccountDto extends AccountBalanceDto {

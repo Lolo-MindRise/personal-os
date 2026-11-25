@@ -8,7 +8,7 @@ import {
   mapBudgetApiErrors,
   validateBudgetForm,
 } from './budgetForm.js';
-import { BudgetForm, BudgetTable } from './BudgetPage.js';
+import { BudgetForm, BudgetMeter, BudgetTable } from './BudgetPage.js';
 import { Navigation } from './App.js';
 
 const noop = () => undefined;
@@ -90,6 +90,9 @@ describe('BudgetTable', () => {
       />,
     );
     expect(other).toContain('Ingreso · no entra en el total');
+    // No meter and no state words for income, even above its budget.
+    expect(other).not.toContain('progressbar');
+    expect(other).not.toContain('Presupuesto alcanzado o superado');
   });
 
   it('explains an empty list', () => {
@@ -100,6 +103,39 @@ describe('BudgetTable', () => {
       />,
     );
     expect(empty).toContain('No hay categorías de gasto');
+  });
+});
+
+describe('BudgetMeter', () => {
+  const meter = (budget: number | null, actual: number) =>
+    renderToStaticMarkup(<BudgetMeter name="Ocio" budgetCents={budget} actualCents={actual} />);
+
+  it('has an accessible name with the percentage and words for the state', () => {
+    const warning = meter(10_000, 8_500);
+    expect(warning).toContain('aria-label="Ocio: 85 % del presupuesto"');
+    expect(warning).toContain('85 %');
+    expect(warning).toContain('Cerca del presupuesto');
+    expect(warning).toContain('budget-meter-warning');
+  });
+
+  it('caps the bar at 100 % but not the number', () => {
+    const over = meter(10_000, 25_000);
+    expect(over).toContain('width:100%');
+    expect(over).toContain('aria-valuenow="100"');
+    expect(over).toContain('250 %');
+    expect(over).toContain('Presupuesto alcanzado o superado');
+  });
+
+  it('says nothing special below 80 %, and nothing without a budget', () => {
+    expect(meter(10_000, 7_900)).not.toContain('Cerca');
+    expect(meter(null, 7_900)).toBe('');
+    expect(meter(0, 7_900)).toBe('');
+  });
+
+  it('is shown in the table next to the actual amount', () => {
+    expect(renderToStaticMarkup(<BudgetTable data={data} onChange={noop} />)).toContain(
+      'aria-label="Vivienda: 107 % del presupuesto"',
+    );
   });
 });
 

@@ -923,6 +923,39 @@ td.amount {
   border-radius: 4px;
 }
 
+/* Budget progress: state is also written in words; "over" is striped so colour is not the only cue. */
+.budget-meter {
+  height: 8px;
+  margin-top: var(--space-1, 4px);
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.budget-meter-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.budget-meter-warning .budget-meter-fill {
+  background: var(--repayment);
+}
+
+.budget-meter-over .budget-meter-fill {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--danger),
+    var(--danger) 4px,
+    transparent 4px,
+    transparent 6px
+  );
+}
+
+.budget-alert-over {
+  font-weight: 600;
+}
+
 .upcoming {
   margin: 0;
   padding: 0;
