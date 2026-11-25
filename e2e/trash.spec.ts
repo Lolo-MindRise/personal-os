@@ -13,6 +13,14 @@ const movementRow = (page: Page) =>
   page.locator('table.movements tbody tr', { hasText: 'zztrash Cine' });
 const trashRow = (page: Page) => page.getByTestId('trash-row').filter({ hasText: 'zztrash Cine' });
 
+/** The figures of the Inicio key-figures card (accumulated savings, projected savings). */
+async function dashboardFigures(page: Page) {
+  return {
+    accumulated: await page.getByTestId('figure-accumulated').innerText(),
+    projected: await page.getByTestId('figure-projected').innerText(),
+  };
+}
+
 async function cleanUp(request: APIRequestContext) {
   const rows = (await (await request.get(`/api/movements?month=${MONTH}`)).json()) as {
     id: number;
@@ -33,6 +41,16 @@ test('delete, undo within 10 seconds, delete again, restore from the papelera, d
   request,
 }) => {
   try {
+    // The clock is installed before anything loads and paused once the page is up: the 10 seconds
+    // of «Deshacer» only pass when the test moves the clock, so a slow run cannot expire the
+    // first undo.
+    await page.clock.install({ time: new Date('2028-02-15T12:00:00') });
+
+    // Inicio for the month before anything exists: the figures to compare against later.
+    await page.goto(`/#/dashboard?month=${MONTH}`);
+    await expect(page.getByTestId('figure-projected')).toBeVisible();
+    const baseline = await dashboardFigures(page);
+
     await page.goto(`/#/movements?month=${MONTH}`);
     await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeVisible();
 
@@ -48,6 +66,7 @@ test('delete, undo within 10 seconds, delete again, restore from the papelera, d
     });
 
     await test.step('deleting asks nothing, shows Deshacer, and undo brings it back', async () => {
+      await page.clock.pauseAt(new Date('2028-02-15T12:00:30'));
       await movementRow(page).getByRole('button', { name: 'Eliminar' }).click();
       await expect(movementRow(page)).toHaveCount(0);
       await expect(summaryItem(page, 'Gastos')).toContainText(/0,00\s€/);
@@ -61,8 +80,6 @@ test('delete, undo within 10 seconds, delete again, restore from the papelera, d
     });
 
     await test.step('after 10 seconds the toast goes and the movement is in Papelera', async () => {
-      await page.clock.install();
-      await page.reload();
       await movementRow(page).getByRole('button', { name: 'Eliminar' }).click();
       await expect(page.getByRole('button', { name: 'Deshacer' })).toBeVisible();
       await page.clock.fastForward(10_500);
@@ -70,6 +87,8 @@ test('delete, undo within 10 seconds, delete again, restore from the papelera, d
       await expect(movementRow(page)).toHaveCount(0);
       await expect(summaryItem(page, 'Gastos')).toContainText(/0,00\s€/);
 
+      // Time flows again: loading another screen needs the page's own timers.
+      await page.clock.resume();
       await nav(page, 'Papelera').click();
       await expect(page.getByRole('heading', { name: 'Papelera', level: 1 })).toBeVisible();
       await expect(nav(page, 'Papelera')).toHaveAttribute('aria-current', 'page');
@@ -79,6 +98,10 @@ test('delete, undo within 10 seconds, delete again, restore from the papelera, d
     await test.step('Inicio and Movimientos totals do not include it', async () => {
       await page.goto(`/#/movements?month=${MONTH}`);
       await expect(summaryItem(page, 'Gastos')).toContainText(/0,00\s€/);
+      // Inicio, same month: the figures are those of the month without the movement.
+      await page.goto(`/#/dashboard?month=${MONTH}`);
+      await expect(page.getByTestId('figure-projected')).toBeVisible();
+      expect(await dashboardFigures(page)).toEqual(baseline);
     });
 
     await test.step('restore brings it back', async () => {

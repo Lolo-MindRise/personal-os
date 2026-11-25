@@ -41,7 +41,7 @@ test('the month label is lowercase Spanish, not "Noviembre De 2026"', async ({ p
   await expect(page.locator('.month-label')).toHaveCSS('text-transform', 'none');
 });
 
-test('add, edit and delete a movement, with the totals following', async ({ page }) => {
+test('add, edit and delete a movement, with the totals following', async ({ page, request }) => {
   await expect(page.getByText('No hay movimientos este mes.')).toBeVisible();
 
   await test.step('add an expense in the side panel, which closes when saved', async () => {
@@ -99,6 +99,14 @@ test('add, edit and delete a movement, with the totals following', async ({ page
     await expect(page.getByRole('button', { name: 'Deshacer' })).toBeVisible();
     await expect(summaryItem(page, 'Gastos')).toContainText(/0,00\s€/);
     await expect(summaryItem(page, 'Ahorro')).toContainText(/0,00\s€/);
+
+    // The row waits in the papelera of the shared database: remove it for good.
+    const trash = (await (await request.get('/api/trash')).json()) as {
+      movements: { id: number; concept: string }[];
+    };
+    for (const row of trash.movements.filter((m) => m.concept === 'compra editada')) {
+      await request.delete(`/api/trash/movements/${String(row.id)}`);
+    }
   });
 });
 

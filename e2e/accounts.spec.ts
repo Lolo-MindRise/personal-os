@@ -65,7 +65,6 @@ test('create an account, move money into it and see the balance', async ({ page,
     await page.getByRole('button', { name: 'Guardar transferencia' }).click();
     await expect(row).toContainText('70,00');
 
-    page.once('dialog', (dialog) => void dialog.accept());
     await page
       .getByRole('region', { name: 'Transferencias' })
       .getByRole('button', { name: 'Eliminar' })

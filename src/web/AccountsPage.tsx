@@ -340,7 +340,9 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
     setActionError(undefined);
     try {
       await api.deleteTransfer(transfer.id);
-      undo.show('Transferencia eliminada.', () => api.restoreTransfer(transfer.id));
+      undo.show('Transferencia eliminada. Está en la papelera.', () =>
+        api.restoreTransfer(transfer.id),
+      );
     } catch (error) {
       setActionError(messageOf(error));
     }

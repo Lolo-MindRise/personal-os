@@ -26,7 +26,13 @@ export function trashRows(trash: TrashDto): TrashRow[] {
     ...trash.movements.map((item): TrashRow => ({ type: 'movement', item })),
     ...trash.transfers.map((item): TrashRow => ({ type: 'transfer', item })),
   ];
-  return rows.sort((a, b) => (a.item.deletedAt < b.item.deletedAt ? 1 : -1));
+  return rows.sort((a, b) => {
+    if (a.item.deletedAt !== b.item.deletedAt) {
+      return a.item.deletedAt < b.item.deletedAt ? 1 : -1;
+    }
+    // Ties: a stable order, movements before transfers, then by id.
+    return a.type === b.type ? a.item.id - b.item.id : a.type === 'movement' ? -1 : 1;
+  });
 }
 
 /** "25/11/2026" for the day (local time) a row was deleted. */
@@ -39,6 +45,30 @@ export function deletedOn(deletedAt: string): string {
   return formatDate(
     `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
   );
+}
+
+export type RowOutcome = { ok: true } | { ok: false; message: string };
+
+/** Runs a restore or a permanent delete; a failure becomes the message shown next to the row. */
+export async function runRowAction(action: () => Promise<unknown>): Promise<RowOutcome> {
+  try {
+    await action();
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: messageOf(error) };
+  }
+}
+
+type RowErrors = Record<string, string | undefined>;
+
+/** An action starts: the row's old error goes away. */
+export function errorsBefore(errors: RowErrors, row: TrashRow): RowErrors {
+  return { ...errors, [rowKey(row)]: undefined };
+}
+
+/** An action ends: on failure the row stays and the error is shown next to it. */
+export function errorsAfter(errors: RowErrors, row: TrashRow, outcome: RowOutcome): RowErrors {
+  return outcome.ok ? errors : { ...errors, [rowKey(row)]: outcome.message };
 }
 
 export const confirmForeverText = (row: TrashRow) =>
@@ -189,18 +219,14 @@ export function TrashPage({ api = defaultApi }: { api?: ApiClient }) {
   }, [api, reloads]);
 
   const act = async (row: TrashRow, action: () => Promise<unknown>) => {
-    const key = rowKey(row);
     setBusy(true);
-    setErrors((now) => ({ ...now, [key]: undefined }));
-    try {
-      await action();
+    setErrors((now) => errorsBefore(now, row));
+    const outcome = await runRowAction(action);
+    setErrors((now) => errorsAfter(now, row, outcome));
+    if (outcome.ok) {
       setReloads((n) => n + 1);
-    } catch (error) {
-      // The row stays; say why next to it. A reload would only repeat what is on screen.
-      setErrors((now) => ({ ...now, [key]: messageOf(error) }));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   return (

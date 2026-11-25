@@ -374,7 +374,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
       if (editingId === movement.id) {
         resetForm();
       }
-      undo.show(`Movimiento «${movement.concept}» eliminado.`, () =>
+      undo.show(`Movimiento «${movement.concept}» eliminado. Está en la papelera.`, () =>
         api.restoreMovement(movement.id),
       );
       reload();

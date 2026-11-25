@@ -171,7 +171,8 @@ describe('Papelera', () => {
   });
 
   it('formats the deletion date and the confirmation text', () => {
-    expect(deletedOn('2026-11-20T12:00:00.000Z')).toBe('20/11/2026');
+    // No offset: read as local time, so the day does not depend on the time zone of the machine.
+    expect(deletedOn('2026-11-20T12:00:00')).toBe('20/11/2026');
     expect(confirmForeverText(movementRow)).toContain('No se puede deshacer');
     expect(confirmForeverText(movementRow)).toContain('Cine');
     expect(confirmForeverText(transferRow)).toContain('transferencia');

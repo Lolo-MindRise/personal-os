@@ -22,7 +22,17 @@ export function UndoToast({ toast, onUndo, onExpire, busy = false }: Props) {
   });
   const buttonRef = useRef<HTMLButtonElement>(null);
   const id = toast?.id;
+  const wasShown = useRef(false);
   useEffect(() => {
+    // The toast closed (expired or undone): the button that had focus is gone, so focus goes to
+    // the page heading instead of being lost to the body.
+    if (toast === undefined && wasShown.current) {
+      const active = document.activeElement;
+      if (active === null || active === document.body) {
+        document.querySelector<HTMLElement>('main h1')?.focus();
+      }
+    }
+    wasShown.current = toast !== undefined;
     if (toast === undefined) {
       return;
     }
