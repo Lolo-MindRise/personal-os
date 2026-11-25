@@ -252,11 +252,76 @@ export function DebtCard({ debt }: { debt: DashboardDebtDto }) {
   );
 }
 
+/** One line per account, each linking to the Cuentas screen. Always shown, even with one account. */
+export function AccountsBlock({ accounts }: { accounts: DashboardDto['accounts'] }) {
+  return (
+    <section className="dashboard-section" aria-label="Cuentas" data-testid="dashboard-accounts">
+      <h2>Cuentas</h2>
+      {accounts.length === 0 ? (
+        <EmptyState view="accounts" link="Ver cuentas">
+          No hay ninguna cuenta.
+        </EmptyState>
+      ) : (
+        <ul className="upcoming">
+          {accounts.map((a) => (
+            <li key={a.accountId} data-testid="dashboard-account">
+              <GoTo view="accounts">{a.name}</GoTo>{' '}
+              <span className={a.balanceCents < 0 ? 'negative-text' : undefined}>
+                {formatCents(a.balanceCents)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** Pending fixed items and milestones due from today to 30 days later. */
+export function Next30Days({ next }: { next: DashboardDto['next30Days'] }) {
+  const empty = next.fixed.length === 0 && next.milestones.length === 0;
+  return (
+    <section
+      className="dashboard-section"
+      aria-label="Próximos 30 días"
+      data-testid="dashboard-next30"
+    >
+      <h2>Próximos 30 días</h2>
+      {empty ? (
+        <p className="empty dashboard-empty">
+          No hay fijos pendientes ni hitos en los próximos 30 días.
+        </p>
+      ) : (
+        <ul className="upcoming">
+          {next.fixed.map((e) => (
+            <li key={`f${String(e.recurringItemId)}-${e.month}`} data-testid="next30-fixed">
+              <span className="muted">{formatDate(e.date)}</span>{' '}
+              <GoTo view="recurring">{e.concept}</GoTo>{' '}
+              <span className={`kind-${e.kind}`}>{formatCents(e.amountCents)}</span>
+            </li>
+          ))}
+          {next.milestones.map((m) => (
+            <li key={`m${String(m.id)}`} data-testid="next30-milestone">
+              <span className="muted">{formatDate(m.targetDate)}</span>{' '}
+              <GoTo view="milestones">{m.title}</GoTo>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export function DashboardView({ data }: { data: DashboardDto }) {
   const { setup, keyFigures, upcoming } = data;
   return (
     <>
       <KeyFigures data={data} />
+
+      <div className="dashboard-columns">
+        <AccountsBlock accounts={data.accounts} />
+        <Next30Days next={data.next30Days} />
+      </div>
 
       <section className="dashboard-section">
         <h2>Últimos 12 meses</h2>

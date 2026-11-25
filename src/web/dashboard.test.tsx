@@ -31,7 +31,66 @@ const empty: DashboardDto = {
   categories: [],
   debts: { items: [], totalEstimatedCents: 0 },
   upcoming: { pending: [], milestones: [] },
+  accounts: [{ accountId: 1, name: 'Principal', balanceCents: 0 }],
+  next30Days: { from: '2026-03-15', to: '2026-04-14', fixed: [], milestones: [] },
 };
+
+describe('Inicio accounts and next 30 days', () => {
+  it('shows a single account and the empty next-30-days message', () => {
+    const html = renderToStaticMarkup(<DashboardView data={empty} />);
+    expect(html).toContain('data-testid="dashboard-accounts"');
+    expect(html).toContain('Principal');
+    expect(html).toContain('href="#/accounts"');
+    expect(html).toContain('No hay fijos pendientes ni hitos en los próximos 30 días.');
+  });
+
+  it('lists accounts with balances and the items due, linking to their screens', () => {
+    const html = renderToStaticMarkup(
+      <DashboardView
+        data={{
+          ...empty,
+          accounts: [
+            { accountId: 1, name: 'Principal', balanceCents: 12_345 },
+            { accountId: 2, name: 'Efectivo', balanceCents: -500 },
+          ],
+          next30Days: {
+            from: '2026-03-15',
+            to: '2026-04-14',
+            fixed: [
+              {
+                recurringItemId: 7,
+                month: '2026-03',
+                date: '2026-03-20',
+                kind: 'expense',
+                categoryId: 1,
+                categoryName: 'Hogar',
+                concept: 'Internet',
+                amountCents: 3_500,
+                notes: null,
+              },
+            ],
+            milestones: [
+              {
+                id: 3,
+                title: 'Revisar seguros',
+                targetDate: '2026-04-01',
+                status: 'pending',
+                notes: null,
+              },
+            ],
+          },
+        }}
+      />,
+    );
+    expect(html).toMatch(/Principal<\/a> <span[^>]*>123,45/);
+    expect(html).toContain('Efectivo');
+    expect(html).toContain('Internet');
+    expect(html).toContain('href="#/recurring"');
+    expect(html).toContain('Revisar seguros');
+    expect(html).toContain('href="#/milestones"');
+    expect(html).not.toContain('No hay fijos pendientes ni hitos');
+  });
+});
 
 describe('Inicio with no data', () => {
   const html = renderToStaticMarkup(<DashboardView data={empty} />);

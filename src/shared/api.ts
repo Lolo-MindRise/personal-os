@@ -380,6 +380,21 @@ export interface DashboardDto {
     /** The next three milestones not done, overdue first (earliest date first). */
     milestones: DashboardMilestoneDto[];
   };
+  /** One line per account (plan 0002, task 05); same figures as `GET /api/accounts/balances`. */
+  accounts: DashboardAccountDto[];
+  /** What falls due from `today` to `today` + 30 days, both included. */
+  next30Days: {
+    from: string;
+    to: string;
+    /** Pending fixed items (not confirmed, not skipped) with an expected date in the window. */
+    fixed: PendingEntryDto[];
+    /** Milestones not done with a target date in the window. */
+    milestones: MilestoneDto[];
+  };
+}
+
+export interface DashboardAccountDto extends AccountBalanceDto {
+  name: string;
 }
 
 /** "Concept contains `pattern`" → category (task 0013, block 2). */
