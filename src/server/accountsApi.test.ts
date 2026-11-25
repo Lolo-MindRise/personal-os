@@ -101,9 +101,37 @@ describe('accounts API', () => {
     expect((await send('PATCH', '/api/accounts/999', { name: 'x' })).statusCode).toBe(404);
   });
 
-  it('has no delete route in this task', async () => {
+  it('refuses an opening date that would exclude one of its transfers', async () => {
+    const created = (await send('POST', '/api/accounts', validAccount)).json<AccountDto>();
+    const url = `/api/accounts/${String(created.id)}`;
+    for (const [date, from, to] of [
+      ['2026-03-10', 1, created.id],
+      ['2026-05-20', created.id, 1],
+    ] as const) {
+      const t = await send('POST', '/api/transfers', {
+        date,
+        amountCents: 1000,
+        fromAccountId: from,
+        toAccountId: to,
+      });
+      expect(t.statusCode).toBe(201);
+    }
+    const refused = await send('PATCH', url, { openingBalanceDate: '2026-03-10' });
+    expect(refused.statusCode).toBe(400);
+    const body = refused.json<{ fields: Record<string, string> }>();
+    expect(body.fields.openingBalanceDate).toMatch(/10\/03\/2026/);
+    expect((await send('PATCH', url, { openingBalanceDate: '2026-06-01' })).statusCode).toBe(400);
+    const earlier = await send('PATCH', url, { openingBalanceDate: '2026-03-09' });
+    expect(earlier.statusCode).toBe(200);
+    expect(earlier.json<AccountDto>().openingBalanceDate).toBe('2026-03-09');
+    expect((await send('PATCH', url, { openingBalanceDate: '2020-01-01' })).statusCode).toBe(200);
+    // Other fields stay editable regardless of the transfers.
+    expect((await send('PATCH', url, { name: 'Otra' })).statusCode).toBe(200);
+  });
+
+  it('refuses to delete Principal (deleting other accounts: transfersApi.test.ts)', async () => {
     const response = await app.inject({ method: 'DELETE', url: '/api/accounts/1' });
-    expect(response.statusCode).toBe(404);
+    expect(response.statusCode).toBe(409);
   });
 });
 

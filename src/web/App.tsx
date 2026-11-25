@@ -20,6 +20,7 @@ const SummaryPage = named(() => import('./SummaryPage.js'), 'SummaryPage');
 const GoalsPage = named(() => import('./GoalsPage.js'), 'GoalsPage');
 const MilestonesPage = named(() => import('./MilestonesPage.js'), 'MilestonesPage');
 const CategoriesPage = named(() => import('./CategoriesPage.js'), 'CategoriesPage');
+const AccountsPage = named(() => import('./AccountsPage.js'), 'AccountsPage');
 const BackupsPage = named(() => import('./BackupsPage.js'), 'BackupsPage');
 
 const SCREENS: Record<View, React.LazyExoticComponent<React.ComponentType>> = {
@@ -35,6 +36,7 @@ const SCREENS: Record<View, React.LazyExoticComponent<React.ComponentType>> = {
   goals: GoalsPage,
   milestones: MilestonesPage,
   categories: CategoriesPage,
+  accounts: AccountsPage,
   backups: BackupsPage,
 };
 
@@ -81,6 +83,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Ajustes',
     items: [
       { view: 'categories', label: 'Categorías' },
+      { view: 'accounts', label: 'Cuentas' },
       { view: 'backups', label: 'Copias' },
     ],
   },

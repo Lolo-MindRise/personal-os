@@ -5,6 +5,7 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { accountBalance } from '../../shared/accountBalance.js';
 import { MIGRATIONS_DIR } from './config.js';
 
 // The accounts migration (plan 0002, task 01) must keep every existing movement with its values
@@ -70,15 +71,52 @@ describe('accounts migration', () => {
       name: 'Principal',
       type: 'bank',
       opening_balance_cents: 0,
-      // The earliest movement.
-      opening_balance_date: '2026-02-10',
+      // The day before the earliest movement, so that movement counts in the balance.
+      opening_balance_date: '2026-02-09',
     });
   });
 
-  it('creates Principal dated 2026-01-01 when there are no movements', () => {
+  it('Principal balance includes every movement, also those on the first day', () => {
+    migrate(drizzle(sqlite), { migrationsFolder: migrationsBeforeAccounts() });
+    sqlite.exec(`
+      INSERT INTO categories (id, name, kind) VALUES (1, 'Nómina ficticia', 'income'), (2, 'Ocio', 'expense');
+      INSERT INTO movements (date, kind, category_id, concept, amount_cents) VALUES
+        ('2026-03-01', 'income', 1, 'Nómina', 200000),
+        ('2026-03-01', 'expense', 2, 'Cine', 2400),
+        ('2026-03-01', 'expense', 2, 'Café', 150),
+        ('2026-03-20', 'expense', 2, 'Teatro', 3150);
+    `);
+    migrate(drizzle(sqlite), { migrationsFolder: MIGRATIONS_DIR });
+    const account = sqlite
+      .prepare('SELECT id, opening_balance_cents, opening_balance_date FROM accounts')
+      .get() as { id: number; opening_balance_cents: number; opening_balance_date: string };
+    expect(account.opening_balance_date).toBe('2026-02-28');
+    const rows = sqlite.prepare('SELECT date, kind, amount_cents FROM movements').all() as {
+      date: string;
+      kind: 'income' | 'expense';
+      amount_cents: number;
+    }[];
+    const balance = accountBalance(
+      {
+        id: account.id,
+        openingBalanceCents: account.opening_balance_cents,
+        openingBalanceDate: account.opening_balance_date,
+      },
+      rows.map((r) => ({
+        date: r.date,
+        kind: r.kind,
+        amountCents: r.amount_cents,
+        accountId: account.id,
+      })),
+      [],
+    );
+    expect(balance).toBe(200000 - 2400 - 150 - 3150);
+  });
+
+  it('creates Principal dated 2025-12-31 when there are no movements', () => {
     migrate(drizzle(sqlite), { migrationsFolder: MIGRATIONS_DIR });
     expect(sqlite.prepare('SELECT name, opening_balance_date FROM accounts').all()).toEqual([
-      { name: 'Principal', opening_balance_date: '2026-01-01' },
+      { name: 'Principal', opening_balance_date: '2025-12-31' },
     ]);
   });
 

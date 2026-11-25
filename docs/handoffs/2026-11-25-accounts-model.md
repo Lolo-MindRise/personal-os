@@ -18,8 +18,8 @@ Branch `agent/0002/01-accounts-model` (from `integration/0002-insights-and-accou
   behaviour, accounts API, movement and confirm with accounts, form and list.
 
 ## Decisions taken
-- Principal: id 1, type `bank`, balance 0, dated on the earliest movement, else the fixed
-  default 2026-01-01.
+- Principal: id 1, type `bank`, balance 0, dated the day before the earliest movement, else the
+  fixed default 2025-12-31 (changed in task 03 fix round 1).
 - No `REFERENCES` on `movements.account_id`: SQLite cannot add a NOT NULL foreign key column
   without a table rebuild. Triggers reject an unknown account on insert/update and block deleting
   an account that has movements.

@@ -15,11 +15,12 @@ CREATE TABLE `accounts` (
 CREATE UNIQUE INDEX `accounts_name_unique` ON `accounts` (`name`);--> statement-breakpoint
 ALTER TABLE `movements` ADD `account_id` integer DEFAULT 1 NOT NULL;--> statement-breakpoint
 -- Hand-written part (the rest is generated and was reviewed: no DROP TABLE, no rebuild).
--- The default account "Principal" gets id 1. Its opening balance is 0, dated on the earliest
--- existing movement, or 2026-01-01 when there are none (fixed default, a fresh database).
+-- The default account "Principal" gets id 1. Its opening balance is 0, dated the day BEFORE the earliest
+-- existing movement (balances count items dated after the opening date), or 2025-12-31 when
+-- there are none (fixed default, a fresh database).
 -- Every existing movement already carries account_id 1 through the column default.
 INSERT INTO `accounts` (`id`, `name`, `type`, `opening_balance_cents`, `opening_balance_date`)
-VALUES (1, 'Principal', 'bank', 0, COALESCE((SELECT min(`date`) FROM `movements`), '2026-01-01'));--> statement-breakpoint
+VALUES (1, 'Principal', 'bank', 0, COALESCE((SELECT date(min(`date`), '-1 day') FROM `movements`), '2025-12-31'));--> statement-breakpoint
 -- SQLite cannot add a NOT NULL column with a REFERENCES clause to an existing table, so the
 -- foreign key is enforced by triggers instead.
 CREATE TRIGGER `movements_account_exists_insert` BEFORE INSERT ON `movements`

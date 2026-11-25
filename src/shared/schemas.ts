@@ -40,6 +40,36 @@ export const accountCreateSchema = z.strictObject({
 /** PATCH body: any subset of the account's fields. */
 export const accountUpdateSchema = accountCreateSchema.partial();
 
+const accountRef = z.number().int().positive();
+
+const transferFieldsSchema = z.strictObject({
+  date: isoDate,
+  amountCents: cents,
+  fromAccountId: accountRef,
+  toAccountId: accountRef,
+  notes: optionalNotes,
+});
+
+const differentAccounts = {
+  check: (t: { fromAccountId?: number | undefined; toAccountId?: number | undefined }) =>
+    t.fromAccountId === undefined ||
+    t.toAccountId === undefined ||
+    t.fromAccountId !== t.toAccountId,
+  message: 'La cuenta de origen y la de destino deben ser distintas.',
+  path: ['toAccountId'],
+};
+
+/** A transfer moves money between two different accounts. */
+export const transferCreateSchema = transferFieldsSchema.refine(
+  differentAccounts.check,
+  differentAccounts,
+);
+
+/** PATCH body: any subset; the API re-checks the merged result. */
+export const transferUpdateSchema = transferFieldsSchema
+  .partial()
+  .refine(differentAccounts.check, differentAccounts);
+
 export const categoryCreateSchema = z.strictObject({
   name: text,
   kind: kindSchema,
@@ -266,6 +296,8 @@ export const milestoneUpdateSchema = z.strictObject({
 
 export type AccountCreate = z.infer<typeof accountCreateSchema>;
 export type AccountUpdate = z.infer<typeof accountUpdateSchema>;
+export type TransferCreate = z.infer<typeof transferCreateSchema>;
+export type TransferUpdate = z.infer<typeof transferUpdateSchema>;
 export type CategoryCreate = z.infer<typeof categoryCreateSchema>;
 export type CategoryUpdate = z.infer<typeof categoryUpdateSchema>;
 export type MovementUpdate = z.infer<typeof movementUpdateSchema>;
