@@ -57,6 +57,9 @@ screen needs a concept, add it here first.
 | Close a form without saving | Cancelar |
 | Go to the filtered screen behind a figure | the name of the thing ("Supermercado"), or "Ver …" |
 | Clear a filter | Quitar filtro |
+| Month-over-month change (amounts) | `+120,00 € respecto a octubre`, `-50,00 € respecto a octubre` |
+| Month-over-month change (goal progress) | `+5 puntos respecto a octubre` (`+1 punto`) |
+| Month-over-month, no difference | `Sin cambios respecto a octubre` (no previous data: show nothing) |
 
 ## Style
 
