@@ -1,6 +1,14 @@
-import type { Kind, MilestoneStatus } from './constants.js';
+import type { AccountType, Kind, MilestoneStatus } from './constants.js';
 
 // Response shapes of the HTTP API, shared with the frontend.
+
+export interface AccountDto {
+  id: number;
+  name: string;
+  type: AccountType;
+  openingBalanceCents: number;
+  openingBalanceDate: string;
+}
 
 export interface CategoryDto {
   id: number;
@@ -25,6 +33,7 @@ export interface MovementDto {
   amountCents: number;
   notes: string | null;
   debtId: number | null;
+  accountId: number;
   /** The recurring item this movement confirms, if any (ADR-0005). */
   recurringItemId: number | null;
 }

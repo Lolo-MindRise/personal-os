@@ -20,6 +20,7 @@ const movement = (over: Partial<MovementDto> = {}): MovementDto => ({
   amountCents: 123_456,
   notes: null,
   debtId: null,
+  accountId: 1,
   recurringItemId: null,
   ...over,
 });

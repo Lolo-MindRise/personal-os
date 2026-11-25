@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type {
+  AccountDto,
   CategoryDto,
   DebtDto,
   MonthSummaryDto,
@@ -102,6 +103,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   const panel = usePanel();
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [debts, setDebts] = useState<DebtDto[]>([]);
+  const [accounts, setAccounts] = useState<AccountDto[]>([]);
   const [movements, setMovements] = useState<MovementDto[]>([]);
   /** The month `movements` belongs to; it lags `month` while a new month loads or fails to. */
   const [loadedMonth, setLoadedMonth] = useState<string | undefined>();
@@ -144,6 +146,9 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
       setLoadError(messageOf(error));
     });
     api.debts().then(setDebts, (error: unknown) => {
+      setLoadError(messageOf(error));
+    });
+    api.accounts().then(setAccounts, (error: unknown) => {
       setLoadError(messageOf(error));
     });
   }, [api]);
@@ -588,6 +593,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
               values={form}
               categories={categories}
               debts={debts}
+              accounts={accounts}
               errors={fieldErrors}
               formError={formError}
               mode={mode}
@@ -604,6 +610,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
 
           <MovementList
             movements={shownMovements}
+            accounts={accounts}
             onEdit={edit}
             onDelete={(movement) => void remove(movement)}
           />

@@ -3,7 +3,7 @@ import type { FastifyReply } from 'fastify';
 import type { ZodError } from 'zod';
 import type { ApiErrorBody, MovementDto } from '../shared/api.js';
 import type { Db } from './db/index.js';
-import { categories, movements } from './db/schema.js';
+import { accounts, categories, movements } from './db/schema.js';
 
 // Helpers shared by the API route files (movements, recurring items).
 
@@ -57,6 +57,20 @@ export function categoryError(
   return undefined;
 }
 
+/** Checks that an account exists. */
+export function accountError(
+  db: Db,
+  accountId: number | undefined,
+): { error: string; field: string } | undefined {
+  if (
+    accountId !== undefined &&
+    db.select().from(accounts).where(eq(accounts.id, accountId)).get() === undefined
+  ) {
+    return { error: 'La cuenta no existe.', field: 'accountId' };
+  }
+  return undefined;
+}
+
 export const movementColumns = {
   id: movements.id,
   date: movements.date,
@@ -67,6 +81,7 @@ export const movementColumns = {
   amountCents: movements.amountCents,
   notes: movements.notes,
   debtId: movements.debtId,
+  accountId: movements.accountId,
   recurringItemId: movements.recurringItemId,
 };
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { KINDS, MILESTONE_STATUSES } from './constants.js';
+import { ACCOUNT_TYPES, KINDS, MILESTONE_STATUSES } from './constants.js';
 
 // Messages reach the UI, which is in Spanish (es-ES): Zod's Spanish locale covers the defaults.
 z.config(z.locales.es());
@@ -29,6 +29,17 @@ const optionalNotes = z.string().trim().min(1).nullish();
 
 export const kindSchema = z.enum(KINDS);
 
+export const accountCreateSchema = z.strictObject({
+  name: text,
+  type: z.enum(ACCOUNT_TYPES),
+  /** Can be zero or negative (an overdrawn account). */
+  openingBalanceCents: z.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER),
+  openingBalanceDate: isoDate,
+});
+
+/** PATCH body: any subset of the account's fields. */
+export const accountUpdateSchema = accountCreateSchema.partial();
+
 export const categoryCreateSchema = z.strictObject({
   name: text,
   kind: kindSchema,
@@ -48,6 +59,8 @@ export const movementFieldsSchema = z.strictObject({
   amountCents: cents,
   notes: optionalNotes,
   debtId: z.number().int().positive().nullish(),
+  /** Omitted on creation = the default account ("Principal"). */
+  accountId: z.number().int().positive().optional(),
 });
 
 export const movementCreateSchema = movementFieldsSchema.refine(
@@ -94,6 +107,8 @@ export const confirmOverridesSchema = z.strictObject({
   amountCents: cents.optional(),
   concept: text.optional(),
   notes: optionalNotes,
+  /** The account of the movement created; default "Principal". */
+  accountId: z.number().int().positive().optional(),
 });
 
 export const budgetLineCreateSchema = z.strictObject({
@@ -249,6 +264,8 @@ export const milestoneUpdateSchema = z.strictObject({
   notes: optionalNotes,
 });
 
+export type AccountCreate = z.infer<typeof accountCreateSchema>;
+export type AccountUpdate = z.infer<typeof accountUpdateSchema>;
 export type CategoryCreate = z.infer<typeof categoryCreateSchema>;
 export type CategoryUpdate = z.infer<typeof categoryUpdateSchema>;
 export type MovementUpdate = z.infer<typeof movementUpdateSchema>;
