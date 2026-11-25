@@ -28,6 +28,19 @@ load_instance_config() {
   LOG_FILE="$LOG_DIR/app.log"
 }
 
+# Backup file names: personal-os-<UTC stamp>-<type>.sqlite (see backups.ts).
+BACKUP_NAME_RE='^personal-os-([0-9]{8})T([0-9]{2})([0-9]{2})([0-9]{2})[0-9]{3}Z-(startup|daily|pre-migration|before-restore)\.sqlite$'
+
+# Prints the backup file names in directory $1, newest first (the stamp in the
+# name sorts as text in time order). Other files are ignored.
+list_backups() {
+  local dir="$1" name
+  [[ -d "$dir" ]] || return 0
+  while IFS= read -r name; do
+    if [[ "$name" =~ $BACKUP_NAME_RE ]]; then echo "$name"; fi
+  done < <(ls -1 "$dir" | sort -r)
+}
+
 # Makes `node` available. A login shell started from Windows may not have it:
 # Node comes from fnm, so initialise fnm when it is installed. $1 = directory
 # whose .nvmrc selects the version (optional).

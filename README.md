@@ -146,7 +146,24 @@ the default.
 6. **Stop** with the stop shortcut or `bash ~/apps/personal-os/scripts/stop.sh`.
    It waits for the app to close its database; it never force-kills.
 
-7. **Update after merging a PR:** stop the app, run
+7. **Rehearse a deployment** (before updating, whenever the new build has
+   migrations). From the build you are about to deploy (your development clone,
+   after pulling `main`), run:
+
+   ```sh
+   bash scripts/rehearse-migration.sh          # add --keep to keep the copy
+   ```
+
+   It takes your newest local backup, copies it to a temporary folder, applies
+   this build's migrations to the copy and prints a table (table, rows before,
+   rows after, difference) and the migrations applied. Differences must be 0
+   or positive and the exit code 0; if a migration fails or a table loses rows
+   it exits non-zero: do not deploy. It never opens your live database and
+   writes nowhere but the temporary folder (deleted afterwards; with `--keep`
+   its path is printed). The app may be running. It reads the instance config
+   like `start.sh`.
+
+8. **Update after merging a PR:** stop the app, run
    `bash ~/apps/personal-os/scripts/deploy-local.sh`, start it again. The deploy
    refuses to run while the app is up, or if the instance directory has local
    changes (it must stay a clean copy of `main`). Migrations run on start, after

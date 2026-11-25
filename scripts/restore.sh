@@ -16,7 +16,7 @@ source "$APP_DIR/scripts/lib/common.sh"
 
 TIME_ZONE="Europe/Andorra"
 DB_NAME="personal-os.sqlite"
-NAME_RE='^personal-os-([0-9]{8})T([0-9]{2})([0-9]{2})([0-9]{2})[0-9]{3}Z-(startup|daily|pre-migration|before-restore)\.sqlite$'
+NAME_RE="$BACKUP_NAME_RE"
 
 use_mirror=0
 mirror_flag=""
@@ -48,15 +48,6 @@ else
 fi
 LOCAL_BACKUPS="$PERSONAL_OS_DATA_DIR/backups"
 DB_FILE="$PERSONAL_OS_DATA_DIR/$DB_NAME"
-
-# Newest first: the stamp in the name sorts as text in time order.
-list_backups() {
-  local dir="$1" name
-  [[ -d "$dir" ]] || return 0
-  while IFS= read -r name; do
-    if [[ "$name" =~ $NAME_RE ]]; then echo "$name"; fi
-  done < <(ls -1 "$dir" | sort -r)
-}
 
 # "personal-os-20261125T030405006Z-startup.sqlite" -> "2026-11-25 04:04" (local time).
 local_date() {
