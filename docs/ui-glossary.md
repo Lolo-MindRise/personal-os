@@ -10,7 +10,7 @@ screen needs a concept, add it here first.
 | Home | Inicio |
 | Daily | Día a día → Movimientos, Importar |
 | Planning | Planificar → Presupuesto, Fijos, Proyección |
-| Tracking | Seguimiento → Deudas, Objetivos y resumen, Hitos |
+| Tracking | Seguimiento → Deudas, Informes, Objetivos y resumen, Hitos |
 | Settings | Ajustes → Categorías, Copias |
 
 ## Things
@@ -40,6 +40,10 @@ screen needs a concept, add it here first.
 | A savings target with an amount and a date | objetivo | meta |
 | A dated step towards the goals | hito | tarea |
 | Year table of monthly figures | resumen (del año) | informe |
+| Screen with spending charts over several months | Informes | reportes, estadísticas |
+| Number of months an Informes screen covers | periodo | rango |
+| Average spending of a category per month over the period | media mensual | promedio |
+| Spending change of a category versus the previous period | cambio respecto al periodo anterior | variación, desvío |
 | What the money will do in the future | proyección | previsión |
 | Download movements as a spreadsheet file (CSV) | Exportar mes / Exportar mes (categoría) / Exportar resultados | descargar, volcar |
 | Automatic safety copies of the data | copias | backups, respaldos |
