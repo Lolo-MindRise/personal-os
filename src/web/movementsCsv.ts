@@ -39,7 +39,7 @@ export function csvText(value: string): string {
 /** The whole file: BOM, header and one row per movement, lines ending in CRLF. */
 export function movementsToCsv(
   movements: MovementDto[],
-  accounts: Pick<AccountDto, 'id' | 'name'>[] = [],
+  accounts: Pick<AccountDto, 'id' | 'name'>[],
 ): string {
   const accountNames = new Map(accounts.map((a) => [a.id, a.name]));
   const rows = movements.map((m) =>

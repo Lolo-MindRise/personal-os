@@ -14,6 +14,12 @@ Branch `agent/0003/02-csv-account-column` (from `integration/0003-data-safety-an
 ## Not done
 - The `reviewer` subagent was not run from this session; the orchestrator runs it.
 
+## Fix round 1
+- `movementsToCsv` `accounts` parameter is now required (no `[]` default); the compiler catches a
+  missing argument. Existing unit tests pass `[]` explicitly.
+- New e2e test: with `/api/accounts` answering 500 the export shows the error alert and produces no
+  download. Proven to fail with a temporary `.catch(() => [])` on the fetch, then removed.
+
 ## Decisions taken
 - Accounts fetched fresh at export time instead of reusing page state, so a failed or stale
   initial load cannot blank the column.

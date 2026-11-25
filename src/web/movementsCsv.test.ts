@@ -62,7 +62,7 @@ describe('csvText', () => {
 
 describe('movementsToCsv', () => {
   it('has only the BOM and header for an empty list', () => {
-    expect(movementsToCsv([])).toBe(
+    expect(movementsToCsv([], [])).toBe(
       '﻿Fecha;Tipo;Categoría;Concepto;Importe;Notas;Marcas;Cuenta\r\n',
     );
   });
@@ -91,16 +91,19 @@ describe('movementsToCsv', () => {
   });
 
   it('writes one Spanish-formatted row per movement, marcas last', () => {
-    const csv = movementsToCsv([
-      movement(),
-      movement({
-        date: '2026-12-31',
-        kind: 'income',
-        concept: 'Pago; "extra"',
-        notes: 'a\nb',
-        tags: ['viaje', 'casa'],
-      }),
-    ]);
+    const csv = movementsToCsv(
+      [
+        movement(),
+        movement({
+          date: '2026-12-31',
+          kind: 'income',
+          concept: 'Pago; "extra"',
+          notes: 'a\nb',
+          tags: ['viaje', 'casa'],
+        }),
+      ],
+      [],
+    );
     expect(csv.startsWith('﻿')).toBe(true);
     expect(csv.split('\r\n')).toEqual([
       '﻿Fecha;Tipo;Categoría;Concepto;Importe;Notas;Marcas;Cuenta',
@@ -111,7 +114,9 @@ describe('movementsToCsv', () => {
   });
 
   it('defuses only text cells, never the date or the amount', () => {
-    const row = movementsToCsv([movement({ concept: '-cheque', amountCents: 5 })]).split('\r\n')[1];
+    const row = movementsToCsv([movement({ concept: '-cheque', amountCents: 5 })], []).split(
+      '\r\n',
+    )[1];
     expect(row).toBe("05/03/2026;Gasto;Supermercado;'-cheque;0,05;;;");
     expect(row?.split(';')[0]).not.toContain("'");
     expect(row?.split(';')[4]).not.toContain("'");
