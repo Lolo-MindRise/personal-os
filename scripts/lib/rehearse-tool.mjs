@@ -43,58 +43,68 @@ function lastAppliedAt(db) {
   return row.at ?? -Infinity;
 }
 
-let db;
-try {
-  db = new Database(copy, { fileMustExist: true });
-  db.pragma('foreign_keys = ON');
-  const before = countRows(db);
-  const lastApplied = lastAppliedAt(db);
-  const journal = JSON.parse(readFileSync(join(migrationsDir, 'meta', '_journal.json'), 'utf8'));
-  const pending = journal.entries.filter((entry) => entry.when > lastApplied);
-
+/** Runs the rehearsal; failures set process.exitCode and return, so `finally` always closes the copy. */
+function run() {
+  let db;
   try {
-    migrate(drizzle(db), { migrationsFolder: migrationsDir });
-  } catch (error) {
-    console.error(`MIGRATION FAILED: ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(1);
-  }
-  const after = countRows(db);
+    db = new Database(copy, { fileMustExist: true });
+    // Same pragmas, same order, as the app (src/server/db/index.ts) before it migrates.
+    db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = ON');
+    const before = countRows(db);
+    const lastApplied = lastAppliedAt(db);
+    const journal = JSON.parse(readFileSync(join(migrationsDir, 'meta', '_journal.json'), 'utf8'));
+    const pending = journal.entries.filter((entry) => entry.when > lastApplied);
 
-  const names = [...new Set([...before.keys(), ...after.keys()])].sort();
-  const width = Math.max(5, ...names.map((name) => name.length));
-  const lines = [
-    `${'table'.padEnd(width)}  ${'before'.padStart(8)}  ${'after'.padStart(8)}  ${'difference'.padStart(10)}`,
-  ];
-  const problems = [];
-  for (const name of names) {
-    const b = before.get(name);
-    const a = after.get(name);
-    const note = b === undefined ? ' (new table)' : a === undefined ? ' (table removed)' : '';
-    const diff = (a ?? 0) - (b ?? 0);
-    const shownDiff = diff > 0 ? `+${String(diff)}` : String(diff);
-    lines.push(
-      `${name.padEnd(width)}  ${String(b ?? 0).padStart(8)}  ${String(a ?? 0).padStart(8)}  ${shownDiff.padStart(10)}${note}`,
-    );
-    if (a === undefined) problems.push(`${name}: table no longer exists`);
-    else if (a < (b ?? 0)) problems.push(`${name}: lost ${String(-diff)} row(s)`);
+    try {
+      migrate(drizzle(db), { migrationsFolder: migrationsDir });
+    } catch (error) {
+      console.error(`MIGRATION FAILED: ${error instanceof Error ? error.message : String(error)}`);
+      process.exitCode = 1;
+      return;
+    }
+    const after = countRows(db);
+
+    const names = [...new Set([...before.keys(), ...after.keys()])].sort();
+    const width = Math.max(5, ...names.map((name) => name.length));
+    const lines = [
+      `${'table'.padEnd(width)}  ${'before'.padStart(8)}  ${'after'.padStart(8)}  ${'difference'.padStart(10)}`,
+    ];
+    const problems = [];
+    for (const name of names) {
+      const b = before.get(name);
+      const a = after.get(name);
+      const note = b === undefined ? ' (new table)' : a === undefined ? ' (table removed)' : '';
+      const diff = (a ?? 0) - (b ?? 0);
+      const shownDiff = diff > 0 ? `+${String(diff)}` : String(diff);
+      lines.push(
+        `${name.padEnd(width)}  ${String(b ?? 0).padStart(8)}  ${String(a ?? 0).padStart(8)}  ${shownDiff.padStart(10)}${note}`,
+      );
+      if (a === undefined) problems.push(`${name}: table no longer exists`);
+      else if (a < (b ?? 0)) problems.push(`${name}: lost ${String(-diff)} row(s)`);
+    }
+    console.log(lines.join('\n'));
+    console.log('');
+    if (pending.length === 0) {
+      console.log(
+        'Migrations applied: none (the backup already has every migration of this build).',
+      );
+    } else {
+      console.log(`Migrations applied (${String(pending.length)}):`);
+      for (const entry of pending) console.log(`  ${entry.tag}`);
+    }
+    if (problems.length > 0) {
+      console.error('');
+      console.error('ROWS LOST: do not deploy this build.');
+      for (const problem of problems) console.error(`  ${problem}`);
+      process.exitCode = 1;
+    }
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  } finally {
+    db?.close();
   }
-  console.log(lines.join('\n'));
-  console.log('');
-  if (pending.length === 0) {
-    console.log('Migrations applied: none (the backup already has every migration of this build).');
-  } else {
-    console.log(`Migrations applied (${String(pending.length)}):`);
-    for (const entry of pending) console.log(`  ${entry.tag}`);
-  }
-  if (problems.length > 0) {
-    console.error('');
-    console.error('ROWS LOST: do not deploy this build.');
-    for (const problem of problems) console.error(`  ${problem}`);
-    process.exit(1);
-  }
-} catch (error) {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-} finally {
-  db?.close();
 }
+
+run();

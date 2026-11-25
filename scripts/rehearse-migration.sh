@@ -20,7 +20,7 @@ for arg in "$@"; do
   case "$arg" in
     --keep) keep=1 ;;
     -h | --help)
-      sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+      sed -n '2,11p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) die "unknown option: $arg (try --help)" ;;
@@ -39,10 +39,6 @@ backup_file="$BACKUPS_DIR/$newest"
 MIGRATIONS_DIR="$APP_DIR/drizzle"
 [[ -f "$MIGRATIONS_DIR/meta/_journal.json" ]] || die "no migrations folder in this build: $MIGRATIONS_DIR."
 
-if ! check_out="$(node "$APP_DIR/scripts/lib/sqlite-tool.mjs" check "$backup_file" 2>&1)"; then
-  die "$newest is not a valid backup ($check_out). Nothing was changed."
-fi
-
 work_dir="$(mktemp -d "${TMPDIR:-/tmp}/personal-os-rehearsal.XXXXXX")"
 cleanup() {
   if ((keep)); then
@@ -53,8 +49,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# The original backup is only ever read by cp and cmp. Everything else (integrity
+# check, migration) runs on the copy, so SQLite never creates -wal/-shm next to it.
 copy="$work_dir/rehearsal.sqlite"
 cp -- "$backup_file" "$copy"
+cmp -s -- "$backup_file" "$copy" || die "the copy of $newest differs from the original. Nothing was changed."
+
+if ! check_out="$(node "$APP_DIR/scripts/lib/sqlite-tool.mjs" check "$copy" 2>&1)"; then
+  die "$newest is not a valid backup ($check_out). Nothing was changed."
+fi
 
 info "rehearsing the migrations of this build on a copy of $newest"
 echo

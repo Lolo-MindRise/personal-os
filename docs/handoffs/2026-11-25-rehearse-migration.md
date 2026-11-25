@@ -31,3 +31,15 @@ Branch `agent/0003/00-rehearse-migration` (from `integration/0003-data-safety-an
 
 ## Next
 - Manuel decides on the ADR-0007 amendment.
+
+## Fix round 1 (reviewer: changes required, risk high)
+- The script copies the backup (cp), checks the copy is identical (cmp) and runs the integrity
+  check and the migration on the COPY only; the original is only read by cp/cmp (no -wal/-shm).
+- New test: backup made like the app (WAL source + backup API), whole data dir fingerprinted
+  before/after, no -shm/-wal in backups/. Not proven to fail on the old code (not run against it).
+- rehearse-tool.mjs: no process.exit inside try (exitCode + return, copy always closed);
+  pragmas journal_mode=WAL then foreign_keys=ON, as the app.
+- README: row counts only, exact commands `git checkout main && git pull --ff-only && npm ci`,
+  the --keep folder may hold -wal/-shm. `--help` prints line 11. Script mode is 100755.
+- common.sh list_backups uses `LC_ALL=C sort -r`.
+- PR text /tmp/pr-body-0003-00.md updated (file names checked in src/server/db/config.ts, backups.ts).

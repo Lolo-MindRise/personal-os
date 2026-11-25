@@ -38,7 +38,7 @@ list_backups() {
   [[ -d "$dir" ]] || return 0
   while IFS= read -r name; do
     if [[ "$name" =~ $BACKUP_NAME_RE ]]; then echo "$name"; fi
-  done < <(ls -1 "$dir" | sort -r)
+  done < <(ls -1 "$dir" | LC_ALL=C sort -r)
 }
 
 # Makes `node` available. A login shell started from Windows may not have it:

@@ -266,6 +266,32 @@ describe('never touches the real data', () => {
     expect(existsSync(`${dbFile()}-wal`)).toBe(false);
   });
 
+  it('creates no -wal/-shm next to a backup made the way the app makes it (WAL source + backup API)', async () => {
+    // The app backs up a WAL-mode database with sqlite.backup(); the file keeps WAL mode.
+    const source = new Database(join(root, 'wal-source.sqlite'));
+    source.pragma('journal_mode = WAL');
+    source.pragma('foreign_keys = ON');
+    const folder = mkdtempSync(join(root, 'fixture-migrations-'));
+    writeMigrations(folder, [BASE]);
+    migrate(drizzle(source), { migrationsFolder: folder });
+    source.prepare("INSERT INTO people (name) VALUES ('w')").run();
+    const newest = 'personal-os-20261128T000000000Z-startup.sqlite';
+    const backups = join(dataDir, 'backups');
+    await source.backup(join(backups, newest));
+    source.close();
+    const header = readFileSync(join(backups, newest)).subarray(18, 20);
+    expect([...header]).toEqual([2, 2]); // file format write/read version 2 = WAL mode
+
+    const before = fingerprint(dataDir);
+    const result = rehearse();
+    expect(result.status).toBe(0);
+    expect(result.out).toContain(newest);
+    expect(result.out).toMatch(/people\s+1\s+1\s+0/);
+    expect(fingerprint(dataDir)).toEqual(before);
+    expect(readdirSync(backups).filter((name) => /-(shm|wal)$/.test(name))).toEqual([]);
+    expect(readdirSync(tmpWork)).toEqual([]);
+  });
+
   it('does not need the live database at all', () => {
     rmSync(dbFile());
     expect(rehearse().status).toBe(0);
