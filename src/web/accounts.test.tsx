@@ -12,6 +12,7 @@ import {
 import { createApiClient } from './api.js';
 import { AccountForm, TransferForm } from './AccountsPage.js';
 import { NAV_GROUPS } from './App.js';
+import { todayISO, yesterdayISO } from './months.js';
 
 const accounts: AccountDto[] = [
   {
@@ -92,6 +93,21 @@ describe('account form', () => {
     );
     expect(html).toContain('Saldo inicial de la cuenta');
     expect(html).toContain('Cuenta bancaria');
+  });
+});
+
+describe('default dates', () => {
+  it('opens a new account yesterday so a transfer dated today into it is accepted', () => {
+    const now = new Date(2026, 2, 1, 10, 0, 0); // 1 March 2026, local
+    const today = todayISO(now);
+    const opening = emptyAccountForm(yesterdayISO(now));
+    expect(opening.openingDate).toBe('2026-02-28');
+    const fresh = [
+      { ...accounts[0], openingBalanceDate: '2020-01-01' },
+      { ...accounts[1], openingBalanceDate: opening.openingDate },
+    ] as typeof accounts;
+    const form = { ...emptyTransferForm(fresh, today), amount: '10' };
+    expect(validateTransferForm(form, fresh).ok).toBe(true);
   });
 });
 

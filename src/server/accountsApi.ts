@@ -104,6 +104,22 @@ export function registerAccountsApi(app: FastifyInstance, db: Db): void {
     if (parsed.data.name !== undefined && nameTaken(db, parsed.data.name, id)) {
       return conflict(reply, MESSAGES.duplicate);
     }
+    const newOpening = parsed.data.openingBalanceDate;
+    if (newOpening !== undefined) {
+      // Every transfer of this account (either side) must stay after the opening date.
+      const first = db
+        .select({ date: transfers.date })
+        .from(transfers)
+        .where(or(eq(transfers.fromAccountId, id), eq(transfers.toAccountId, id)))
+        .orderBy(asc(transfers.date))
+        .all()
+        .find((t) => t.date <= newOpening);
+      if (first !== undefined) {
+        const [y, m, d] = first.date.split('-');
+        const message = `La fecha del saldo inicial debe ser anterior a la de todas las transferencias de la cuenta: hay una del ${d ?? ''}/${m ?? ''}/${y ?? ''}.`;
+        return badRequest(reply, message, { openingBalanceDate: message });
+      }
+    }
     if (Object.keys(parsed.data).length > 0) {
       db.update(accounts).set(parsed.data).where(eq(accounts.id, id)).run();
     }

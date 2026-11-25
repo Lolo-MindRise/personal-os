@@ -38,5 +38,19 @@ Branch `agent/0002/03-transfers-cuentas` (from `integration/0002-insights-and-ac
   imported older history) is still left out of the balance without warning. Follow-up: show a
   count of excluded movements.
 
+## Fix round 2
+- Merged integration (tasks 00-02); api.ts import conflict kept both imports.
+- A new account's opening date defaults to yesterday (`yesterdayISO`, local), with a hint: the
+  opening balance holds at the end of that day, movements and transfers count from the next day.
+  Transfer account selectors show each account's opening date. Form test and e2e step use the
+  defaults (account created, transfer dated today into it succeeds).
+- PATCH /api/accounts/:id refuses an `openingBalanceDate` on or after any of its transfers (either
+  side), field error on `openingBalanceDate` naming the first offending date; API tests; the form
+  already maps it to the opening-date field.
+- `checkTransfer` loads each account once. Navigation e2e lists Informes and Cuentas.
+- Note for the final PR: databases already migrated with the old migration 0006 (dev/test
+  databases created from the integration branch) keep Principal dated on its first movement and
+  must be recreated. 0006 never reached main, so the real instance is unaffected.
+
 ## Next step
 - Task 05 (dashboard balances) can use `GET /api/accounts/balances`.

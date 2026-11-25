@@ -3,7 +3,7 @@ import type { AccountType } from '../shared/constants.js';
 import { transferDateError } from '../shared/accountBalance.js';
 import { centsToInput, parseMoney } from '../shared/money.js';
 import { isoDate } from '../shared/schemas.js';
-import { todayISO } from './months.js';
+import { todayISO, yesterdayISO } from './months.js';
 
 // Pure form logic for the Cuentas screen: values as typed in, payloads for the API.
 
@@ -28,11 +28,12 @@ export interface AccountPayload {
   openingBalanceDate: string;
 }
 
-export const emptyAccountForm = (today: string = todayISO()): AccountFormValues => ({
+/** The opening date defaults to yesterday: the opening balance holds at the end of that day. */
+export const emptyAccountForm = (openingDate: string = yesterdayISO()): AccountFormValues => ({
   name: '',
   type: 'bank',
   openingBalance: '0',
-  openingDate: today,
+  openingDate,
 });
 
 export const accountToForm = (a: AccountDto): AccountFormValues => ({

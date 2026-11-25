@@ -4,7 +4,6 @@ import type { TransferDto } from '../shared/api.js';
 import { transferDateError } from '../shared/accountBalance.js';
 import { transferCreateSchema, transferUpdateSchema } from '../shared/schemas.js';
 import {
-  accountError,
   badRequest,
   fieldErrors,
   MESSAGES as COMMON_MESSAGES,
@@ -44,21 +43,17 @@ function checkTransfer(
   to: number,
   date: string,
 ): { error: string; field: string } | undefined {
-  const missing = accountError(db, from, 'fromAccountId') ?? accountError(db, to, 'toAccountId');
-  if (missing !== undefined) {
-    return missing;
+  const load = (id: number) => db.select().from(accounts).where(eq(accounts.id, id)).get();
+  const origin = load(from);
+  if (origin === undefined) {
+    return { error: 'La cuenta no existe.', field: 'fromAccountId' };
   }
-  for (const [id, field] of [
-    [from, 'date'],
-    [to, 'date'],
-  ] as const) {
-    const account = db.select().from(accounts).where(eq(accounts.id, id)).get();
-    const error = account === undefined ? undefined : transferDateError(date, [account]);
-    if (error !== undefined) {
-      return { error, field };
-    }
+  const destination = load(to);
+  if (destination === undefined) {
+    return { error: 'La cuenta no existe.', field: 'toAccountId' };
   }
-  return undefined;
+  const error = transferDateError(date, [origin, destination]);
+  return error === undefined ? undefined : { error, field: 'date' };
 }
 
 /** Transfers are never movements: they appear in no income, expense, budget or savings total. */

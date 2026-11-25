@@ -6,6 +6,16 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 const nav = (page: Page, name: string) =>
   page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name });
 
+/** Options read "Name (saldo inicial: dd/mm/yyyy)", so select by the option containing the name. */
+async function pick(page: Page, selectLabel: string, accountName: string) {
+  const select = page.getByLabel(selectLabel);
+  const value = await select
+    .locator('option', { hasText: accountName })
+    .first()
+    .getAttribute('value');
+  await select.selectOption(value ?? '');
+}
+
 async function cleanUp(request: APIRequestContext, accountName: string) {
   const accounts = (await (await request.get('/api/accounts')).json()) as {
     id: number;
@@ -30,6 +40,7 @@ async function cleanUp(request: APIRequestContext, accountName: string) {
 
 test('create an account, move money into it and see the balance', async ({ page, request }) => {
   const name = 'Hucha de prueba';
+  const fresh = 'Hucha por defecto';
   try {
     await page.goto('/');
     await nav(page, 'Cuentas').click();
@@ -47,8 +58,8 @@ test('create an account, move money into it and see the balance', async ({ page,
 
     await page.getByRole('button', { name: 'Registrar transferencia' }).click();
     await page.getByLabel('Importe').fill('20');
-    await page.getByLabel('Cuenta de origen').selectOption({ label: 'Principal' });
-    await page.getByLabel('Cuenta de destino').selectOption({ label: name });
+    await pick(page, 'Cuenta de origen', 'Principal');
+    await pick(page, 'Cuenta de destino', name);
     await page.getByRole('button', { name: 'Guardar transferencia' }).click();
     await expect(row).toContainText('70,00');
 
@@ -60,8 +71,24 @@ test('create an account, move money into it and see the balance', async ({ page,
       .click();
     await expect(row).toContainText('50,00');
 
+    // Defaults: a new account opens yesterday, so a transfer dated today into it works.
+    await page.getByRole('button', { name: 'Añadir cuenta' }).click();
+    await page.getByLabel('Nombre').fill(fresh);
+    await page.getByRole('button', { name: 'Guardar cuenta' }).click();
+    const freshRow = page
+      .getByRole('region', { name: 'Cuentas', exact: true })
+      .getByRole('row', { name: new RegExp(fresh) });
+    await expect(freshRow).toContainText('0,00');
+    await page.getByRole('button', { name: 'Registrar transferencia' }).click();
+    await page.getByLabel('Importe').fill('5');
+    await pick(page, 'Cuenta de origen', 'Principal');
+    await pick(page, 'Cuenta de destino', fresh);
+    await page.getByRole('button', { name: 'Guardar transferencia' }).click();
+    await expect(freshRow).toContainText('5,00');
+
     // An account with transfers cannot be deleted: covered by the API tests.
   } finally {
     await cleanUp(request, name);
+    await cleanUp(request, fresh);
   }
 });

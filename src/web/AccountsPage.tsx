@@ -14,6 +14,7 @@ import {
 } from './accountForms.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
 import { Field } from './Field.js';
+import { formatDate } from './months.js';
 import { PageHeader } from './PageHeader.js';
 import { SidePanel, usePanel } from './SidePanel.js';
 
@@ -96,7 +97,8 @@ export function AccountForm(props: {
         </Field>
       </div>
       <p className="hint">
-        Los movimientos y transferencias posteriores a esa fecha se suman al saldo inicial.
+        El saldo inicial es el que tiene la cuenta al terminar ese día: los movimientos y las
+        transferencias cuentan a partir del día siguiente.
       </p>
       {props.formError !== undefined && (
         <p className="form-error" role="alert">
@@ -140,7 +142,7 @@ export function TransferForm(props: {
     >
       {props.accounts.map((a) => (
         <option key={a.id} value={a.id}>
-          {a.name}
+          {a.name} (saldo inicial: {formatDate(a.openingBalanceDate)})
         </option>
       ))}
     </select>

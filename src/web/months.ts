@@ -5,6 +5,11 @@ export function todayISO(now: Date = new Date()): string {
   return `${String(now.getFullYear())}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+/** The local day before `now`, as `YYYY-MM-DD`. */
+export function yesterdayISO(now: Date = new Date()): string {
+  return todayISO(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+}
+
 export function currentMonth(now: Date = new Date()): string {
   return todayISO(now).slice(0, 7);
 }
