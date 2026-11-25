@@ -38,6 +38,13 @@ import { monthLabel } from './months.js';
 import { FilterBar, PageHeader } from './PageHeader.js';
 import { hrefFor, navigate, useMonth, useRoute } from './router.js';
 import type { SearchQuery } from './movementSearch.js';
+import {
+  canExportMonth,
+  downloadCsv,
+  fetchAllSearchRows,
+  monthCsvFilename,
+  movementsToCsv,
+} from './movementsCsv.js';
 import { PendingList } from './PendingList.js';
 import { SummaryBar } from './SummaryBar.js';
 
@@ -96,6 +103,8 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [debts, setDebts] = useState<DebtDto[]>([]);
   const [movements, setMovements] = useState<MovementDto[]>([]);
+  /** The month `movements` belongs to; it lags `month` while a new month loads or fails to. */
+  const [loadedMonth, setLoadedMonth] = useState<string | undefined>();
   const [pending, setPending] = useState<PendingEntryDto[]>([]);
   const [skipped, setSkipped] = useState<PendingEntryDto[]>([]);
   const [summary, setSummary] = useState<MonthSummaryDto | undefined>();
@@ -103,6 +112,8 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   /** Why a pending-section action failed or a confirmation was cancelled. Not cleared by reloads. */
   const [actionError, setActionError] = useState<string | undefined>();
   const [reloads, setReloads] = useState(0);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | undefined>();
 
   const [form, setForm] = useState<MovementFormValues>(() => emptyForm());
   const [editingId, setEditingId] = useState<number | undefined>();
@@ -148,6 +159,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
       ([rows, totals, due, skippedEntries]) => {
         if (active) {
           setMovements(rows);
+          setLoadedMonth(month);
           setSummary(totals);
           setPending(due);
           setSkipped(skippedEntries);
@@ -383,6 +395,27 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     );
   }
 
+  /** Downloads the month on screen, or every result of the active search (paging through the API). */
+  const exportCsv = async () => {
+    setExporting(true);
+    setExportError(undefined);
+    try {
+      if (search === undefined) {
+        downloadCsv(
+          monthCsvFilename(month, categoryFilter === undefined ? undefined : categoryName),
+          movementsToCsv(shownMovements),
+        );
+      } else {
+        const rows = await fetchAllSearchRows((page) => api.searchMovements(search.query, page));
+        downloadCsv('movimientos-busqueda.csv', movementsToCsv(rows));
+      }
+    } catch (error) {
+      setExportError(messageOf(error));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const categoryName = categories.find((c) => c.id === categoryFilter)?.name;
   const shownMovements =
     categoryFilter === undefined
@@ -430,6 +463,30 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
             Buscar y filtrar
           </button>
         </div>
+      )}
+
+      <div className="form-actions">
+        <button
+          type="button"
+          disabled={
+            exporting ||
+            (search === undefined
+              ? !canExportMonth(loadedMonth, month, loadError)
+              : searchResult === undefined)
+          }
+          onClick={() => void exportCsv()}
+        >
+          {search !== undefined
+            ? 'Exportar resultados'
+            : categoryFilter !== undefined
+              ? 'Exportar mes (categoría)'
+              : 'Exportar mes'}
+        </button>
+      </div>
+      {exportError !== undefined && (
+        <p className="form-error" role="alert">
+          {exportError}
+        </p>
       )}
 
       {(showFilters || search !== undefined) && (
