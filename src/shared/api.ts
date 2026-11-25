@@ -323,13 +323,18 @@ export interface DashboardDto {
     /** Savings of the month plus what is still pending (ADR-0005). */
     projectedSavingsCents: number;
     /**
-     * The same figures one month earlier (month-over-month); null where that month has no data.
-     * Debt and goals have no monthly history, so they have no previous value.
+     * The same figures one month earlier (month-over-month); null where there is no previous
+     * data. Accumulated savings, debt and goal progress are cut off at the last day of that
+     * month; the goal is the one shown as `nextGoal`.
      */
     previous: {
       month: string;
       accumulatedSavingsCents: number | null;
       projectedSavingsCents: number | null;
+      /** Estimated total debt at the end of the previous month. */
+      totalDebtCents: number | null;
+      /** Progress (whole percent) of `nextGoal` at the end of the previous month. */
+      goalProgressPercent: number | null;
     };
   };
   /** The 12 months ending at `month`, oldest first. */

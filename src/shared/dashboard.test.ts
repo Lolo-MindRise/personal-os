@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { GoalDto, MilestoneDto, SettingsDto } from './api.js';
 import {
   debtProgressPercent,
+  monthChangePointsText,
   monthChangeText,
+  monthEnd,
   monthRows,
   monthsEnding,
   nextGoal,
@@ -14,6 +16,30 @@ describe('previousMonth', () => {
   it('goes back one month, January to December of the previous year', () => {
     expect(previousMonth('2026-03')).toBe('2026-02');
     expect(previousMonth('2026-01')).toBe('2025-12');
+  });
+});
+
+describe('monthEnd', () => {
+  it('is the last day of the month, including February, leap years and December', () => {
+    expect(monthEnd('2026-02')).toBe('2026-02-28');
+    expect(monthEnd('2028-02')).toBe('2028-02-29');
+    expect(monthEnd('2025-12')).toBe('2025-12-31');
+    expect(monthEnd(previousMonth('2026-01'))).toBe('2025-12-31');
+    expect(monthEnd(previousMonth('2026-12'))).toBe('2026-11-30');
+  });
+});
+
+describe('monthChangePointsText', () => {
+  it('states points, with singular, decrease and no change', () => {
+    expect(monthChangePointsText(25, 20, '2025-10')).toBe('+5 puntos respecto a octubre');
+    expect(monthChangePointsText(21, 20, '2025-10')).toBe('+1 punto respecto a octubre');
+    expect(monthChangePointsText(17, 20, '2025-12')).toBe('-3 puntos respecto a diciembre');
+    expect(monthChangePointsText(20, 20, '2025-12')).toBe('Sin cambios respecto a diciembre');
+  });
+
+  it('returns null without data on either side', () => {
+    expect(monthChangePointsText(20, null, '2025-12')).toBeNull();
+    expect(monthChangePointsText(null, 20, '2025-12')).toBeNull();
   });
 });
 

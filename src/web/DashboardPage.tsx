@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { DashboardDebtDto, DashboardDto, GoalDto } from '../shared/api.js';
-import { monthChangeText } from '../shared/dashboard.js';
+import { monthChangePointsText, monthChangeText } from '../shared/dashboard.js';
 import { formatCents } from '../shared/money.js';
 import { hrefFor, type Params, type View } from './router.js';
 import { CategoriesChart, MonthsChart } from './DashboardCharts.js';
@@ -122,6 +122,14 @@ export function KeyFigures({ data }: { data: DashboardDto }) {
             </span>
           </dd>
         )}
+        <Change
+          testId="change-goal"
+          text={monthChangePointsText(
+            goal?.progressPercent ?? null,
+            prev.goalProgressPercent,
+            prev.month,
+          )}
+        />
         {goal === null && (
           <dd className="card-note">
             {setup.goals ? 'Ningún objetivo con fecha futura.' : 'Aún no tienes objetivos.'}{' '}
@@ -135,6 +143,10 @@ export function KeyFigures({ data }: { data: DashboardDto }) {
           <GoTo view="debts">Deuda total estimada</GoTo>
         </dt>
         <dd>{formatCents(k.totalDebtCents)}</dd>
+        <Change
+          testId="change-debt"
+          text={monthChangeText(k.totalDebtCents, prev.totalDebtCents, prev.month)}
+        />
         {!setup.debts && (
           <dd className="card-note">
             No has registrado deudas. <GoTo view="debts">Añadir una deuda</GoTo>

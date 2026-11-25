@@ -19,7 +19,13 @@ const empty: DashboardDto = {
     nextGoal: null,
     totalDebtCents: 0,
     projectedSavingsCents: 0,
-    previous: { month: '2026-02', accumulatedSavingsCents: null, projectedSavingsCents: null },
+    previous: {
+      month: '2026-02',
+      accumulatedSavingsCents: null,
+      projectedSavingsCents: null,
+      totalDebtCents: null,
+      goalProgressPercent: null,
+    },
   },
   months: [],
   categories: [],
@@ -70,15 +76,36 @@ describe('Inicio month-over-month', () => {
   it('shows the change against the previous month in neutral words', () => {
     const html = renderToStaticMarkup(
       <DashboardView
-        data={withPrevious({
-          month: '2025-12',
-          accumulatedSavingsCents: -2_000,
-          projectedSavingsCents: 4_000,
-        })}
+        data={withPrevious(
+          {
+            month: '2025-12',
+            accumulatedSavingsCents: -2_000,
+            projectedSavingsCents: 4_000,
+            totalDebtCents: 31_000,
+            goalProgressPercent: 20,
+          },
+          {
+            totalDebtCents: 30_000,
+            nextGoal: {
+              id: 1,
+              name: 'Fondo',
+              targetAmountCents: 100_000,
+              targetDate: '2026-12-31',
+              accumulatedCents: 25_000,
+              progressPercent: 25,
+              remainingCents: 75_000,
+              status: 'open',
+              monthsLeft: 12,
+              monthlyRequiredCents: 6_250,
+            },
+          },
+        )}
       />,
     );
     expect(html).toMatch(/\+120,00\s€ respecto a diciembre/);
     expect(html).toContain('Sin cambios respecto a diciembre');
+    expect(html).toMatch(/-10,00\s€ respecto a diciembre/);
+    expect(html).toContain('+5 puntos respecto a diciembre');
   });
 
   it('shows nothing when the previous month has no data', () => {
@@ -88,6 +115,8 @@ describe('Inicio month-over-month', () => {
           month: '2025-12',
           accumulatedSavingsCents: null,
           projectedSavingsCents: null,
+          totalDebtCents: null,
+          goalProgressPercent: null,
         })}
       />,
     );
