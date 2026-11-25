@@ -88,7 +88,11 @@ export function skippedItemIds(db: Db, month: string): Set<number> {
   return new Set(rows.map((row) => row.id));
 }
 
-export function toEntry(item: RecurringItemDto, month: string): PendingEntryDto {
+export function toEntry(
+  item: RecurringItemDto,
+  month: string,
+  heldByTrash = false,
+): PendingEntryDto {
   return {
     recurringItemId: item.id,
     month,
@@ -99,6 +103,7 @@ export function toEntry(item: RecurringItemDto, month: string): PendingEntryDto 
     concept: item.concept,
     amountCents: item.amountCents,
     notes: item.notes,
+    heldByTrash,
   };
 }
 
@@ -117,13 +122,16 @@ export interface DueEntries {
 export function dueEntries(db: Db, month: string): DueEntries {
   const confirmed = confirmedItemIds(db, month);
   const skipped = skippedItemIds(db, month);
+  const trashed = trashedItemIds(db, month);
   const pending: PendingEntryDto[] = [];
   const skippedEntries: PendingEntryDto[] = [];
   for (const item of listRecurringItems(db)) {
     if (!isDueInMonth(item, month) || confirmed.has(item.id)) {
       continue;
     }
-    (skipped.has(item.id) ? skippedEntries : pending).push(toEntry(item, month));
+    (skipped.has(item.id) ? skippedEntries : pending).push(
+      toEntry(item, month, trashed.has(item.id)),
+    );
   }
   const byDate = (a: PendingEntryDto, b: PendingEntryDto) =>
     a.date.localeCompare(b.date) || a.recurringItemId - b.recurringItemId;

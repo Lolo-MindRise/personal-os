@@ -404,9 +404,30 @@ async function capture(
       url: e.url,
       ...(e.body === undefined ? {} : { payload: e.body }),
     });
-    result.set(e.name, { status: response.statusCode, body: response.json<unknown>() });
+    result.set(e.name, {
+      status: response.statusCode,
+      body: withoutHeldFlag(response.json<unknown>()),
+    });
   }
   return result;
+}
+
+/**
+ * heldByTrash is the one deliberate trace of the trash on pending entries (it tells the UI the
+ * item cannot be confirmed): it is compared apart in trashApi.test.ts, not here.
+ */
+function withoutHeldFlag(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(withoutHeldFlag);
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => key !== 'heldByTrash')
+        .map(([key, inner]) => [key, withoutHeldFlag(inner)]),
+    );
+  }
+  return value;
 }
 
 async function trashExtras(f: Fixture): Promise<void> {

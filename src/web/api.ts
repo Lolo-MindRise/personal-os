@@ -19,6 +19,7 @@ import type {
   MonthSummaryDto,
   MovementDto,
   MovementSearchDto,
+  ConfirmAllResultDto,
   PendingEntryDto,
   ProjectionDto,
   RecurringItemDto,
@@ -223,7 +224,9 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
     confirmRecurring: (itemId: number, month: string, overrides: ConfirmPayload) =>
       request<MovementDto>(fetchFn, `${itemMonth(itemId, month)}/confirm`, json('POST', overrides)),
     confirmAll: (month: string) =>
-      request<MovementDto[]>(fetchFn, `/api/months/${enc(month)}/confirm-all`, { method: 'POST' }),
+      request<ConfirmAllResultDto>(fetchFn, `/api/months/${enc(month)}/confirm-all`, {
+        method: 'POST',
+      }),
     skipRecurring: (itemId: number, month: string) =>
       request<undefined>(fetchFn, `${itemMonth(itemId, month)}/skip`, { method: 'POST' }),
     undoSkip: (itemId: number, month: string) =>

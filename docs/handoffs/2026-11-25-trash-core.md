@@ -84,6 +84,23 @@ dashboard, projection). Guard hook blocked `sed -i`, so mutations were made with
   DELETE of a recurring item sets `recurring_item_id` NULL on trashed confirmations. "Restores
   exactly as it was" holds only when neither happened.
 
+## Fix round 2 (reviewer: changes required)
+- Import preview leaves trash-held items out of `pending` (`entry.heldByTrash`), so a bank row
+  never auto-matches an item the commit would refuse; it imports as a plain row or a duplicate
+  candidate. The commit-side refusal stays as a safety net. Test: trash, preview, commit succeeds.
+- Confirm-all (orchestrator decision) skips trash-held items, confirms the rest in the single
+  transaction, answers 201 with `ConfirmAllResultDto` `{ created, skippedHeldByTrash: [{id,
+  concept}] }` (shape changed from a bare array; web client type updated). Held items stay
+  pending; confirming one alone still gives the 409. `MovementsPage` shows "No se han confirmado N
+  fijos porque tienen un movimiento en la papelera: <concepts>" in the action message area.
+- `PendingEntryDto.heldByTrash` (additive), filled by `dueEntries`/`toEntry`. Task 03 can show
+  "en la papelera" instead of Confirm. The equivalence test ignores this one key (it is the
+  deliberate trace of the trash); `trashApi.test.ts` asserts true/false.
+- Import row message is lowercase after "Fila N: " ("hay un movimiento ..."); standalone 409 unchanged.
+- JSON export from this version (with `deletedAt`) is refused by older app versions
+  (strictObject): acceptable for moving to a new installation.
+- Possible follow-up for Manuel: `migrationSafety.ts` does not flag DROP INDEX (not changed here).
+
 ## Next
 - Task 03 builds the undo toast and Papelera screen on the client methods and DTOs.
 - The reviewer is run by the orchestrator, not by me.

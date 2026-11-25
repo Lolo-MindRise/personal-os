@@ -4,6 +4,7 @@ import type {
   ApiErrorBody,
   CategoryDto,
   CategoryUsageDto,
+  ConfirmAllResultDto,
   MovementDto,
   PendingEntryDto,
   RecurringItemDto,
@@ -254,12 +255,17 @@ describe('fixed items and the month slot', () => {
     expect(single.json<ApiErrorBody>().error).toMatch(HOLDS);
 
     const all = await call('POST', '/api/months/2026-03/confirm-all');
-    expect(all.statusCode).toBe(409);
-    expect(all.json<ApiErrorBody>().error).toMatch(HOLDS);
+    expect(all.statusCode).toBe(201);
+    expect(all.json<ConfirmAllResultDto>()).toEqual({
+      created: [],
+      skippedHeldByTrash: [{ id: item.id, concept: 'Alquiler' }],
+    });
 
     const imported = await importCommit(item.id, rent);
     expect(imported.statusCode).toBe(400);
-    expect(imported.json<ApiErrorBody>().error).toMatch(HOLDS);
+    const importError = imported.json<ApiErrorBody>().error;
+    expect(importError).toMatch(/^Fila 1: hay un movimiento/);
+    expect(importError).toMatch(HOLDS);
 
     // Nothing written by any of them: no live movement, not even the plain import row.
     expect(rowCount(movements)).toBe(1);
@@ -273,7 +279,55 @@ describe('fixed items and the month slot', () => {
     expect(await pending()).toEqual([]);
   });
 
-  it('confirm-all does not fail halfway: nothing is written when one item is held', async () => {
+  it('preview then commit with a trash-held item does not fail: the row is a plain import', async () => {
+    const { rent, item } = await fixedItem();
+    const first = (await confirm(item.id)).json<MovementDto>();
+    await call('DELETE', `/api/movements/${String(first.id)}`);
+
+    const rows = [{ date: '2026-03-01', concept: 'RECIBO ALQUILER', amountCents: -60_000 }];
+    const previewed = (await call('POST', '/api/import/preview', { rows })).json<{
+      rows: { status: string; recurringItemId?: number | null; categoryId?: number | null }[];
+    }>().rows;
+    expect(previewed[0]?.status).not.toBe('recurring');
+    expect(previewed[0]?.recurringItemId ?? null).toBeNull();
+
+    const committed = await call('POST', '/api/import/commit', {
+      rows: [
+        {
+          date: '2026-03-01',
+          kind: 'expense',
+          categoryId: rent,
+          concept: 'RECIBO ALQUILER',
+          amountCents: 60_000,
+        },
+      ],
+    });
+    expect(committed.statusCode).toBe(201);
+    expect((await month('2026-03')).map((m) => m.concept)).toEqual(['RECIBO ALQUILER']);
+  });
+
+  it('heldByTrash is true only for the item whose confirmation is trashed', async () => {
+    const { rent, item } = await fixedItem();
+    const other = (
+      await call('POST', '/api/recurring-items', {
+        kind: 'expense',
+        categoryId: rent,
+        concept: 'Internet',
+        amountCents: 3_000,
+        expectedDay: 5,
+        startMonth: '2026-01',
+      })
+    ).json<RecurringItemDto>();
+    expect((await pending()).map((p) => p.heldByTrash)).toEqual([false, false]);
+    const first = (await confirm(item.id)).json<MovementDto>();
+    await call('DELETE', `/api/movements/${String(first.id)}`);
+    const held = Object.fromEntries(
+      (await pending()).map((p) => [p.recurringItemId, p.heldByTrash]),
+    );
+    expect(held).toEqual({ [item.id]: true, [other.id]: false });
+  });
+
+  it('confirm-all skips the held item, confirms the rest atomically and says which', async () => {
     const { rent, item } = await fixedItem();
     const other = (
       await call('POST', '/api/recurring-items', {
@@ -287,11 +341,15 @@ describe('fixed items and the month slot', () => {
     ).json<RecurringItemDto>();
     const first = (await confirm(item.id)).json<MovementDto>();
     await call('DELETE', `/api/movements/${String(first.id)}`);
-    expect((await call('POST', '/api/months/2026-03/confirm-all')).statusCode).toBe(409);
-    expect(rowCount(movements)).toBe(1);
-    expect((await pending()).map((p) => p.recurringItemId).sort()).toEqual(
-      [item.id, other.id].sort(),
-    );
+    const all = await call('POST', '/api/months/2026-03/confirm-all');
+    expect(all.statusCode).toBe(201);
+    const body = all.json<ConfirmAllResultDto>();
+    expect(body.created.map((m) => m.recurringItemId)).toEqual([other.id]);
+    expect(body.skippedHeldByTrash).toEqual([{ id: item.id, concept: 'Alquiler' }]);
+    expect(rowCount(movements)).toBe(2);
+    // The held one stays pending, and confirming it alone keeps giving the clear 409.
+    expect((await pending()).map((p) => p.recurringItemId)).toEqual([item.id]);
+    expect((await confirm(item.id)).statusCode).toBe(409);
   });
 
   it('once the trashed one is deleted for good, confirming works again', async () => {

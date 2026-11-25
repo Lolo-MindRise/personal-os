@@ -100,7 +100,11 @@ function preview(db: Db, rows: { date: string; concept: string; amountCents: num
     .where(and(liveMovements(), gte(movements.date, first), lte(movements.date, last)))
     .all();
   const months = [...new Set(rows.map((r) => monthOf(r.date)))];
-  const pending = months.flatMap((month) => dueEntries(db, month).pending);
+  // Items whose slot is held by a trashed confirmation are not offered as a match: the commit
+  // would refuse them, and the preview must never propose what the commit rejects.
+  const pending = months.flatMap((month) =>
+    dueEntries(db, month).pending.filter((entry) => !entry.heldByTrash),
+  );
   return classifyRows(rows, { rules: listRules(db), existing, pending });
 }
 
@@ -217,7 +221,8 @@ export function registerImportApi(app: FastifyInstance, db: Db): void {
             } else if (skippedItemIds(db, month).has(itemId)) {
               fail('el fijo está saltado en ese mes.');
             } else if (trashedItemIds(db, month).has(itemId)) {
-              fail(TRASH_HOLDS_SLOT);
+              // Lowercase first letter: it follows "Fila N: " like the other row problems.
+              fail(`${TRASH_HOLDS_SLOT.charAt(0).toLowerCase()}${TRASH_HOLDS_SLOT.slice(1)}`);
             }
             result.confirmedRecurring++;
           } else {

@@ -1,6 +1,11 @@
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import type { MovementDto, PendingEntryDto, RecurringItemDto } from '../shared/api.js';
+import type {
+  ConfirmAllResultDto,
+  MovementDto,
+  PendingEntryDto,
+  RecurringItemDto,
+} from '../shared/api.js';
 import { isDueInMonth, monthOf } from '../shared/recurring.js';
 import {
   confirmOverridesSchema,
@@ -259,14 +264,12 @@ export function registerRecurringApi(app: FastifyInstance, db: Db): void {
     if (!parsed.success) {
       return badRequest(reply, MESSAGES.invalidMonth, { month: MESSAGES.invalidMonth });
     }
-    // Every pending entry, with its expected values; skipped ones are left alone. If a pending
-    // item has a trashed confirmation holding its slot, the whole request is refused before
-    // anything is written (never half done).
-    const trashed = trashedItemIds(db, parsed.data);
-    const pending = dueEntries(db, parsed.data).pending;
-    if (pending.some((entry) => trashed.has(entry.recurringItemId))) {
-      return conflict(reply, TRASH_HOLDS_SLOT);
-    }
+    // Every pending entry, with its expected values; skipped ones are left alone. Items whose
+    // slot is held by a trashed confirmation are skipped too and reported; the rest are
+    // confirmed in one transaction (atomic).
+    const all = dueEntries(db, parsed.data).pending;
+    const held = all.filter((entry) => entry.heldByTrash);
+    const pending = all.filter((entry) => !entry.heldByTrash);
     const confirmed = db.transaction((tx) =>
       pending.map(
         (entry) =>
@@ -277,7 +280,14 @@ export function registerRecurringApi(app: FastifyInstance, db: Db): void {
       const movement = getMovement(db, id);
       return movement === undefined ? [] : [movement];
     });
-    return reply.code(201).send(result);
+    const body: ConfirmAllResultDto = {
+      created: result,
+      skippedHeldByTrash: held.map((entry) => ({
+        id: entry.recurringItemId,
+        concept: entry.concept,
+      })),
+    };
+    return reply.code(201).send(body);
   });
 
   app.post('/api/recurring-items/:id/months/:month/skip', (request, reply) => {

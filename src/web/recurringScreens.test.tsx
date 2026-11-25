@@ -19,6 +19,7 @@ const entry = (over: Partial<PendingEntryDto> = {}): PendingEntryDto => ({
   concept: 'Internet',
   amountCents: 3_500,
   notes: null,
+  heldByTrash: false,
   ...over,
 });
 

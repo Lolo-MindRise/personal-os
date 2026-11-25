@@ -154,6 +154,14 @@ export interface PendingEntryDto {
   concept: string;
   amountCents: number;
   notes: string | null;
+  /** True when a trashed confirmation still holds this item's month slot: it cannot be confirmed. */
+  heldByTrash: boolean;
+}
+
+/** Result of confirm-all: held items are skipped, never confirmed, and stay pending. */
+export interface ConfirmAllResultDto {
+  created: MovementDto[];
+  skippedHeldByTrash: { id: number; concept: string }[];
 }
 
 export interface MonthSummaryDto {
