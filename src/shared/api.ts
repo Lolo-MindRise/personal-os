@@ -16,6 +16,42 @@ export interface AccountBalanceDto {
   balanceCents: number;
 }
 
+/** A saved comparison of an account with the bank (plan 0003, task 06). Never changes movements. */
+export interface ReconciliationDto {
+  id: number;
+  accountId: number;
+  /** `YYYY-MM-DD`: the date of the bank's balance. */
+  date: string;
+  bankBalanceCents: number;
+  /** The app's own balance at that date, frozen when saved. */
+  appBalanceCents: number;
+  /** Bank minus app, signed. */
+  differenceCents: number;
+  createdAt: string;
+}
+
+/** A movement listed in a reconciliation (what changed the balance since the last one). */
+export interface ReconcileMovementDto {
+  id: number;
+  date: string;
+  kind: Kind;
+  concept: string;
+  amountCents: number;
+}
+
+/** What the app knows about an account at a date, before saving a reconciliation. */
+export interface ReconciliationPreviewDto {
+  accountId: number;
+  date: string;
+  /** The app's balance at the end of that date (same rule as the account balance). */
+  appBalanceCents: number;
+  /** The previous reconciliation of the account, if any. */
+  last: ReconciliationDto | null;
+  /** Movements dated after the last reconciliation (all if none) up to the date. */
+  movements: ReconcileMovementDto[];
+  transfers: TransferDto[];
+}
+
 /** Money moved between two accounts; never income, expense or savings. */
 export interface TransferDto {
   id: number;

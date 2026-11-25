@@ -60,6 +60,16 @@ const transfers = z.strictObject({
   updatedAt: timestamp,
 });
 
+const reconciliations = z.strictObject({
+  id,
+  accountId: id,
+  date,
+  bankBalanceCents: int,
+  appBalanceCents: int,
+  differenceCents: int,
+  createdAt: timestamp,
+});
+
 const debts = z.strictObject({
   id,
   name: text,
@@ -177,6 +187,7 @@ export const ROW_SCHEMAS = {
   categories,
   accounts,
   transfers,
+  reconciliations,
   debts,
   recurring_items: recurringItems,
   recurring_skips: recurringSkips,
@@ -208,6 +219,7 @@ export const TABLE_INSERT_ORDER: readonly DataTableName[] = [
   'movements',
   'movement_tags',
   'transfers',
+  'reconciliations',
   'budget_lines',
   'category_rules',
   'goals',
@@ -217,8 +229,16 @@ export const TABLE_INSERT_ORDER: readonly DataTableName[] = [
 ];
 
 const tableShape = Object.fromEntries(
-  Object.entries(ROW_SCHEMAS).map(([name, row]) => [name, z.array(row)]),
-) as { [K in DataTableName]: z.ZodArray<(typeof ROW_SCHEMAS)[K]> };
+  Object.entries(ROW_SCHEMAS).map(([name, row]) => [
+    name,
+    // Files exported before the reconciliations (plan 0003, task 06) have no such table: empty.
+    name === 'reconciliations' ? z.array(row).default([]) : z.array(row),
+  ]),
+) as {
+  [K in DataTableName]: K extends 'reconciliations'
+    ? z.ZodDefault<z.ZodArray<(typeof ROW_SCHEMAS)[K]>>
+    : z.ZodArray<(typeof ROW_SCHEMAS)[K]>;
+};
 
 export const dataFileSchema = z.strictObject({
   app: z.literal(DATA_FILE_APP),
@@ -405,6 +425,12 @@ export function referenceProblems(file: DataFile): string[] {
     ref('transfers', r.id, 'una cuenta de destino', accountIds.has(r.toAccountId));
     if (r.fromAccountId === r.toAccountId) {
       add(`transfers: la fila ${String(r.id)} tiene la misma cuenta de origen y destino`);
+    }
+  }
+  for (const r of t.reconciliations) {
+    ref('reconciliations', r.id, 'una cuenta', accountIds.has(r.accountId));
+    if (r.differenceCents !== r.bankBalanceCents - r.appBalanceCents) {
+      add(`reconciliations: la fila ${String(r.id)} tiene una diferencia que no cuadra`);
     }
   }
   for (const r of t.budget_lines) {

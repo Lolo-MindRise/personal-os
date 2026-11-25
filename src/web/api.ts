@@ -2,6 +2,8 @@ import type {
   AccountBalanceDto,
   AccountDto,
   TransferDto,
+  ReconciliationDto,
+  ReconciliationPreviewDto,
   ApiErrorBody,
   BackupStatusDto,
   BudgetMonthDto,
@@ -30,7 +32,7 @@ import type { Kind } from '../shared/constants.js';
 import type { DataFile, DataImportResultDto } from '../shared/dataFile.js';
 import type { ImportMapping } from '../shared/csvImport.js';
 import type { ExpenseReportDto } from '../shared/reports.js';
-import type { AccountPayload, TransferPayload } from './accountForms.js';
+import type { AccountPayload, ReconcilePayload, TransferPayload } from './accountForms.js';
 import type { BudgetPayload } from './budgetForm.js';
 import type { CommitRow } from './importState.js';
 import type { DebtPayload } from './debtForm.js';
@@ -106,6 +108,18 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
       request<AccountDto>(fetchFn, `/api/accounts/${String(id)}`, json('PATCH', payload)),
     deleteAccount: (id: number) =>
       request<undefined>(fetchFn, `/api/accounts/${String(id)}`, { method: 'DELETE' }),
+    reconciliations: () => request<ReconciliationDto[]>(fetchFn, '/api/reconciliations'),
+    reconciliationPreview: (accountId: number, date: string) =>
+      request<ReconciliationPreviewDto>(
+        fetchFn,
+        `/api/accounts/${String(accountId)}/reconciliation-preview?date=${enc(date)}`,
+      ),
+    createReconciliation: (accountId: number, payload: ReconcilePayload) =>
+      request<ReconciliationDto>(
+        fetchFn,
+        `/api/accounts/${String(accountId)}/reconciliations`,
+        json('POST', payload),
+      ),
     transfers: () => request<TransferDto[]>(fetchFn, '/api/transfers'),
     createTransfer: (payload: TransferPayload) =>
       request<TransferDto>(fetchFn, '/api/transfers', json('POST', payload)),

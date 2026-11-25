@@ -40,6 +40,7 @@ import { registerMovementSearchApi } from './movementSearchApi.js';
 import { registerProjectionApi } from './projectionApi.js';
 import { registerMilestonesApi } from './milestonesApi.js';
 import { registerRecurringApi } from './recurringApi.js';
+import { registerReconciliationsApi } from './reconciliationsApi.js';
 import { registerSummaryApi } from './summaryApi.js';
 import { registerTagsApi } from './tagsApi.js';
 
@@ -224,6 +225,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
   });
 
   registerAccountsApi(app, db);
+  registerReconciliationsApi(app, db);
   registerBudgetApi(app, db);
   registerCategoriesApi(app, db);
   registerDashboardApi(app, db);

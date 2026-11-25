@@ -110,6 +110,38 @@ export const transfers = sqliteTable(
   ],
 );
 
+/**
+ * A record of comparing an account with the bank (plan 0003, task 06): the bank's real balance at
+ * a date, the app's own balance at that date and their difference, all frozen when saved. It never
+ * changes any movement. Deleting the account deletes its records (they only describe it).
+ */
+export const reconciliations = sqliteTable(
+  'reconciliations',
+  {
+    id: id(),
+    accountId: integer('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    date: text('date').notNull(),
+    bankBalanceCents: integer('bank_balance_cents').notNull(),
+    appBalanceCents: integer('app_balance_cents').notNull(),
+    /** Bank minus app, signed. */
+    differenceCents: integer('difference_cents').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('reconciliations_account_idx').on(t.accountId, t.date),
+    check('reconciliations_date_format', sql`${t.date} GLOB ${DATE_GLOB}`),
+    check('reconciliations_bank_integer', isInteger(t.bankBalanceCents)),
+    check('reconciliations_app_integer', isInteger(t.appBalanceCents)),
+    check('reconciliations_difference_integer', isInteger(t.differenceCents)),
+    check(
+      'reconciliations_difference_consistent',
+      sql`${t.differenceCents} = ${t.bankBalanceCents} - ${t.appBalanceCents}`,
+    ),
+  ],
+);
+
 export const debts = sqliteTable(
   'debts',
   {

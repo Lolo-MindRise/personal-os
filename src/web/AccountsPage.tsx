@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState, type SubmitEvent } from 'react';
-import type { AccountBalanceDto, AccountDto, TransferDto } from '../shared/api.js';
+import type {
+  AccountBalanceDto,
+  AccountDto,
+  ReconciliationDto,
+  TransferDto,
+} from '../shared/api.js';
 import { ACCOUNT_TYPES, DEFAULT_ACCOUNT_ID, type AccountType } from '../shared/constants.js';
 import { centsToInput, formatCents } from '../shared/money.js';
 import {
@@ -16,6 +21,8 @@ import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.
 import { Field } from './Field.js';
 import { formatDate } from './months.js';
 import { PageHeader } from './PageHeader.js';
+import { ReconcilePanel } from './ReconcilePanel.js';
+import { deleteAccountConfirmText } from './reconcileView.js';
 import { hrefFor } from './router.js';
 import { SidePanel, usePanel } from './SidePanel.js';
 import { UndoToast } from './UndoToast.js';
@@ -209,13 +216,16 @@ export function TransferForm(props: {
 }
 
 type Panel =
-  { kind: 'account'; id: number | undefined } | { kind: 'transfer'; id: number | undefined };
+  | { kind: 'account'; id: number | undefined }
+  | { kind: 'transfer'; id: number | undefined }
+  | { kind: 'reconcile'; id: number };
 
 /** The "Cuentas" screen: balances, accounts and transfers between them. */
 export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
   const [accounts, setAccounts] = useState<AccountDto[]>([]);
   const [balances, setBalances] = useState<AccountBalanceDto[]>([]);
   const [transfers, setTransfers] = useState<TransferDto[]>([]);
+  const [reconciliations, setReconciliations] = useState<ReconciliationDto[]>([]);
   const [loadError, setLoadError] = useState<string | undefined>();
   const [actionError, setActionError] = useState<string | undefined>();
   const [reloads, setReloads] = useState(0);
@@ -230,12 +240,18 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
 
   useEffect(() => {
     let active = true;
-    Promise.all([api.accounts(), api.accountBalances(), api.transfers()]).then(
-      ([a, b, t]) => {
+    Promise.all([
+      api.accounts(),
+      api.accountBalances(),
+      api.transfers(),
+      api.reconciliations(),
+    ]).then(
+      ([a, b, t, r]) => {
         if (active) {
           setAccounts(a);
           setBalances(b);
           setTransfers(t);
+          setReconciliations(r);
           setLoadError(undefined);
         }
       },
@@ -282,6 +298,13 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
             notes: transfer.notes ?? '',
           },
     );
+    setErrors({});
+    setFormError(undefined);
+    panel.show();
+  };
+
+  const openReconcile = (account: AccountDto) => {
+    setMode({ kind: 'reconcile', id: account.id });
     setErrors({});
     setFormError(undefined);
     panel.show();
@@ -350,7 +373,8 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
   };
 
   const removeAccount = async (account: AccountDto) => {
-    if (!window.confirm(`¿Eliminar la cuenta «${account.name}»?`)) {
+    const records = reconciliations.filter((r) => r.accountId === account.id).length;
+    if (!window.confirm(deleteAccountConfirmText(account.name, records))) {
       return;
     }
     setActionError(undefined);
@@ -365,6 +389,10 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
 
   const nameOf = (id: number) => accounts.find((a) => a.id === id)?.name ?? '—';
   const balanceOf = (id: number) => balances.find((b) => b.accountId === id)?.balanceCents;
+  // The list comes most recent first.
+  const lastReconciliationOf = (id: number) => reconciliations.find((r) => r.accountId === id);
+  const reconcilingAccount =
+    mode.kind === 'reconcile' ? accounts.find((a) => a.id === mode.id) : undefined;
 
   return (
     <main className="page">
@@ -399,17 +427,33 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
       <SidePanel
         open={panel.open}
         title={
-          mode.kind === 'account'
-            ? mode.id === undefined
-              ? 'Añadir cuenta'
-              : 'Editar cuenta'
-            : mode.id === undefined
-              ? 'Registrar transferencia'
-              : 'Editar transferencia'
+          mode.kind === 'reconcile'
+            ? 'Conciliar cuenta'
+            : mode.kind === 'account'
+              ? mode.id === undefined
+                ? 'Añadir cuenta'
+                : 'Editar cuenta'
+              : mode.id === undefined
+                ? 'Registrar transferencia'
+                : 'Editar transferencia'
         }
         onClose={close}
       >
-        {mode.kind === 'account' ? (
+        {mode.kind === 'reconcile' ? (
+          reconcilingAccount !== undefined && (
+            <ReconcilePanel
+              key={reconcilingAccount.id}
+              api={api}
+              account={reconcilingAccount}
+              nameOf={nameOf}
+              onSaved={() => {
+                close();
+                reload();
+              }}
+              onCancel={close}
+            />
+          )
+        ) : mode.kind === 'account' ? (
           <AccountForm
             values={accountValues}
             errors={{ ...errors, openingDate: errors.openingDate ?? errors.openingBalanceDate }}
@@ -440,6 +484,7 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
               <th>Cuenta</th>
               <th>Tipo</th>
               <th className="amount">Saldo de la cuenta</th>
+              <th>Última conciliación</th>
               <th>
                 <span className="visually-hidden">Acciones</span>
               </th>
@@ -448,12 +493,26 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
           <tbody>
             {accounts.map((a) => {
               const balance = balanceOf(a.id);
+              const last = lastReconciliationOf(a.id);
               return (
                 <tr key={a.id}>
                   <td>{a.name}</td>
                   <td>{ACCOUNT_TYPE_LABELS[a.type]}</td>
                   <td className="amount">{balance === undefined ? '—' : formatCents(balance)}</td>
+                  <td>
+                    {last === undefined
+                      ? 'Sin conciliar'
+                      : `${formatDate(last.date)} · diferencia ${formatCents(last.differenceCents)}`}
+                  </td>
                   <td className="actions">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        openReconcile(a);
+                      }}
+                    >
+                      Conciliar
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
