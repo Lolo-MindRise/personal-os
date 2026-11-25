@@ -102,6 +102,8 @@ export function budgetAlert(budgetCents: number | null, actualCents: number): Bu
   }
   const spent = Math.max(0, actualCents);
   const percent = Math.floor((spent * 100) / budgetCents);
+  // Deliberate: at exactly 100 % the state is `over` (budget reached), whereas the dashboard
+  // chart flag `overBudget` is strictly above budget. Do not align one with the other.
   const state: BudgetAlertState =
     spent * 100 >= BUDGET_OVER_PERCENT * budgetCents
       ? 'over'

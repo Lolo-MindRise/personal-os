@@ -90,6 +90,9 @@ describe('BudgetTable', () => {
       />,
     );
     expect(other).toContain('Ingreso · no entra en el total');
+    // No meter and no state words for income, even above its budget.
+    expect(other).not.toContain('progressbar');
+    expect(other).not.toContain('Presupuesto alcanzado o superado');
   });
 
   it('explains an empty list', () => {

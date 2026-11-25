@@ -24,5 +24,13 @@ Branch `agent/0003/04-budget-alerts` (from `integration/0003-data-safety-and-dai
   unchanged; the alert's `over` is >= 100 % by the brief.
 - The e2e creates one movement in 2031-03 and deletes it (goes to the trash).
 
+## Fix round 1
+- e2e cleanup now also purges (`DELETE /api/trash/movements/:id`) and asserts both responses ok.
+- Presupuesto: the meter and state words show only for `kind === 'expense'` rows (income and
+  repayment rows look as before); test added.
+- Deliberate difference, commented in `shared/budget.ts`, `dashboardApi.ts` and
+  `DashboardCharts.tsx`: alert state `over` is >= 100 %, the chart flag `overBudget` is strictly
+  above budget. Do not "fix" one to match the other.
+
 ## Next
 - Reviewer run by the orchestrator.

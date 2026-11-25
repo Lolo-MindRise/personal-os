@@ -49,6 +49,9 @@ test('a category at 85 % appears on Inicio and Presupuesto shows its bar', async
       'Cerca del presupuesto',
     );
   } finally {
-    await request.delete(`/api/movements/${String(id)}`);
+    const soft = await request.delete(`/api/movements/${String(id)}`);
+    expect(soft.ok()).toBe(true);
+    const purged = await request.delete(`/api/trash/movements/${String(id)}`);
+    expect(purged.ok()).toBe(true);
   }
 });

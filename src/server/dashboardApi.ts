@@ -109,6 +109,7 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
       categoryName: r.categoryName,
       budgetCents: r.budgetCents,
       actualCents: r.actualCents,
+      // Strictly above budget. The alert state in shared/budget.ts is `over` from 100 %: deliberate.
       overBudget: r.budgetCents !== null && r.actualCents > r.budgetCents,
     }));
 

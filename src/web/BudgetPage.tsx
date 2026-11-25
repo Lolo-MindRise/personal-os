@@ -123,11 +123,13 @@ export function BudgetTable({
             </td>
             <td className="amount">
               {formatCents(row.actualCents)}
-              <BudgetMeter
-                name={row.categoryName}
-                budgetCents={row.budgetCents}
-                actualCents={row.actualCents}
-              />
+              {row.kind === 'expense' && (
+                <BudgetMeter
+                  name={row.categoryName}
+                  budgetCents={row.budgetCents}
+                  actualCents={row.actualCents}
+                />
+              )}
             </td>
             <td className={`amount diff-${differenceTone(row.differenceCents)}`}>
               {row.differenceCents === null ? '—' : formatCents(row.differenceCents)}
