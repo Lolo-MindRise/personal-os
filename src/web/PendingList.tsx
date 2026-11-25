@@ -70,16 +70,20 @@ export function PendingList({
                 <td>{entry.concept}</td>
                 <td className="amount">{formatCents(entry.amountCents)}</td>
                 <td className="actions">
-                  <button
-                    type="button"
-                    className="primary"
-                    disabled={busy}
-                    onClick={() => {
-                      onConfirm(entry);
-                    }}
-                  >
-                    Confirmar
-                  </button>
+                  {entry.heldByTrash ? (
+                    <a href={hrefFor('trash')}>En la papelera</a>
+                  ) : (
+                    <button
+                      type="button"
+                      className="primary"
+                      disabled={busy}
+                      onClick={() => {
+                        onConfirm(entry);
+                      }}
+                    >
+                      Confirmar
+                    </button>
+                  )}
                   <button
                     type="button"
                     disabled={busy}

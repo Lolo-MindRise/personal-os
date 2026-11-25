@@ -49,6 +49,8 @@ import {
 } from './movementsCsv.js';
 import { PendingList } from './PendingList.js';
 import { SummaryBar } from './SummaryBar.js';
+import { UndoToast } from './UndoToast.js';
+import { useUndo } from './useUndo.js';
 
 const defaultApi = createApiClient();
 
@@ -204,6 +206,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   const reload = useCallback(() => {
     setReloads((n) => n + 1);
   }, []);
+  const undo = useUndo(reload, setActionError);
 
   // The search across all months (task 0013, block 3). While a search is active, the monthly
   // view (pending entries, form, list) is hidden; "Volver a la vista mensual" restores it.
@@ -365,14 +368,15 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   };
 
   const remove = async (movement: MovementDto) => {
-    if (!window.confirm(`¿Eliminar «${movement.concept}»? Esta acción no se puede deshacer.`)) {
-      return;
-    }
+    // No confirmation: the movement goes to the papelera and «Deshacer» brings it back.
     try {
       await api.deleteMovement(movement.id);
       if (editingId === movement.id) {
         resetForm();
       }
+      undo.show(`Movimiento «${movement.concept}» eliminado.`, () =>
+        api.restoreMovement(movement.id),
+      );
       reload();
     } catch (error) {
       setLoadError(messageOf(error));
@@ -649,6 +653,12 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
           />
         </>
       )}
+      <UndoToast
+        toast={undo.toast}
+        busy={undo.busy}
+        onUndo={(t) => void undo.undo(t)}
+        onExpire={undo.expire}
+      />
     </main>
   );
 }

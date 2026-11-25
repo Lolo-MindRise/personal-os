@@ -21,6 +21,7 @@ export const VIEW_IDS = [
   'tags',
   'accounts',
   'backups',
+  'trash',
 ] as const;
 
 export type View = (typeof VIEW_IDS)[number];

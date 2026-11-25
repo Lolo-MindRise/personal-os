@@ -91,33 +91,15 @@ test('add, edit and delete a movement, with the totals following', async ({ page
     await expect(summaryItem(page, 'Gastos')).toContainText(/1\.234,56\s€/);
   });
 
-  await test.step('delete it, accepting the confirmation', async () => {
-    // Accept first, assert afterwards: a failing assert inside the handler would
-    // leave the dialog open and the test would only time out.
-    let confirmation = '';
-    page.once('dialog', (dialog) => {
-      confirmation = dialog.message();
-      void dialog.accept();
-    });
+  await test.step('delete it: no confirmation, it goes to the papelera with a Deshacer', async () => {
+    // Task 0003-03: deleting is immediate (soft delete) and «Deshacer» replaces the confirmation.
     await rows(page).first().getByRole('button', { name: 'Eliminar' }).click();
 
     await expect(page.getByText('No hay movimientos este mes.')).toBeVisible();
-    expect(confirmation).toContain('compra editada');
+    await expect(page.getByRole('button', { name: 'Deshacer' })).toBeVisible();
     await expect(summaryItem(page, 'Gastos')).toContainText(/0,00\s€/);
     await expect(summaryItem(page, 'Ahorro')).toContainText(/0,00\s€/);
   });
-});
-
-test('declining the delete confirmation keeps the movement', async ({ page }) => {
-  await page.locator('input[type=month]').fill('2026-01');
-  await expect(rows(page)).toHaveCount(6);
-
-  page.once('dialog', (dialog) => {
-    void dialog.dismiss();
-  });
-  await rows(page).first().getByRole('button', { name: 'Eliminar' }).click();
-
-  await expect(rows(page)).toHaveCount(6);
 });
 
 test('an invalid amount shows its error next to the field and saves nothing', async ({ page }) => {

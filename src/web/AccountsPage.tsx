@@ -16,7 +16,10 @@ import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.
 import { Field } from './Field.js';
 import { formatDate } from './months.js';
 import { PageHeader } from './PageHeader.js';
+import { hrefFor } from './router.js';
 import { SidePanel, usePanel } from './SidePanel.js';
+import { UndoToast } from './UndoToast.js';
+import { useUndo } from './useUndo.js';
 
 const defaultApi = createApiClient();
 
@@ -250,6 +253,7 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
   const reload = useCallback(() => {
     setReloads((n) => n + 1);
   }, []);
+  const undo = useUndo(reload, setActionError);
 
   const close = () => {
     setErrors({});
@@ -332,12 +336,11 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
   };
 
   const removeTransfer = async (transfer: TransferDto) => {
-    if (!window.confirm('¿Eliminar esta transferencia?')) {
-      return;
-    }
+    // No confirmation: the transfer goes to the papelera and «Deshacer» brings it back.
     setActionError(undefined);
     try {
       await api.deleteTransfer(transfer.id);
+      undo.show('Transferencia eliminada.', () => api.restoreTransfer(transfer.id));
     } catch (error) {
       setActionError(messageOf(error));
     }
@@ -386,7 +389,8 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
       )}
       {actionError !== undefined && (
         <p className="form-error" role="alert">
-          {actionError}
+          {actionError}{' '}
+          {actionError.includes('papelera') && <a href={hrefFor('trash')}>Ir a la papelera</a>}
         </p>
       )}
 
@@ -531,6 +535,12 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
           </table>
         )}
       </section>
+      <UndoToast
+        toast={undo.toast}
+        busy={undo.busy}
+        onUndo={(t) => void undo.undo(t)}
+        onExpire={undo.expire}
+      />
     </main>
   );
 }

@@ -642,6 +642,29 @@ td.amount {
   text-align: center;
 }
 
+/* «Deshacer» after deleting: fixed at the bottom, text plus a button (never colour alone). */
+.undo-region {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  left: var(--space-4);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.undo-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  pointer-events: auto;
+}
+
 .budget tfoot th,
 .budget tfoot td {
   border-top: 2px solid var(--border);

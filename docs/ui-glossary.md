@@ -68,6 +68,8 @@ screen needs a concept, add it here first.
 | Where deleted movements and transfers wait until restored or deleted for good | papelera | basura, reciclaje, archivo |
 | A movement or transfer that is in the trash (adjective, with its date) | eliminado / eliminada ("Eliminado el 25/11/2026") | borrado, descartado |
 | Bring a row back from the trash | restaurar | recuperar, deshacer |
+| The button that brings a row back for 10 seconds right after deleting it (toast, then it stays in the papelera) | Deshacer | Revertir, Cancelar |
+| A fixed item whose confirmation is in the trash (replaces Confirmar) | En la papelera | bloqueado, retenido |
 | Remove a row from the trash for good (one at a time, cannot be undone) | eliminar definitivamente | vaciar, purgar |
 
 ## Verbs on buttons and links
