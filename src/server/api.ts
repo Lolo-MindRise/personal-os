@@ -30,6 +30,8 @@ import { registerDashboardApi } from './dashboardApi.js';
 import { registerReportsApi } from './reportsApi.js';
 import { monthSummary } from './monthSummary.js';
 import { registerCategoriesApi } from './categoriesApi.js';
+import { registerDataExportApi } from './dataExportApi.js';
+import { registerDataImportApi } from './dataImportApi.js';
 import { registerDebtsApi } from './debtsApi.js';
 import { registerImportApi } from './importApi.js';
 import { registerMovementSearchApi } from './movementSearchApi.js';
@@ -208,6 +210,8 @@ export function registerApi(app: FastifyInstance, db: Db): void {
   registerCategoriesApi(app, db);
   registerDashboardApi(app, db);
   registerReportsApi(app, db);
+  registerDataExportApi(app, db);
+  registerDataImportApi(app, db);
   registerDebtsApi(app, db);
   registerImportApi(app, db);
   registerMovementSearchApi(app, db);

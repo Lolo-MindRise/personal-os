@@ -25,6 +25,7 @@ import type {
   TagDto,
 } from '../shared/api.js';
 import type { Kind } from '../shared/constants.js';
+import type { DataFile, DataImportResultDto } from '../shared/dataFile.js';
 import type { ImportMapping } from '../shared/csvImport.js';
 import type { ExpenseReportDto } from '../shared/reports.js';
 import type { AccountPayload, TransferPayload } from './accountForms.js';
@@ -111,6 +112,9 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
     deleteTransfer: (id: number) =>
       request<undefined>(fetchFn, `/api/transfers/${String(id)}`, { method: 'DELETE' }),
     backupStatus: () => request<BackupStatusDto>(fetchFn, '/api/backups/status'),
+    exportData: () => request<DataFile>(fetchFn, '/api/data/export'),
+    importData: (file: unknown) =>
+      request<DataImportResultDto>(fetchFn, '/api/data/import', json('POST', file)),
     dashboard: (month: string, today: string) =>
       request<DashboardDto>(fetchFn, `/api/dashboard?month=${enc(month)}&today=${enc(today)}`),
     expenseReport: (month: string, months: number) =>
