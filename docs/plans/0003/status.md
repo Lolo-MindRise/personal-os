@@ -6,7 +6,7 @@ Integration branch: `integration/0003-data-safety-and-daily-use`
 |------|-----------|-------|----|-------|
 | 00 rehearse-migration | – | merged | #62 | 3 rounds; risk high (touches restore.sh helpers, reads real backups); CI caught a SIGPIPE bug (`list_backups \| head -n 1` under pipefail) that passed locally; follow-ups: `pid_is_app` and restore.sh read-only check on the original backup |
 | 01 trash-core | 00 | running | – | owns the migration slot (0009); touches most server readers |
-| 02 csv-account-column | – | running | – | client only; parallel with 01 |
+| 02 csv-account-column | – | merged | #63 | 2 rounds; risk medium; minors left: e2e alert locator not specific to the export error, download count asserted right after the alert |
 | 03 trash-ui | 01 | pending | – | |
 | 04 budget-alerts | 01 | pending | – | parallel with 03 |
 | 05 importer-accounts | 01 | pending | – | shares `importApi.ts` with 01 |
