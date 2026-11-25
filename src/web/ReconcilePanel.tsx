@@ -9,8 +9,8 @@ import {
 } from './accountForms.js';
 import { ApiError, NETWORK_ERROR, type ApiClient } from './api.js';
 import { Field } from './Field.js';
-import { KIND_LABELS } from './labels.js';
 import { formatDate } from './months.js';
+import { reconcileRows, visiblePreview } from './reconcileView.js';
 
 const messageOf = (error: unknown) => (error instanceof ApiError ? error.message : NETWORK_ERROR);
 
@@ -28,6 +28,8 @@ export function differenceText(differenceCents: number): string {
 export function ReconcilePanel(props: {
   api: ApiClient;
   account: AccountDto;
+  /** Name of an account by id (transfers name the other account). */
+  nameOf: (id: number) => string;
   onSaved: () => void;
   onCancel: () => void;
 }) {
@@ -66,7 +68,8 @@ export function ReconcilePanel(props: {
   }, [api, account.id, previewDate]);
 
   const bank = parseSignedMoney(values.bankBalance);
-  const shown = previewDate === undefined ? undefined : preview;
+  const shown = visiblePreview(preview, previewDate);
+  const loading = previewDate !== undefined && shown === undefined && formError === undefined;
   const difference =
     shown !== undefined && bank.ok && values.bankBalance.trim() !== ''
       ? bank.cents - shown.appBalanceCents
@@ -125,6 +128,7 @@ export function ReconcilePanel(props: {
         </Field>
       </div>
 
+      {loading && <p className="hint">Cargando…</p>}
       {shown !== undefined && (
         <section aria-label="Resultado de la conciliación" className="reconcile-result">
           <p>
@@ -145,17 +149,8 @@ export function ReconcilePanel(props: {
             <p className="empty">No hay ninguno en ese periodo.</p>
           ) : (
             <ul className="reconcile-list">
-              {shown.movements.map((m) => (
-                <li key={`m${String(m.id)}`}>
-                  {formatDate(m.date)} · {KIND_LABELS[m.kind]} · {m.concept} ·{' '}
-                  {formatCents(m.amountCents)}
-                </li>
-              ))}
-              {shown.transfers.map((t) => (
-                <li key={`t${String(t.id)}`}>
-                  {formatDate(t.date)} · Transferencia ·{' '}
-                  {t.fromAccountId === account.id ? 'sale' : 'entra'} {formatCents(t.amountCents)}
-                </li>
+              {reconcileRows(shown, account.id, props.nameOf).map((row) => (
+                <li key={row.key}>{row.text}</li>
               ))}
             </ul>
           )}

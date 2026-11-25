@@ -31,7 +31,19 @@ Branch `agent/0003/06-reconciliation` (from `integration/0003-data-safety-and-da
   blocking message and no way to remove records, since editing/deleting them is out of scope).
 - Difference shown in the panel is computed client-side (bank - preview balance); the server
   recomputes it when saving, so the stored value never trusts the client.
-- "Last reconciliation" = latest by date, then id.
+- "Last reconciliation" = see Fix round 1 (strictly before the chosen date).
+
+## Fix round 1 (reviewer: approve, minors)
+- Period rule: for date D the period is (last reconciliation dated strictly before D, D]; with
+  none, after the opening date. Earlier date than a saved one, the same date twice and a future
+  date now have API tests.
+- `ReconcilePanel`: shows "Cargando…" and never a difference from a stale preview (pure
+  `visiblePreview` checks the preview date against the chosen one; the effect already ignores
+  out-of-order responses). One merged list (date, kind, id) with signs and the other account's
+  name on transfers (`src/web/reconcileView.ts`, tested). Panel takes a `nameOf` prop.
+- CASCADE kept (orchestrator decision): deleting an account deletes its reconciliations. The
+  delete confirmation now says so with the count (`deleteAccountConfirmText`, uses the already
+  loaded reconciliation list). Migration unchanged.
 
 ## Open
 - Reviewer not run by me; the orchestrator runs it and fills the review log.

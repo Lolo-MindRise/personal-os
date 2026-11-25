@@ -164,6 +164,37 @@ describe('saving a reconciliation', () => {
     expect(body.transfers).toEqual([]);
   });
 
+  it('an earlier date than a saved reconciliation ignores it and uses its own period', async () => {
+    await save({ date: '2026-02-20', bankBalanceCents: 0 });
+    const body = (await preview('2026-02-10')).json<ReconciliationPreviewDto>();
+    expect(body.last).toBeNull();
+    expect(body.movements.map((m) => m.id)).toEqual([2, 3]);
+    expect(body.transfers.map((t) => t.id)).toEqual([1, 2]);
+  });
+
+  it('the same date twice: the period starts after the last reconciliation BEFORE that date', async () => {
+    await save({ date: '2026-02-05', bankBalanceCents: 0 });
+    await save({ date: '2026-02-10', bankBalanceCents: 0 });
+    handle.db
+      .insert(movements)
+      .values(mv(5, '2026-02-10', 'expense', 2, 100))
+      .run();
+    const body = (await preview('2026-02-10')).json<ReconciliationPreviewDto>();
+    expect(body.last?.date).toBe('2026-02-05');
+    // (2026-02-05, 2026-02-10]: movements 3 and 5, transfer 2 (the transfer of the 5th is out)
+    expect(body.movements.map((m) => m.id)).toEqual([3, 5]);
+    expect(body.transfers.map((t) => t.id)).toEqual([2]);
+  });
+
+  it('a future date works: whole period since the last reconciliation, balance with everything', async () => {
+    await save({ date: '2026-02-10', bankBalanceCents: 0 });
+    const body = (await preview('2030-01-01')).json<ReconciliationPreviewDto>();
+    expect(body.last?.date).toBe('2026-02-10');
+    expect(body.movements.map((m) => m.id)).toEqual([4]);
+    // 50 000 + 10 000 - 3 000 - 500 - 4 000 + 700
+    expect(body.appBalanceCents).toBe(53_200);
+  });
+
   it('allows the opening date and refuses a date before it', async () => {
     expect((await save({ date: '2026-01-31', bankBalanceCents: 50_000 })).statusCode).toBe(201);
     const early = await save({ date: '2026-01-30', bankBalanceCents: 50_000 });

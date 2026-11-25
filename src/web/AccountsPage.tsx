@@ -22,6 +22,7 @@ import { Field } from './Field.js';
 import { formatDate } from './months.js';
 import { PageHeader } from './PageHeader.js';
 import { ReconcilePanel } from './ReconcilePanel.js';
+import { deleteAccountConfirmText } from './reconcileView.js';
 import { hrefFor } from './router.js';
 import { SidePanel, usePanel } from './SidePanel.js';
 import { UndoToast } from './UndoToast.js';
@@ -372,7 +373,8 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
   };
 
   const removeAccount = async (account: AccountDto) => {
-    if (!window.confirm(`¿Eliminar la cuenta «${account.name}»?`)) {
+    const records = reconciliations.filter((r) => r.accountId === account.id).length;
+    if (!window.confirm(deleteAccountConfirmText(account.name, records))) {
       return;
     }
     setActionError(undefined);
@@ -443,6 +445,7 @@ export function AccountsPage({ api = defaultApi }: { api?: ApiClient }) {
               key={reconcilingAccount.id}
               api={api}
               account={reconcilingAccount}
+              nameOf={nameOf}
               onSaved={() => {
                 close();
                 reload();

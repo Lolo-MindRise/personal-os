@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, lt } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import {
   accountBalanceAt,
@@ -58,11 +58,20 @@ export function reconcileDateError(
     : undefined;
 }
 
-function lastReconciliation(db: Db, accountId: number): ReconciliationDto | undefined {
+/**
+ * The period reconciled for date D is (last reconciliation strictly BEFORE D, D]; with none, it
+ * starts after the opening date. So an earlier date than a saved one, or the same date twice,
+ * still lists what happened in its own period.
+ */
+function lastReconciliation(
+  db: Db,
+  accountId: number,
+  before: string,
+): ReconciliationDto | undefined {
   return db
     .select(columns)
     .from(reconciliations)
-    .where(eq(reconciliations.accountId, accountId))
+    .where(and(eq(reconciliations.accountId, accountId), lt(reconciliations.date, before)))
     .orderBy(desc(reconciliations.date), desc(reconciliations.id))
     .limit(1)
     .get();
@@ -102,7 +111,7 @@ export function reconciliationPreview(
     .all()
     .filter((t) => t.fromAccountId === account.id || t.toAccountId === account.id);
 
-  const last = lastReconciliation(db, account.id);
+  const last = lastReconciliation(db, account.id, date);
   const since = (rowDate: string) =>
     inReconcilePeriod(rowDate, account.openingBalanceDate, last?.date, date);
   return {
