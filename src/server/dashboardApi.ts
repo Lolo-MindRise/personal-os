@@ -66,8 +66,11 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
       ? (window[window.length - 2]?.accumulatedCents ?? null)
       : null;
   const currentGoal = nextGoal(goalDtos(db, today), today);
+  // Debt and goal are today-based, so their change only makes sense for the current month; for any
+  // other selected month the previous value is null (no change line).
+  const isCurrentMonth = month === today.slice(0, 7);
   const prevGoalProgress =
-    currentGoal === null || prevAccumulated === null
+    !isCurrentMonth || currentGoal === null || prevAccumulated === null
       ? null
       : goalProgress(currentGoal, accumulatedAt(settings, all, prevEnd), today).progressPercent;
 
@@ -115,7 +118,7 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
         month: prevMonth,
         accumulatedSavingsCents: prevAccumulated,
         projectedSavingsCents: prevHasData ? prevSummary.projectedSavingsCents : null,
-        totalDebtCents: totalDebtAt(db, prevEnd),
+        totalDebtCents: isCurrentMonth ? totalDebtAt(db, prevEnd) : null,
         goalProgressPercent: prevGoalProgress,
       },
     },

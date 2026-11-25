@@ -20,6 +20,11 @@
   any debt's balance date is after the cutoff. Accumulated: null with no initial balance and no
   movement up to the cutoff. Projected: null when the previous month has no entries.
 - Current debt and goal are today-based (as before); only the previous value is cut off.
+- Orchestrator decision (review round 2): `previous.totalDebtCents` and
+  `previous.goalProgressPercent` are null unless the selected month is the month of `today`, so
+  the UI shows no debt/goal change line for past or future months. Savings work for any month.
+- Goal change uses the rounded-down `progressPercent`, so points can differ by one from exact.
+- One debt with a balance dated after the cutoff hides the change line for the whole debt total.
 
 ## Next
 - Orchestrator runs the reviewer.

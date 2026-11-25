@@ -42,7 +42,7 @@ describe('with seed data', () => {
   beforeEach(() => start(true));
 
   it('previous-month figures: none before the data, the seeded month afterwards', async () => {
-    const january = await dashboard('2026-01');
+    const january = await dashboard('2026-01', '2026-01-31');
     // December: no movements and no initial balance; the debt is dated after December's end.
     expect(january.keyFigures.previous).toEqual({
       month: '2025-12',
@@ -51,7 +51,7 @@ describe('with seed data', () => {
       totalDebtCents: null,
       goalProgressPercent: null,
     });
-    const february = await dashboard('2026-02');
+    const february = await dashboard('2026-02', '2026-02-15');
     expect(february.keyFigures.previous).toMatchObject({
       month: '2026-01',
       accumulatedSavingsCents: 99_930,
@@ -90,6 +90,21 @@ describe('with seed data', () => {
     const march = await dashboard('2026-03', '2026-03-15');
     expect(march.keyFigures.previous.totalDebtCents).toBe(225_000);
     expect(march.keyFigures.previous.goalProgressPercent).toBe(37);
+  });
+
+  it('debt and goal change are null for a past or future selected month; savings stay', async () => {
+    const past = await dashboard('2026-01', '2026-11-25');
+    expect(past.keyFigures.previous.totalDebtCents).toBeNull();
+    expect(past.keyFigures.previous.goalProgressPercent).toBeNull();
+    const future = await dashboard('2026-03', '2026-02-15');
+    expect(future.keyFigures.previous.totalDebtCents).toBeNull();
+    expect(future.keyFigures.previous.goalProgressPercent).toBeNull();
+    expect(future.keyFigures.previous.accumulatedSavingsCents).not.toBeNull();
+    expect(future.keyFigures.previous.projectedSavingsCents).not.toBeNull();
+    const pastFeb = await dashboard('2026-02', '2026-11-25');
+    expect(pastFeb.keyFigures.previous.accumulatedSavingsCents).toBe(99_930);
+    expect(pastFeb.keyFigures.previous.projectedSavingsCents).toBe(99_930 - 13_000);
+    expect(pastFeb.keyFigures.previous.totalDebtCents).toBeNull();
   });
 
   it('key figures', async () => {
