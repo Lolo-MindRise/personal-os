@@ -43,6 +43,8 @@ screen needs a concept, add it here first.
 | What the money will do in the future | proyección | previsión |
 | Automatic safety copies of the data | copias | backups, respaldos |
 | Where a copy is also stored | copia de reserva | espejo (in user text) |
+| Oldest backup you can still restore | copia más antigua | backup más viejo |
+| Which backups are kept, and why | qué se conserva | retención, tiers |
 
 ## Verbs on buttons and links
 

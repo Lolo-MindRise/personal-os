@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { BackupStatusDto } from '../shared/api.js';
+import type { BackupStatusDto, BackupTiersDto } from '../shared/api.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
 import { formatDate } from './months.js';
 import { PageHeader } from './PageHeader.js';
@@ -15,6 +15,28 @@ export function formatTimestamp(iso: string | null): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   const day = `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   return `${formatDate(day)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function TiersTable({ title, tiers }: { title: string; tiers: BackupTiersDto }) {
+  const rows: [string, number][] = [
+    ['Últimas 48 horas: todas', tiers.recent],
+    ['Una por día, los últimos 60 días', tiers.daily],
+    ['Una por mes, para siempre', tiers.monthly],
+    ['Antes de migrar o restaurar: las 10 últimas de cada tipo', tiers.preMigration],
+  ];
+  return (
+    <>
+      <h2>{title}</h2>
+      <dl className="debt-facts">
+        {rows.map(([label, count]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{count}</dd>
+          </div>
+        ))}
+      </dl>
+    </>
+  );
 }
 
 export function BackupsView({ status }: { status: BackupStatusDto }) {
@@ -51,14 +73,27 @@ export function BackupsView({ status }: { status: BackupStatusDto }) {
               : 'No configurada'}
           </dd>
         </div>
+        {status.mirror.configured && status.mirror.state === 'ok' && (
+          <div>
+            <dt>Copia más antigua en la reserva</dt>
+            <dd>{formatTimestamp(status.mirror.oldestBackupAt)}</dd>
+          </div>
+        )}
       </dl>
       {status.warnings.map((warning) => (
         <p key={warning} className="form-error" role="alert">
           {warning}
         </p>
       ))}
+      <TiersTable title="Qué se conserva" tiers={status.tiers} />
+      {status.mirror.configured && status.mirror.state === 'ok' && (
+        <TiersTable title="Qué se conserva en la copia de reserva" tiers={status.mirror.tiers} />
+      )}
+      <h2>Cómo restaurar</h2>
       <p className="hint">
-        Para restaurar una copia, sigue la sección «Restore a backup» del README desde Ubuntu.
+        Restaurar se hace con la aplicación parada, desde Ubuntu, y no se puede hacer desde esta
+        pantalla. Sigue la sección «Restore a backup» del README: te muestra las copias que puedes
+        recuperar y guarda una copia de los datos actuales antes de sustituirlos.
       </p>
     </>
   );
