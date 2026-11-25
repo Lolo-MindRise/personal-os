@@ -39,8 +39,17 @@ export interface CategoryUsageDto extends CategoryDto {
   budgetLines: number;
 }
 
+/** A tag ("marca"), with how many movements carry it. */
+export interface TagDto {
+  id: number;
+  name: string;
+  movements: number;
+}
+
 export interface MovementDto {
   id: number;
+  /** Names of its tags, in alphabetical order. */
+  tags: string[];
   date: string;
   kind: Kind;
   categoryId: number;

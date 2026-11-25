@@ -11,7 +11,7 @@ screen needs a concept, add it here first.
 | Daily | Día a día → Movimientos, Importar |
 | Planning | Planificar → Presupuesto, Fijos, Proyección |
 | Tracking | Seguimiento → Deudas, Informes, Objetivos y resumen, Hitos |
-| Settings | Ajustes → Categorías, Copias |
+| Settings | Ajustes → Categorías, Marcas, Cuentas, Copias |
 
 ## Things
 
@@ -22,6 +22,8 @@ screen needs a concept, add it here first.
 | What a movement is about (text) | concepto | descripción |
 | Amount of money | importe | cantidad, monto |
 | A category of movements | categoría | etiqueta |
+| A free word attached to a movement, several allowed (English: tag) | marca (plural marcas) | etiqueta (that word is avoided so it is never confused with a category), tag |
+| Filter that needs every selected marca on the movement | marcas (all of them must match: "marcas A y B") | alguna de |
 | Where money is kept (a movement belongs to one) | cuenta | banco, monedero |
 | Account type: bank account / cash in hand / savings account | cuenta bancaria / efectivo / ahorro | corriente, caja |
 | Money moved between two accounts (not income or expense) | transferencia | traspaso, movimiento entre cuentas |

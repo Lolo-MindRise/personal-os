@@ -70,6 +70,16 @@ export const transferUpdateSchema = transferFieldsSchema
   .partial()
   .refine(differentAccounts.check, differentAccounts);
 
+export const MAX_TAG_LENGTH = 30;
+export const MAX_TAGS_PER_MOVEMENT = 10;
+export const tagName = z.string().trim().min(1).max(MAX_TAG_LENGTH);
+
+/** Renaming a tag. */
+export const tagUpdateSchema = z.strictObject({ name: tagName });
+
+/** The key tag names are unique by: lower case, trimmed. */
+export const tagKey = (name: string): string => name.trim().toLowerCase();
+
 export const categoryCreateSchema = z.strictObject({
   name: text,
   kind: kindSchema,
@@ -91,6 +101,8 @@ export const movementFieldsSchema = z.strictObject({
   debtId: z.number().int().positive().nullish(),
   /** Omitted on creation = the default account ("Principal"). */
   accountId: z.number().int().positive().optional(),
+  /** Tag names (created on the fly). Omitted = unchanged on update, none on creation. */
+  tags: z.array(tagName).max(MAX_TAGS_PER_MOVEMENT).optional(),
 });
 
 export const movementCreateSchema = movementFieldsSchema.refine(
@@ -252,6 +264,16 @@ export const movementSearchSchema = z
     debtId: queryOptional(queryInt(1)),
     recurringItemId: queryOptional(queryInt(1)),
     kind: queryOptional(kindSchema),
+    /**
+     * Tag ids, comma separated. A movement must have all of them (the conservative choice).
+     * Ids that match no tag are ignored.
+     */
+    tagIds: queryOptional(
+      z
+        .string()
+        .regex(/^[1-9]\d{0,9}(,[1-9]\d{0,9}){0,19}$/, 'Las marcas no son válidas.')
+        .transform((list) => [...new Set(list.split(',').map(Number))]),
+    ),
     from: queryOptional(isoDate),
     to: queryOptional(isoDate),
     minAmountCents: queryOptional(queryInt(0)),

@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import type { CategoryDto, MovementDto } from '../shared/api.js';
+import type { CategoryDto } from '../shared/api.js';
 import { monthOf } from '../shared/recurring.js';
 import {
   isoMonth,
@@ -16,6 +16,9 @@ import {
   getMovement,
   MESSAGES as COMMON_MESSAGES,
   movementColumns,
+  setMovementTags,
+  withTags,
+  type MovementRow,
   notFound,
   parseId,
 } from './apiCommon.js';
@@ -34,6 +37,7 @@ import { registerProjectionApi } from './projectionApi.js';
 import { registerMilestonesApi } from './milestonesApi.js';
 import { registerRecurringApi } from './recurringApi.js';
 import { registerSummaryApi } from './summaryApi.js';
+import { registerTagsApi } from './tagsApi.js';
 
 const MESSAGES = {
   ...COMMON_MESSAGES,
@@ -95,7 +99,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     if (!parsed.success) {
       return badRequest(reply, MESSAGES.invalidMonth, { month: MESSAGES.invalidMonth });
     }
-    const rows: MovementDto[] = db
+    const rows: MovementRow[] = db
       .select(movementColumns)
       .from(movements)
       .innerJoin(categories, eq(categories.id, movements.categoryId))
@@ -104,7 +108,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
       )
       .orderBy(desc(movements.date), desc(movements.id))
       .all();
-    return rows;
+    return withTags(db, rows);
   });
 
   app.post('/api/movements', (request, reply) => {
@@ -116,8 +120,15 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     if (refError !== undefined) {
       return badRequest(reply, refError.error, { [refError.field]: refError.error });
     }
-    const created = db.insert(movements).values(parsed.data).returning({ id: movements.id }).get();
-    return reply.code(201).send(getMovement(db, created.id));
+    const { tags: tagNames, ...values } = parsed.data;
+    const createdId = db.transaction((tx) => {
+      const created = tx.insert(movements).values(values).returning({ id: movements.id }).get();
+      if (tagNames !== undefined) {
+        setMovementTags(tx, created.id, tagNames);
+      }
+      return created.id;
+    });
+    return reply.code(201).send(getMovement(db, createdId));
   });
 
   app.patch('/api/movements/:id', (request, reply) => {
@@ -155,14 +166,20 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     if (refError !== undefined) {
       return badRequest(reply, refError.error, { [refError.field]: refError.error });
     }
-    db.update(movements)
-      .set({
-        ...merged.data,
-        notes: merged.data.notes ?? null,
-        debtId: merged.data.debtId ?? null,
-      })
-      .where(eq(movements.id, id))
-      .run();
+    const { tags: tagNames, ...values } = merged.data;
+    db.transaction((tx) => {
+      tx.update(movements)
+        .set({
+          ...values,
+          notes: values.notes ?? null,
+          debtId: values.debtId ?? null,
+        })
+        .where(eq(movements.id, id))
+        .run();
+      if (tagNames !== undefined) {
+        setMovementTags(tx, id, tagNames);
+      }
+    });
     return getMovement(db, id);
   });
 
@@ -198,4 +215,5 @@ export function registerApi(app: FastifyInstance, db: Db): void {
   registerMilestonesApi(app, db);
   registerRecurringApi(app, db);
   registerSummaryApi(app, db);
+  registerTagsApi(app, db);
 }

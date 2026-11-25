@@ -4,6 +4,7 @@ import {
   foreignKey,
   index,
   integer,
+  primaryKey,
   sqliteTable,
   text,
   unique,
@@ -245,6 +246,42 @@ export const movements = sqliteTable(
     check('movements_debt_only_on_repayment', sql`${t.debtId} IS NULL OR ${t.kind} = 'repayment'`),
     index('movements_date_idx').on(t.date),
     index('movements_category_idx').on(t.categoryId),
+  ],
+);
+
+/**
+ * Free marks on movements (plan 0002, task 04; "marcas" in the UI). `name` is what the user typed
+ * (trimmed); `name_key` is the same lower-cased and is unique, so names are unique ignoring
+ * case and surrounding spaces (JS lower-casing; SQLite's lower() only folds ASCII).
+ */
+export const tags = sqliteTable(
+  'tags',
+  {
+    id: id(),
+    name: text('name').notNull(),
+    nameKey: text('name_key').notNull().unique(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check('tags_name_not_empty', sql`length(trim(${t.name})) > 0`),
+    check('tags_name_key_trimmed', sql`${t.nameKey} = trim(${t.nameKey})`),
+  ],
+);
+
+/** Many to many between movements and tags. Deleting either side removes only the links. */
+export const movementTags = sqliteTable(
+  'movement_tags',
+  {
+    movementId: integer('movement_id')
+      .notNull()
+      .references(() => movements.id, { onDelete: 'cascade' }),
+    tagId: integer('tag_id')
+      .notNull()
+      .references(() => tags.id, { onDelete: 'cascade' }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.movementId, t.tagId] }),
+    index('movement_tags_tag_idx').on(t.tagId),
   ],
 );
 

@@ -18,6 +18,7 @@ export const VIEW_IDS = [
   'goals',
   'milestones',
   'categories',
+  'tags',
   'accounts',
   'backups',
 ] as const;

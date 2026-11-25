@@ -8,7 +8,7 @@ import { formatDate } from './months.js';
 const SEPARATOR = ';';
 const BOM = '﻿';
 
-export const CSV_HEADER = ['Fecha', 'Tipo', 'Categoría', 'Concepto', 'Importe', 'Notas'];
+export const CSV_HEADER = ['Fecha', 'Tipo', 'Categoría', 'Concepto', 'Importe', 'Notas', 'Marcas'];
 
 /** Integer cents as `1.234,56` (no currency sign). Negative amounts get a leading `-`. */
 export function formatCsvAmount(cents: number): string {
@@ -37,6 +37,7 @@ export function movementsToCsv(movements: MovementDto[]): string {
       csvText(m.concept),
       formatCsvAmount(m.amountCents),
       csvText(m.notes ?? ''),
+      csvText(m.tags.join(', ')),
     ].join(SEPARATOR),
   );
   return BOM + [CSV_HEADER.join(SEPARATOR), ...rows].join('\r\n') + '\r\n';

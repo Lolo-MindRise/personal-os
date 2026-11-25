@@ -26,6 +26,7 @@ describe('validateFilters', () => {
       q: '  mercadona ',
       categoryId: '2',
       kind: 'expense',
+      tagIds: '',
       from: '2026-01-01',
       to: '2026-03-31',
       minAmount: '10',
@@ -187,6 +188,7 @@ describe('SearchResults', () => {
     notes: null,
     debtId: null,
     accountId: 1,
+    tags: [],
     recurringItemId: null,
     ...over,
   });

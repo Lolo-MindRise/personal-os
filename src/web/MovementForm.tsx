@@ -4,6 +4,8 @@ import { DEFAULT_ACCOUNT_ID, KINDS, type Kind } from '../shared/constants.js';
 import { Field } from './Field.js';
 import { KIND_LABELS } from './labels.js';
 import {
+  commitTagDraft,
+  removeTag,
   validateMovementForm,
   type MovementField,
   type MovementFormValues,
@@ -40,6 +42,8 @@ interface Props {
   /** Accounts a movement can belong to; the selector is hidden while there are none. */
   accounts?: Pick<AccountDto, 'id' | 'name'>[];
   /** Errors to show next to each field (client-side or returned by the API). */
+  /** Names of the existing tags, offered while typing. */
+  tagNames?: string[];
   errors: FieldErrors;
   /** Message not tied to a field (for example a network failure). */
   formError?: string | undefined;
@@ -209,6 +213,55 @@ export function MovementForm(props: Props) {
             }}
           />
         </Field>
+        {!locked && (
+          <Field id="movement-tagDraft" label="Marcas" error={errors.tags}>
+            <div className="tag-input">
+              {(values.tags ?? []).length > 0 && (
+                <ul className="tag-chips" aria-label="Marcas del movimiento">
+                  {(values.tags ?? []).map((t) => (
+                    <li key={t} className="tag-chip">
+                      {t}
+                      <button
+                        type="button"
+                        aria-label={`Quitar la marca ${t}`}
+                        onClick={() => {
+                          props.onChange(removeTag(values, t));
+                        }}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <input
+                id="movement-tagDraft"
+                type="text"
+                list="movement-tag-options"
+                placeholder="Escribe y pulsa Intro o coma"
+                value={values.tagDraft ?? ''}
+                aria-describedby={describe('tags')}
+                onChange={(e) => {
+                  // A comma ends the tag being typed.
+                  const next = { ...values, tagDraft: e.target.value };
+                  props.onChange(e.target.value.includes(',') ? commitTagDraft(next) : next);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    // Enter adds the tag; it must not save the movement.
+                    e.preventDefault();
+                    props.onChange(commitTagDraft(values));
+                  }
+                }}
+              />
+              <datalist id="movement-tag-options">
+                {(props.tagNames ?? []).map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            </div>
+          </Field>
+        )}
       </div>
       {props.formError !== undefined && (
         <p className="form-error" role="alert">
