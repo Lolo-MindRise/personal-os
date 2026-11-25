@@ -38,6 +38,7 @@ import { monthLabel } from './months.js';
 import { FilterBar, PageHeader } from './PageHeader.js';
 import { hrefFor, navigate, useMonth, useRoute } from './router.js';
 import type { SearchQuery } from './movementSearch.js';
+import { downloadCsv, movementsToCsv } from './movementsCsv.js';
 import { PendingList } from './PendingList.js';
 import { SummaryBar } from './SummaryBar.js';
 
@@ -103,6 +104,8 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   /** Why a pending-section action failed or a confirmation was cancelled. Not cleared by reloads. */
   const [actionError, setActionError] = useState<string | undefined>();
   const [reloads, setReloads] = useState(0);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | undefined>();
 
   const [form, setForm] = useState<MovementFormValues>(() => emptyForm());
   const [editingId, setEditingId] = useState<number | undefined>();
@@ -383,6 +386,32 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     );
   }
 
+  /** Downloads the month on screen, or every result of the active search (paging through the API). */
+  const exportCsv = async () => {
+    setExporting(true);
+    setExportError(undefined);
+    try {
+      if (search === undefined) {
+        downloadCsv(`movimientos-${month}.csv`, movementsToCsv(shownMovements));
+      } else {
+        const rows: MovementDto[] = [];
+        let page = 1;
+        let pageCount = 1;
+        do {
+          const result = await api.searchMovements(search.query, page);
+          rows.push(...result.rows);
+          pageCount = result.pageCount;
+          page += 1;
+        } while (page <= pageCount);
+        downloadCsv('movimientos-busqueda.csv', movementsToCsv(rows));
+      }
+    } catch (error) {
+      setExportError(messageOf(error));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const categoryName = categories.find((c) => c.id === categoryFilter)?.name;
   const shownMovements =
     categoryFilter === undefined
@@ -430,6 +459,21 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
             Buscar y filtrar
           </button>
         </div>
+      )}
+
+      <div className="form-actions">
+        <button
+          type="button"
+          disabled={exporting || (search !== undefined && searchResult === undefined)}
+          onClick={() => void exportCsv()}
+        >
+          {search === undefined ? 'Exportar mes' : 'Exportar resultados'}
+        </button>
+      </div>
+      {exportError !== undefined && (
+        <p className="form-error" role="alert">
+          {exportError}
+        </p>
       )}
 
       {(showFilters || search !== undefined) && (

@@ -41,6 +41,7 @@ screen needs a concept, add it here first.
 | A dated step towards the goals | hito | tarea |
 | Year table of monthly figures | resumen (del año) | informe |
 | What the money will do in the future | proyección | previsión |
+| Download movements as a spreadsheet file (CSV) | Exportar mes / Exportar resultados | descargar, volcar |
 | Automatic safety copies of the data | copias | backups, respaldos |
 | Where a copy is also stored | copia de reserva | espejo (in user text) |
 | Oldest backup you can still restore | copia más antigua | backup más viejo |
