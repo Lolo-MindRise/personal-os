@@ -159,6 +159,34 @@ test('filter movements across months, page through the results and jump to a mon
       await expect(page.getByRole('navigation', { name: 'Mes' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Buscar y filtrar' })).toBeVisible();
     });
+
+    await test.step('filters live in the URL: reload keeps them, back restores the previous ones', async () => {
+      await page.getByRole('button', { name: 'Buscar y filtrar' }).click();
+      await page.getByLabel('Texto en concepto o notas').fill('Compra Mercadona');
+      await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+      await expect(page.getByTestId('search-totals')).toContainText('1 movimiento');
+      await page.getByLabel('Texto en concepto o notas').fill('zzbusca Nómina');
+      await page.getByLabel('Tipo').selectOption({ label: 'Ingreso' });
+      await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+      await expect(resultRows(page)).toContainText('Nómina de septiembre');
+      await expect(page).toHaveURL(/q=zzbusca/);
+
+      await page.reload();
+      await expect(resultRows(page)).toContainText('Nómina de septiembre');
+      await expect(page.getByLabel('Texto en concepto o notas')).toHaveValue('zzbusca Nómina');
+      await expect(page.getByLabel('Tipo')).toHaveValue('income');
+
+      await page.goBack();
+      await expect(resultRows(page)).toContainText('Compra Mercadona');
+      await expect(page.getByLabel('Texto en concepto o notas')).toHaveValue('Compra Mercadona');
+      await expect(page.getByLabel('Tipo')).toHaveValue('');
+    });
+
+    await test.step('invalid params in the URL are ignored', async () => {
+      await page.goto('/#/movements?month=2027-10&cat=abc&kind=zzz&from=hoy&min=-1');
+      await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeVisible();
+      await expect(results(page)).toHaveCount(0);
+    });
   } finally {
     await cleanUp(request);
   }

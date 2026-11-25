@@ -10,7 +10,15 @@ import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.
 import { MovementForm, type FieldErrors, type FormMode } from './MovementForm.js';
 import { MovementList } from './MovementList.js';
 import { MovementFilters, SearchResults, type FilterErrors } from './MovementSearch.js';
-import { emptyFilters, validateFilters, type FilterValues } from './movementSearch.js';
+import {
+  emptyFilters,
+  paramsToQuery,
+  queryToFilters,
+  queryToParams,
+  SEARCH_URL_KEYS,
+  validateFilters,
+  type FilterValues,
+} from './movementSearch.js';
 import { initialSearchState, searchReducer } from './searchState.js';
 import {
   emptyForm,
@@ -27,7 +35,7 @@ import { LinkedMovements } from './LinkedMovements.js';
 import { SidePanel, usePanel } from './SidePanel.js';
 import { monthLabel } from './months.js';
 import { FilterBar, PageHeader } from './PageHeader.js';
-import { hrefFor, useMonth, useRoute } from './router.js';
+import { hrefFor, navigate, useMonth, useRoute } from './router.js';
 import type { SearchQuery } from './movementSearch.js';
 import { PendingList } from './PendingList.js';
 import { SummaryBar } from './SummaryBar.js';
@@ -74,6 +82,14 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
           ? { recurringItemId: fixedParam }
           : undefined,
     [debtParam, fixedParam],
+  );
+  // The panel's own filters, also from the URL. Links to debts or fixed items take precedence.
+  const searchKey = JSON.stringify(SEARCH_URL_KEYS.map((key) => `${key}=${params[key] ?? ''}`));
+  const urlQuery = useMemo(
+    () => (linkedQuery === undefined ? paramsToQuery(params) : undefined),
+    // `params` changes identity with every route read; the filter values are what matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [searchKey, linkedQuery],
   );
   const panel = usePanel();
   const [categories, setCategories] = useState<CategoryDto[]>([]);
@@ -176,17 +192,51 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     };
   }, [api, search]);
 
+  // The panel's filters live in the URL (task 0001-01): each applied search is a history entry,
+  // and the search follows the URL, so reload and the back button restore it.
+  // Adjusted while rendering, as React recommends for state derived from other state.
+  const [syncedQuery, setSyncedQuery] = useState<SearchQuery | undefined>();
+  if (urlQuery !== syncedQuery) {
+    setSyncedQuery(urlQuery);
+    if (urlQuery === undefined) {
+      dispatch({ type: 'leave' });
+    } else {
+      setFilters(queryToFilters(urlQuery));
+      setFilterErrors({});
+      dispatch({ type: 'search', query: urlQuery });
+    }
+  }
+
+  /** The current URL parameters without the panel's own filters. */
+  const paramsWithoutSearch = (): Record<string, string> =>
+    Object.fromEntries(Object.entries(params).filter(([key]) => !SEARCH_URL_KEYS.includes(key)));
+
   const runSearch = () => {
     const result = validateFilters(filters);
     if (!result.ok) {
       setFilterErrors(result.errors);
       return;
     }
-    dispatch({ type: 'search', query: result.query });
+    const next = queryToParams(result.query);
+    if (
+      urlQuery !== undefined &&
+      JSON.stringify(queryToParams(urlQuery)) === JSON.stringify(next)
+    ) {
+      // Same filters as the URL: no new history entry, just run it again.
+      dispatch({ type: 'search', query: result.query });
+    } else if (Object.keys(next).length === 0) {
+      // Every filter empty: nothing to search for.
+      dispatch({ type: 'search', query: result.query });
+    } else {
+      navigate('movements', { ...paramsWithoutSearch(), ...next });
+    }
   };
 
   /** Back to the monthly view, with focus on the page heading (the clicked button disappears). */
   const leaveSearch = () => {
+    if (urlQuery !== undefined) {
+      navigate('movements', paramsWithoutSearch());
+    }
     dispatch({ type: 'leave' });
     headingRef.current?.focus();
   };
@@ -393,6 +443,9 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
             setFilterErrors({});
           }}
           onClose={() => {
+            if (urlQuery !== undefined) {
+              navigate('movements', paramsWithoutSearch());
+            }
             dispatch({ type: 'close' });
             headingRef.current?.focus();
           }}

@@ -1,4 +1,4 @@
-import type { Kind } from '../shared/constants.js';
+import { KINDS, type Kind } from '../shared/constants.js';
 import { isoDate } from '../shared/schemas.js';
 import { formatCents, parseMoney } from '../shared/money.js';
 
@@ -118,6 +118,99 @@ export function validateFilters(values: FilterValues): FilterResult {
     errors.maxAmount = FILTER_ERRORS.amountOrder;
   }
   return Object.keys(errors).length > 0 ? { ok: false, errors } : { ok: true, query };
+}
+
+/**
+ * URL parameter of each panel filter. `cat`, not `category`: `category` is the month filter
+ * that links from the dashboard put in the URL.
+ */
+export const URL_KEYS = {
+  q: 'q',
+  categoryId: 'cat',
+  kind: 'kind',
+  from: 'from',
+  to: 'to',
+  minAmountCents: 'min',
+  maxAmountCents: 'max',
+} as const;
+
+/** Every URL parameter the panel owns (to clear them when the search changes or ends). */
+export const SEARCH_URL_KEYS: string[] = Object.values(URL_KEYS);
+
+/** The panel's query as URL params (amounts as integer cents). Debt and fixed links are not included. */
+export function queryToParams(query: SearchQuery): Record<string, string> {
+  const params: Record<string, string> = {};
+  for (const [field, key] of Object.entries(URL_KEYS) as [keyof typeof URL_KEYS, string][]) {
+    const value = query[field];
+    if (value !== undefined) {
+      params[key] = String(value);
+    }
+  }
+  return params;
+}
+
+const isCents = (text: string | undefined): text is string =>
+  text !== undefined && /^\d{1,12}$/.test(text);
+
+/**
+ * Reads the panel's filters back from URL params. Invalid or unknown values are ignored one by
+ * one, never thrown. Returns undefined when no valid filter is left (no search).
+ */
+export function paramsToQuery(params: Record<string, string>): SearchQuery | undefined {
+  const query: SearchQuery = {};
+  const q = params[URL_KEYS.q]?.trim();
+  if (q !== undefined && q !== '' && q.length <= MAX_TEXT_LENGTH) {
+    query.q = q;
+  }
+  const cat = params[URL_KEYS.categoryId];
+  if (cat !== undefined && /^[1-9]\d{0,9}$/.test(cat)) {
+    query.categoryId = Number(cat);
+  }
+  const kind = KINDS.find((k) => k === params[URL_KEYS.kind]);
+  if (kind !== undefined) {
+    query.kind = kind;
+  }
+  for (const field of ['from', 'to'] as const) {
+    const text = params[URL_KEYS[field]];
+    if (text !== undefined && isoDate.safeParse(text).success) {
+      query[field] = text;
+    }
+  }
+  if (query.from !== undefined && query.to !== undefined && query.to < query.from) {
+    delete query.to;
+  }
+  const min = params[URL_KEYS.minAmountCents];
+  if (isCents(min)) {
+    query.minAmountCents = Number(min);
+  }
+  const max = params[URL_KEYS.maxAmountCents];
+  if (isCents(max)) {
+    query.maxAmountCents = Number(max);
+  }
+  if (
+    query.minAmountCents !== undefined &&
+    query.maxAmountCents !== undefined &&
+    query.maxAmountCents < query.minAmountCents
+  ) {
+    delete query.maxAmountCents;
+  }
+  return Object.keys(query).length > 0 ? query : undefined;
+}
+
+const euros = (cents: number) =>
+  `${String(Math.floor(cents / 100))},${String(cents % 100).padStart(2, '0')}`;
+
+/** The panel's text fields for a query (the inverse of `validateFilters`). */
+export function queryToFilters(query: SearchQuery): FilterValues {
+  return {
+    q: query.q ?? '',
+    categoryId: query.categoryId === undefined ? '' : String(query.categoryId),
+    kind: query.kind ?? '',
+    from: query.from ?? '',
+    to: query.to ?? '',
+    minAmount: query.minAmountCents === undefined ? '' : euros(query.minAmountCents),
+    maxAmount: query.maxAmountCents === undefined ? '' : euros(query.maxAmountCents),
+  };
 }
 
 /** The query string of a search request (only the filters that are set). */
