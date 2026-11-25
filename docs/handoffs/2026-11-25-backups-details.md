@@ -1,4 +1,4 @@
-# Handoff 2026-11-28: Backups screen details (plan 0001, task 03)
+# Handoff 2026-11-25: Backups screen details (plan 0001, task 03)
 
 Branch `agent/ui/03-backups-details` (from `integration/0001-polish`).
 
