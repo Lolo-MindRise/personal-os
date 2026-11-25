@@ -5,6 +5,7 @@ import type {
   MilestoneDto,
   SettingsDto,
 } from './api.js';
+import { formatCents } from './money.js';
 import { isOverdue } from './milestones.js';
 import { buildYearSummary, type SummaryMovement } from './summary.js';
 
@@ -44,6 +45,74 @@ export function monthRows(
     const row = rowsByMonth.get(m);
     return row === undefined ? [] : [row];
   });
+}
+
+/** `'2026-01'` → `'2025-12'`. */
+export function previousMonth(month: string): string {
+  return monthsEnding(month, 2)[0] ?? month;
+}
+
+/** Last day of `month`: `'2026-02'` → `'2026-02-28'`. */
+export function monthEnd(month: string): string {
+  const day = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0));
+  return day.toISOString().slice(0, 10);
+}
+
+const MONTH_NAMES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
+
+/**
+ * Neutral month-over-month text for one figure, in integer cents: `+120,00 € respecto a
+ * octubre`, `-50,00 € respecto a octubre`, `Sin cambios respecto a octubre`. Null (show
+ * nothing) when either value is missing: no previous data means no comparison.
+ */
+export function monthChangeText(
+  currentCents: number | null,
+  previousCents: number | null,
+  previousMonthIso: string,
+): string | null {
+  if (currentCents === null || previousCents === null) {
+    return null;
+  }
+  const name = MONTH_NAMES[Number(previousMonthIso.slice(5, 7)) - 1] ?? previousMonthIso;
+  const delta = currentCents - previousCents;
+  if (delta === 0) {
+    return `Sin cambios respecto a ${name}`;
+  }
+  return `${delta > 0 ? '+' : '-'}${formatCents(Math.abs(delta))} respecto a ${name}`;
+}
+
+/**
+ * Same as `monthChangeText` for a progress in whole percent: `+5 puntos respecto a octubre`,
+ * `+1 punto respecto a octubre`, `-3 puntos respecto a octubre`.
+ */
+export function monthChangePointsText(
+  currentPercent: number | null,
+  previousPercent: number | null,
+  previousMonthIso: string,
+): string | null {
+  if (currentPercent === null || previousPercent === null) {
+    return null;
+  }
+  const name = MONTH_NAMES[Number(previousMonthIso.slice(5, 7)) - 1] ?? previousMonthIso;
+  const delta = currentPercent - previousPercent;
+  if (delta === 0) {
+    return `Sin cambios respecto a ${name}`;
+  }
+  const unit = Math.abs(delta) === 1 ? 'punto' : 'puntos';
+  return `${delta > 0 ? '+' : '-'}${String(Math.abs(delta))} ${unit} respecto a ${name}`;
 }
 
 /** The goal with the nearest target date that is today or later; null when there is none. */

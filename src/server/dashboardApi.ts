@@ -5,13 +5,16 @@ import {
   debtProgressPercent,
   monthRows,
   monthsEnding,
+  monthEnd,
+  previousMonth,
   nextGoal,
   upcomingMilestones,
 } from '../shared/dashboard.js';
 import { isoDate, isoMonth } from '../shared/schemas.js';
+import { accumulatedAt, goalProgress } from '../shared/summary.js';
 import { badRequest, MESSAGES as COMMON_MESSAGES } from './apiCommon.js';
 import { budgetMonth } from './budgetApi.js';
-import { listDebts } from './debtsApi.js';
+import { listDebts, totalDebtAt } from './debtsApi.js';
 import type { Db } from './db/index.js';
 import { dueEntries } from './db/recurring.js';
 import { budgetLines, debts, goals, movements } from './db/schema.js';
@@ -45,6 +48,31 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
   const all = allMovements(db);
   const summary = monthSummary(db, month);
   const window = monthRows(monthsEnding(month), settings, all);
+  const prevMonth = previousMonth(month);
+  const prevSummary = monthSummary(db, prevMonth);
+  const prevHasData = [
+    prevSummary.incomeCents,
+    prevSummary.expenseCents,
+    prevSummary.repaymentCents,
+    prevSummary.pendingIncomeCents,
+    prevSummary.pendingExpenseCents,
+    prevSummary.pendingRepaymentCents,
+  ].some((cents) => cents !== 0);
+  // The previous month ends the day before the selected month starts; debt, goal and accumulated
+  // savings are cut off there. No initial balance and no movement up to then: nothing to compare.
+  const prevEnd = monthEnd(prevMonth);
+  const prevAccumulated =
+    settings.initialSavingsDate !== null || all.some((m) => m.date <= prevEnd)
+      ? (window[window.length - 2]?.accumulatedCents ?? null)
+      : null;
+  const currentGoal = nextGoal(goalDtos(db, today), today);
+  // Debt and goal are today-based, so their change only makes sense for the current month; for any
+  // other selected month the previous value is null (no change line).
+  const isCurrentMonth = month === today.slice(0, 7);
+  const prevGoalProgress =
+    !isCurrentMonth || currentGoal === null || prevAccumulated === null
+      ? null
+      : goalProgress(currentGoal, accumulatedAt(settings, all, prevEnd), today).progressPercent;
 
   const debtItems = listDebts(db).map((d) => ({
     id: d.id,
@@ -83,9 +111,16 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
     },
     keyFigures: {
       accumulatedSavingsCents: window[window.length - 1]?.accumulatedCents ?? null,
-      nextGoal: nextGoal(goalDtos(db, today), today),
+      nextGoal: currentGoal,
       totalDebtCents: totalEstimatedCents,
       projectedSavingsCents: summary.projectedSavingsCents,
+      previous: {
+        month: prevMonth,
+        accumulatedSavingsCents: prevAccumulated,
+        projectedSavingsCents: prevHasData ? prevSummary.projectedSavingsCents : null,
+        totalDebtCents: isCurrentMonth ? totalDebtAt(db, prevEnd) : null,
+        goalProgressPercent: prevGoalProgress,
+      },
     },
     months: window,
     categories,

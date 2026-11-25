@@ -10,7 +10,16 @@ import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.
 import { MovementForm, type FieldErrors, type FormMode } from './MovementForm.js';
 import { MovementList } from './MovementList.js';
 import { MovementFilters, SearchResults, type FilterErrors } from './MovementSearch.js';
-import { emptyFilters, validateFilters, type FilterValues } from './movementSearch.js';
+import {
+  emptyFilters,
+  paramsToQuery,
+  queryToFilters,
+  queryToParams,
+  SEARCH_URL_KEYS,
+  searchAction,
+  validateFilters,
+  type FilterValues,
+} from './movementSearch.js';
 import { initialSearchState, searchReducer } from './searchState.js';
 import {
   emptyForm,
@@ -27,8 +36,15 @@ import { LinkedMovements } from './LinkedMovements.js';
 import { SidePanel, usePanel } from './SidePanel.js';
 import { monthLabel } from './months.js';
 import { FilterBar, PageHeader } from './PageHeader.js';
-import { hrefFor, useMonth, useRoute } from './router.js';
+import { hrefFor, navigate, useMonth, useRoute } from './router.js';
 import type { SearchQuery } from './movementSearch.js';
+import {
+  canExportMonth,
+  downloadCsv,
+  fetchAllSearchRows,
+  monthCsvFilename,
+  movementsToCsv,
+} from './movementsCsv.js';
 import { PendingList } from './PendingList.js';
 import { SummaryBar } from './SummaryBar.js';
 
@@ -75,10 +91,20 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
           : undefined,
     [debtParam, fixedParam],
   );
+  // The panel's own filters, also from the URL. Links to debts or fixed items take precedence.
+  const searchKey = JSON.stringify(SEARCH_URL_KEYS.map((key) => `${key}=${params[key] ?? ''}`));
+  const urlQuery = useMemo(
+    () => (linkedQuery === undefined ? paramsToQuery(params) : undefined),
+    // `params` changes identity with every route read; the filter values are what matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [searchKey, linkedQuery],
+  );
   const panel = usePanel();
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [debts, setDebts] = useState<DebtDto[]>([]);
   const [movements, setMovements] = useState<MovementDto[]>([]);
+  /** The month `movements` belongs to; it lags `month` while a new month loads or fails to. */
+  const [loadedMonth, setLoadedMonth] = useState<string | undefined>();
   const [pending, setPending] = useState<PendingEntryDto[]>([]);
   const [skipped, setSkipped] = useState<PendingEntryDto[]>([]);
   const [summary, setSummary] = useState<MonthSummaryDto | undefined>();
@@ -86,6 +112,8 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   /** Why a pending-section action failed or a confirmation was cancelled. Not cleared by reloads. */
   const [actionError, setActionError] = useState<string | undefined>();
   const [reloads, setReloads] = useState(0);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | undefined>();
 
   const [form, setForm] = useState<MovementFormValues>(() => emptyForm());
   const [editingId, setEditingId] = useState<number | undefined>();
@@ -131,6 +159,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
       ([rows, totals, due, skippedEntries]) => {
         if (active) {
           setMovements(rows);
+          setLoadedMonth(month);
           setSummary(totals);
           setPending(due);
           setSkipped(skippedEntries);
@@ -176,17 +205,55 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     };
   }, [api, search]);
 
+  // The panel's filters live in the URL (task 0001-01): each applied search is a history entry,
+  // and the search follows the URL, so reload and the back button restore it.
+  // Adjusted while rendering, as React recommends for state derived from other state.
+  const [syncedQuery, setSyncedQuery] = useState<SearchQuery | undefined>();
+  const [keepEmptySearch, setKeepEmptySearch] = useState(false);
+  if (urlQuery !== syncedQuery) {
+    setSyncedQuery(urlQuery);
+    if (urlQuery === undefined) {
+      if (keepEmptySearch) {
+        setKeepEmptySearch(false);
+      } else {
+        dispatch({ type: 'leave' });
+      }
+    } else {
+      setFilters(queryToFilters(urlQuery));
+      setFilterErrors({});
+      dispatch({ type: 'search', query: urlQuery });
+    }
+  }
+
+  /** The current URL parameters without the panel's own filters. */
+  const paramsWithoutSearch = (): Record<string, string> =>
+    Object.fromEntries(Object.entries(params).filter(([key]) => !SEARCH_URL_KEYS.includes(key)));
+
   const runSearch = () => {
     const result = validateFilters(filters);
     if (!result.ok) {
       setFilterErrors(result.errors);
       return;
     }
+    const action = searchAction(urlQuery, result.query);
+    if (action === 'navigate') {
+      navigate('movements', { ...paramsWithoutSearch(), ...queryToParams(result.query) });
+      return;
+    }
+    if (action === 'clear-url') {
+      // The URL held a search and every filter is now empty: drop it so reload and back agree
+      // with what is shown. The empty search stays visible (the sync below must not close it).
+      setKeepEmptySearch(true);
+      navigate('movements', paramsWithoutSearch());
+    }
     dispatch({ type: 'search', query: result.query });
   };
 
   /** Back to the monthly view, with focus on the page heading (the clicked button disappears). */
   const leaveSearch = () => {
+    if (urlQuery !== undefined) {
+      navigate('movements', paramsWithoutSearch(), { replace: true });
+    }
     dispatch({ type: 'leave' });
     headingRef.current?.focus();
   };
@@ -328,6 +395,27 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     );
   }
 
+  /** Downloads the month on screen, or every result of the active search (paging through the API). */
+  const exportCsv = async () => {
+    setExporting(true);
+    setExportError(undefined);
+    try {
+      if (search === undefined) {
+        downloadCsv(
+          monthCsvFilename(month, categoryFilter === undefined ? undefined : categoryName),
+          movementsToCsv(shownMovements),
+        );
+      } else {
+        const rows = await fetchAllSearchRows((page) => api.searchMovements(search.query, page));
+        downloadCsv('movimientos-busqueda.csv', movementsToCsv(rows));
+      }
+    } catch (error) {
+      setExportError(messageOf(error));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const categoryName = categories.find((c) => c.id === categoryFilter)?.name;
   const shownMovements =
     categoryFilter === undefined
@@ -377,6 +465,30 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
         </div>
       )}
 
+      <div className="form-actions">
+        <button
+          type="button"
+          disabled={
+            exporting ||
+            (search === undefined
+              ? !canExportMonth(loadedMonth, month, loadError)
+              : searchResult === undefined)
+          }
+          onClick={() => void exportCsv()}
+        >
+          {search !== undefined
+            ? 'Exportar resultados'
+            : categoryFilter !== undefined
+              ? 'Exportar mes (categoría)'
+              : 'Exportar mes'}
+        </button>
+      </div>
+      {exportError !== undefined && (
+        <p className="form-error" role="alert">
+          {exportError}
+        </p>
+      )}
+
       {(showFilters || search !== undefined) && (
         <MovementFilters
           values={filters}
@@ -393,6 +505,9 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
             setFilterErrors({});
           }}
           onClose={() => {
+            if (urlQuery !== undefined) {
+              navigate('movements', paramsWithoutSearch(), { replace: true });
+            }
             dispatch({ type: 'close' });
             headingRef.current?.focus();
           }}

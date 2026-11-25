@@ -41,6 +41,72 @@ const send = (method: 'POST' | 'PUT', url: string, payload: unknown) =>
 describe('with seed data', () => {
   beforeEach(() => start(true));
 
+  it('previous-month figures: none before the data, the seeded month afterwards', async () => {
+    const january = await dashboard('2026-01', '2026-01-31');
+    // December: no movements and no initial balance; the debt is dated after December's end.
+    expect(january.keyFigures.previous).toEqual({
+      month: '2025-12',
+      accumulatedSavingsCents: null,
+      projectedSavingsCents: null,
+      totalDebtCents: null,
+      goalProgressPercent: null,
+    });
+    const february = await dashboard('2026-02', '2026-02-15');
+    expect(february.keyFigures.previous).toMatchObject({
+      month: '2026-01',
+      accumulatedSavingsCents: 99_930,
+      projectedSavingsCents: 99_930 - 13_000,
+      totalDebtCents: 300_000, // cut off at 2026-01-31, the balance date itself
+      goalProgressPercent: 16, // 999,30 of 6.000,00
+    });
+  });
+
+  it('debt and goal change: previous = the month before the selected one, cut off at its end', async () => {
+    const [debt] = (await app.inject({ method: 'GET', url: '/api/debts' })).json<DebtDto[]>();
+    const all = (await app.inject({ method: 'GET', url: '/api/categories' })).json<CategoryDto[]>();
+    const category = (kind: string) => all.find((c) => c.kind === kind)?.id;
+    await send('POST', '/api/movements', {
+      date: '2026-02-10',
+      kind: 'repayment',
+      categoryId: category('repayment'),
+      concept: 'Extra',
+      amountCents: 75_000,
+      debtId: debt?.id,
+    });
+    await send('POST', '/api/movements', {
+      date: '2026-02-05',
+      kind: 'income',
+      categoryId: category('income'),
+      concept: 'Extra',
+      amountCents: 200_000,
+    });
+    const february = await dashboard('2026-02', '2026-02-15');
+    expect(february.keyFigures.totalDebtCents).toBe(225_000);
+    expect(february.keyFigures.previous.totalDebtCents).toBe(300_000);
+    // Same goal as the one shown: 999,30 + 2.000,00 − 750,00 = 2.249,30 of 6.000,00 → 37 %.
+    expect(february.keyFigures.nextGoal?.progressPercent).toBe(37);
+    expect(february.keyFigures.previous.goalProgressPercent).toBe(16);
+    // March: the repayment of February now falls inside the previous month.
+    const march = await dashboard('2026-03', '2026-03-15');
+    expect(march.keyFigures.previous.totalDebtCents).toBe(225_000);
+    expect(march.keyFigures.previous.goalProgressPercent).toBe(37);
+  });
+
+  it('debt and goal change are null for a past or future selected month; savings stay', async () => {
+    const past = await dashboard('2026-01', '2026-11-25');
+    expect(past.keyFigures.previous.totalDebtCents).toBeNull();
+    expect(past.keyFigures.previous.goalProgressPercent).toBeNull();
+    const future = await dashboard('2026-03', '2026-02-15');
+    expect(future.keyFigures.previous.totalDebtCents).toBeNull();
+    expect(future.keyFigures.previous.goalProgressPercent).toBeNull();
+    expect(future.keyFigures.previous.accumulatedSavingsCents).not.toBeNull();
+    expect(future.keyFigures.previous.projectedSavingsCents).not.toBeNull();
+    const pastFeb = await dashboard('2026-02', '2026-11-25');
+    expect(pastFeb.keyFigures.previous.accumulatedSavingsCents).toBe(99_930);
+    expect(pastFeb.keyFigures.previous.projectedSavingsCents).toBe(99_930 - 13_000);
+    expect(pastFeb.keyFigures.previous.totalDebtCents).toBeNull();
+  });
+
   it('key figures', async () => {
     const { keyFigures, setup } = await dashboard('2026-01');
     expect(keyFigures.accumulatedSavingsCents).toBe(99_930); // no initial balance: all movements
@@ -260,6 +326,13 @@ describe('with an empty database', () => {
       nextGoal: null,
       totalDebtCents: 0,
       projectedSavingsCents: 0,
+      previous: {
+        month: '2026-02',
+        accumulatedSavingsCents: null,
+        projectedSavingsCents: null,
+        totalDebtCents: null,
+        goalProgressPercent: null,
+      },
     });
     expect(data.months).toHaveLength(12);
     expect(data.months.every((m) => m.incomeCents === 0 && m.expenseCents === 0)).toBe(true);

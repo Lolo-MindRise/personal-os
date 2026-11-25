@@ -91,6 +91,30 @@ function toDto(db: Db, row: DebtRow): DebtDto {
   };
 }
 
+/**
+ * Total estimated balance of all debts as of the end of `cutoff` (`YYYY-MM-DD`): the same replay
+ * as the current estimate, with the events after `cutoff` left out. Null (no comparison) when
+ * there are no debts or any debt's recorded balance is dated after `cutoff`.
+ */
+export function totalDebtAt(db: Db, cutoff: string): number | null {
+  const rows = db.select().from(debts).all();
+  if (rows.length === 0 || rows.some((row) => row.balanceAsOf > cutoff)) {
+    return null;
+  }
+  return rows.reduce(
+    (sum, row) =>
+      sum +
+      estimateDebt(
+        row.balanceCents,
+        row.balanceAsOf,
+        row.annualRateBps,
+        installmentsOf(db, row.id).filter((i) => i.date <= cutoff),
+        repaymentsOf(db, row.id).filter((r) => r.date <= cutoff),
+      ).estimatedBalanceCents,
+    0,
+  );
+}
+
 export function listDebts(db: Db): DebtDto[] {
   return db
     .select()

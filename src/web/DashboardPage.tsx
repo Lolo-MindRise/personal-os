@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { DashboardDebtDto, DashboardDto, GoalDto } from '../shared/api.js';
+import { monthChangePointsText, monthChangeText } from '../shared/dashboard.js';
 import { formatCents } from '../shared/money.js';
 import { hrefFor, type Params, type View } from './router.js';
 import { CategoriesChart, MonthsChart } from './DashboardCharts.js';
@@ -56,8 +57,18 @@ const goalStatusText = (goal: GoalDto) =>
       ? 'Vencido.'
       : undefined;
 
+/** The change against the previous month; renders nothing without previous data. */
+function Change({ text, testId }: { text: string | null; testId: string }) {
+  return text === null ? null : (
+    <dd className="card-note" data-testid={testId}>
+      {text}
+    </dd>
+  );
+}
+
 export function KeyFigures({ data }: { data: DashboardDto }) {
   const { keyFigures: k, setup } = data;
+  const prev = k.previous;
   const goal = k.nextGoal;
   return (
     <section aria-label="Cifras clave" className="key-figures">
@@ -76,6 +87,14 @@ export function KeyFigures({ data }: { data: DashboardDto }) {
         >
           {k.accumulatedSavingsCents === null ? '—' : formatCents(k.accumulatedSavingsCents)}
         </dd>
+        <Change
+          testId="change-accumulated"
+          text={monthChangeText(
+            k.accumulatedSavingsCents,
+            prev.accumulatedSavingsCents,
+            prev.month,
+          )}
+        />
         {k.accumulatedSavingsCents === null && (
           <dd className="card-note">Este mes es anterior a la fecha del saldo inicial.</dd>
         )}
@@ -103,6 +122,14 @@ export function KeyFigures({ data }: { data: DashboardDto }) {
             </span>
           </dd>
         )}
+        <Change
+          testId="change-goal"
+          text={monthChangePointsText(
+            goal?.progressPercent ?? null,
+            prev.goalProgressPercent,
+            prev.month,
+          )}
+        />
         {goal === null && (
           <dd className="card-note">
             {setup.goals ? 'Ningún objetivo con fecha futura.' : 'Aún no tienes objetivos.'}{' '}
@@ -116,6 +143,10 @@ export function KeyFigures({ data }: { data: DashboardDto }) {
           <GoTo view="debts">Deuda total estimada</GoTo>
         </dt>
         <dd>{formatCents(k.totalDebtCents)}</dd>
+        <Change
+          testId="change-debt"
+          text={monthChangeText(k.totalDebtCents, prev.totalDebtCents, prev.month)}
+        />
         {!setup.debts && (
           <dd className="card-note">
             No has registrado deudas. <GoTo view="debts">Añadir una deuda</GoTo>
@@ -133,6 +164,10 @@ export function KeyFigures({ data }: { data: DashboardDto }) {
           </GoTo>
         </dt>
         <dd>{formatCents(k.projectedSavingsCents)}</dd>
+        <Change
+          testId="change-projected"
+          text={monthChangeText(k.projectedSavingsCents, prev.projectedSavingsCents, prev.month)}
+        />
         {!setup.movements && (
           <dd className="card-note">
             Aún no hay movimientos.{' '}
