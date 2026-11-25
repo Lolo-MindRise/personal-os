@@ -8,7 +8,13 @@ list is what the template must solve.
 
 - [ ] Autonomy profile: `branches` or `supervised` (ADR-0008).
 - [ ] Default branch name.
-- [ ] Protected paths: real instances, data, backups, exports.
+- [ ] Protected paths: real instances, data, backups, exports, and the
+      configuration that points to them.
+- [ ] Protected commands: scripts that reach real data through their own
+      configuration (start, stop, restore, deploy). A text-based guard cannot
+      see that indirect access.
+- [ ] Real data with personal or client information: give it to a separate
+      OS user, so agents cannot read it even by mistake. Required for the CRM.
 - [ ] Server-side rules available? Public repo or paid plan: yes. Private
       on GitHub Free: no — the guard is the main guarantee.
 

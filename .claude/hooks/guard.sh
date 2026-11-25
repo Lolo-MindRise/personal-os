@@ -20,6 +20,7 @@ proj="${CLAUDE_PROJECT_DIR:-.}"
 AUTONOMY=supervised
 DEFAULT_BRANCH=main
 PROTECTED_PATHS=''
+PROTECTED_COMMANDS=''
 if [[ -f "$proj/.claude/guard.conf" ]]; then
   while IFS='=' read -r key value; do
     key="${key//[[:space:]]/}"
@@ -29,6 +30,7 @@ if [[ -f "$proj/.claude/guard.conf" ]]; then
       AUTONOMY) AUTONOMY="$value" ;;
       DEFAULT_BRANCH) DEFAULT_BRANCH="$value" ;;
       PROTECTED_PATHS) PROTECTED_PATHS="$value" ;;
+      PROTECTED_COMMANDS) PROTECTED_COMMANDS="$value" ;;
     esac
   done < "$proj/.claude/guard.conf"
 fi
@@ -46,6 +48,13 @@ protected='\.claude/(settings[^/"]*\.json|hooks/|agents/|guard\.conf)'
 
 if [[ "$tool" == "Bash" ]]; then
   target="$input"
+
+  # Commands that operate on real instances through their own configuration,
+  # so no protected path appears in the command text (PROTECTED_COMMANDS).
+  if [[ -n "$PROTECTED_COMMANDS" ]]; then
+    grep -Eq "$PROTECTED_COMMANDS" <<<"$target" \
+      && block "this command operates on a real instance; test it through the test suite with temporary directories"
+  fi
 
   # Merging is reserved to Manuel (ADR-0001).
   grep -Eq 'gh[[:space:]]+pr[[:space:]]+merge' <<<"$target" && block "merging pull requests is reserved to Manuel"
