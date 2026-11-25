@@ -19,6 +19,7 @@ const movements: MovementDto[] = [
     amountCents: 2_400,
     notes: 'Entradas para dos',
     debtId: null,
+    accountId: 1,
     recurringItemId: null,
   },
   {
@@ -31,6 +32,7 @@ const movements: MovementDto[] = [
     amountCents: 200_000,
     notes: null,
     debtId: null,
+    accountId: 1,
     recurringItemId: null,
   },
 ];
@@ -58,6 +60,54 @@ describe('MovementList', () => {
   it('has an edit and a delete button per row', () => {
     expect(html.match(/>Editar</g)).toHaveLength(2);
     expect(html.match(/>Eliminar</g)).toHaveLength(2);
+  });
+
+  it('shows the account only when there is more than one account', () => {
+    const one = renderToStaticMarkup(
+      <MovementList
+        movements={movements}
+        accounts={[{ id: 1, name: 'Principal' }]}
+        onEdit={noop}
+        onDelete={noop}
+      />,
+    );
+    expect(one).not.toContain('Cuenta');
+    const two = renderToStaticMarkup(
+      <MovementList
+        movements={movements.map((m, i) => (i === 0 ? { ...m, accountId: 2 } : m))}
+        accounts={[
+          { id: 1, name: 'Principal' },
+          { id: 2, name: 'Efectivo' },
+        ]}
+        onEdit={noop}
+        onDelete={noop}
+      />,
+    );
+    expect(two).toContain('<th>Cuenta</th>');
+    expect(two).toContain('<td>Efectivo</td>');
+    expect(two).toContain('<td>Principal</td>');
+  });
+
+  it('the movement form offers the accounts, Principal selected by default', () => {
+    const html = renderToStaticMarkup(
+      <MovementForm
+        values={emptyForm('2026-01-01')}
+        categories={[]}
+        accounts={[
+          { id: 1, name: 'Principal' },
+          { id: 2, name: 'Efectivo' },
+        ]}
+        errors={{}}
+        mode="add"
+        onChange={noop}
+        onSubmit={noop}
+        onInvalid={noop}
+        onCancel={noop}
+      />,
+    );
+    expect(html).toContain('>Cuenta<');
+    expect(html).toMatch(/<option value="1" selected="">Principal<\/option>/);
+    expect(html).toContain('>Efectivo</option>');
   });
 
   it('shows a message when the month has no movements', () => {

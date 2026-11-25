@@ -14,10 +14,12 @@ export interface MovementFormValues {
   notes: string;
   /** The debt a repayment is linked to; '' means none. Only used when the kind is repayment. */
   debtId: string;
+  /** The account; '' or absent means the default one ("Principal"), which the API applies. */
+  accountId?: string;
 }
 
 export type MovementField =
-  'date' | 'kind' | 'categoryId' | 'concept' | 'amount' | 'notes' | 'debtId';
+  'date' | 'kind' | 'categoryId' | 'concept' | 'amount' | 'notes' | 'debtId' | 'accountId';
 
 export interface MovementPayload {
   date: string;
@@ -28,6 +30,8 @@ export interface MovementPayload {
   notes: string | null;
   /** Present only on repayments: the linked debt, or null for none. */
   debtId?: number | null;
+  /** Absent: the API uses the default account. */
+  accountId?: number;
 }
 
 export type FormResult =
@@ -43,6 +47,7 @@ export interface ConfirmPayload {
   amountCents: number;
   concept: string;
   notes: string | null;
+  accountId?: number;
 }
 
 export function toConfirmPayload(payload: MovementPayload): ConfirmPayload {
@@ -51,6 +56,7 @@ export function toConfirmPayload(payload: MovementPayload): ConfirmPayload {
     amountCents: payload.amountCents,
     concept: payload.concept,
     notes: payload.notes,
+    ...(payload.accountId === undefined ? {} : { accountId: payload.accountId }),
   };
 }
 
@@ -70,11 +76,13 @@ export function emptyForm(today: string = todayISO()): MovementFormValues {
     amount: '',
     notes: '',
     debtId: '',
+    accountId: '',
   };
 }
 
 export function formFromMovement(movement: MovementDto): MovementFormValues {
   return {
+    accountId: String(movement.accountId),
     date: movement.date,
     kind: movement.kind,
     categoryId: String(movement.categoryId),
@@ -134,6 +142,9 @@ export function validateMovementForm(values: MovementFormValues): FormResult {
       concept,
       amountCents: amount.cents,
       notes: notes === '' ? null : notes,
+      ...(values.accountId === undefined || values.accountId === ''
+        ? {}
+        : { accountId: Number(values.accountId) }),
       // Only repayments carry a debt; the API rejects one on any other kind.
       ...(values.kind === 'repayment'
         ? { debtId: values.debtId === '' ? null : Number(values.debtId) }
@@ -164,6 +175,7 @@ const API_FIELD_TO_FORM: Record<string, MovementField> = {
   amountCents: 'amount',
   notes: 'notes',
   debtId: 'debtId',
+  accountId: 'accountId',
 };
 
 /** Maps the `fields` of an API error to form fields; unknown keys are dropped. */

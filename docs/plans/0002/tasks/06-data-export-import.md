@@ -18,6 +18,14 @@ installation.
 2. "Importar datos": accepted **only when the database has no movements,
    categories or recurring items**; otherwise refused with a clear Spanish
    message and nothing written.
+2b. **Accounts note (from the task 01 review).** Every freshly migrated
+   database already contains the account "Principal" (id 1), and
+   `movements.account_id` is enforced by triggers (migration 0006: unknown
+   account rejected; deleting an account that has movements is blocked).
+   The importer must therefore replace or upsert account id 1, insert
+   accounts before movements (and transfers, tags), and delete in the
+   reverse order when it has to clear anything. The "database is empty"
+   check ignores the default Principal account. Test it.
 3. Validate the whole file (version, shape, references between tables)
    before writing anything; write all or nothing in one transaction; an
    invalid file leaves the database untouched (test).

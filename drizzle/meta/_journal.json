@@ -43,6 +43,13 @@
       "when": 1795538910644,
       "tag": "0005_friendly_virginia_dare",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1795568604475,
+      "tag": "0006_stormy_bastion",
+      "breakpoints": true
     }
   ]
 }

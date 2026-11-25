@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
+  accountCreateSchema,
   budgetLineCreateSchema,
   categoryCreateSchema,
   debtCreateSchema,
@@ -11,6 +12,7 @@ import {
 } from '../../shared/schemas.js';
 import { openDatabaseFromEnv, type Db } from './index.js';
 import {
+  accounts,
   budgetLines,
   categories,
   debts,
@@ -36,6 +38,20 @@ export function seed(db: Db): void {
     const leisure = cat('Ocio', 'expense');
     const utilities = cat('Suministros', 'expense');
     const loanRepayment = cat('Amortización extra', 'repayment');
+
+    // "Principal" already exists (created by the migration); one more account for variety.
+    const cashId = tx
+      .insert(accounts)
+      .values(
+        accountCreateSchema.parse({
+          name: 'Efectivo',
+          type: 'cash',
+          openingBalanceCents: 5_000,
+          openingBalanceDate: '2026-01-01',
+        }),
+      )
+      .returning()
+      .get().id;
 
     const debtId = tx
       .insert(debts)
@@ -117,6 +133,7 @@ export function seed(db: Db): void {
         concept: 'Cine',
         amountCents: 2_400,
         notes: 'Entradas para dos',
+        accountId: cashId,
       },
       {
         date: '2026-01-25',

@@ -1,4 +1,5 @@
 import type {
+  AccountDto,
   ApiErrorBody,
   BackupStatusDto,
   BudgetMonthDto,
@@ -90,6 +91,7 @@ const itemMonth = (itemId: number, month: string) =>
 export function createApiClient(fetchFn: typeof fetch = fetch) {
   return {
     categories: () => request<CategoryDto[]>(fetchFn, '/api/categories'),
+    accounts: () => request<AccountDto[]>(fetchFn, '/api/accounts'),
     backupStatus: () => request<BackupStatusDto>(fetchFn, '/api/backups/status'),
     dashboard: (month: string, today: string) =>
       request<DashboardDto>(fetchFn, `/api/dashboard?month=${enc(month)}&today=${enc(today)}`),
