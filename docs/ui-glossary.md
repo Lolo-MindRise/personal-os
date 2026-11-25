@@ -22,6 +22,9 @@ screen needs a concept, add it here first.
 | What a movement is about (text) | concepto | descripción |
 | Amount of money | importe | cantidad, monto |
 | A category of movements | categoría | etiqueta |
+| Where money is kept (a movement belongs to one) | cuenta | banco, monedero |
+| Account type: bank account / cash in hand / savings account | cuenta bancaria / efectivo / ahorro | corriente, caja |
+| The account every movement gets unless another is chosen | Principal | por defecto, general |
 | A monthly recurring income or expense | fijo (plural fijos) | gasto fijo, recurrente, suscripción |
 | A fixed item waiting to be confirmed this month | pendiente | previsto |
 | The amount and date a fixed item is expected to have | importe previsto, fecha prevista | |

@@ -186,6 +186,7 @@ describe('SearchResults', () => {
     amountCents: 1_000,
     notes: null,
     debtId: null,
+    accountId: 1,
     recurringItemId: null,
     ...over,
   });

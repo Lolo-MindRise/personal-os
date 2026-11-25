@@ -1,6 +1,6 @@
 import type { SubmitEvent } from 'react';
-import type { CategoryDto, DebtDto } from '../shared/api.js';
-import { KINDS, type Kind } from '../shared/constants.js';
+import type { AccountDto, CategoryDto, DebtDto } from '../shared/api.js';
+import { DEFAULT_ACCOUNT_ID, KINDS, type Kind } from '../shared/constants.js';
 import { Field } from './Field.js';
 import { KIND_LABELS } from './labels.js';
 import {
@@ -37,6 +37,8 @@ interface Props {
   categories: CategoryDto[];
   /** Debts a repayment can be linked to. */
   debts?: Pick<DebtDto, 'id' | 'name'>[];
+  /** Accounts a movement can belong to; the selector is hidden while there are none. */
+  accounts?: Pick<AccountDto, 'id' | 'name'>[];
   /** Errors to show next to each field (client-side or returned by the API). */
   errors: FieldErrors;
   /** Message not tied to a field (for example a network failure). */
@@ -54,6 +56,7 @@ export function MovementForm(props: Props) {
   const options = categories.filter((c) => c.kind === values.kind);
   const locked = mode === 'confirm';
   const debts = props.debts ?? [];
+  const accounts = props.accounts ?? [];
   // A repayment may be linked to a debt (not while confirming a fixed item: it has no debt).
   const showDebt =
     values.kind === 'repayment' && !locked && (debts.length > 0 || values.debtId !== '');
@@ -130,6 +133,28 @@ export function MovementForm(props: Props) {
             ))}
           </select>
         </Field>
+        {accounts.length > 0 && (
+          <Field id="movement-accountId" label="Cuenta" error={errors.accountId}>
+            <select
+              id="movement-accountId"
+              value={
+                values.accountId === undefined || values.accountId === ''
+                  ? String(DEFAULT_ACCOUNT_ID)
+                  : values.accountId
+              }
+              aria-describedby={describe('accountId')}
+              onChange={(e) => {
+                set('accountId', e.target.value);
+              }}
+            >
+              {accounts.map((a) => (
+                <option key={a.id} value={String(a.id)}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         {showDebt && (
           <Field id="movement-debtId" label="Deuda (opcional)" error={errors.debtId}>
             <select

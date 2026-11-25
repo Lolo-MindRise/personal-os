@@ -100,6 +100,7 @@ describe('formFromMovement', () => {
       amountCents: 200_005,
       notes: null,
       debtId: null,
+      accountId: 1,
       recurringItemId: null,
     });
     expect(form).toEqual({
@@ -110,8 +111,16 @@ describe('formFromMovement', () => {
       amount: '2000,05',
       notes: '',
       debtId: '',
+      accountId: '1',
     });
     expect(validateMovementForm(form).ok).toBe(true);
+  });
+
+  it('sends the account only when one is chosen', () => {
+    const chosen = validateMovementForm({ ...valid, accountId: '2' });
+    expect(chosen.ok && chosen.payload.accountId).toBe(2);
+    const none = validateMovementForm({ ...valid, accountId: '' });
+    expect(none.ok && 'accountId' in none.payload).toBe(false);
   });
 
   it('keeps the linked debt of a repayment as text', () => {
@@ -125,6 +134,7 @@ describe('formFromMovement', () => {
       amountCents: 10_000,
       notes: null,
       debtId: 3,
+      accountId: 1,
       recurringItemId: null,
     });
     expect(form.debtId).toBe('3');
