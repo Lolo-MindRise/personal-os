@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { BackupStatusDto, BackupTiersDto } from '../shared/api.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
+import { DataTransferSection } from './DataTransfer.js';
 import { formatDate } from './months.js';
 import { PageHeader } from './PageHeader.js';
 
@@ -121,6 +122,7 @@ export function BackupsPage({ api = defaultApi }: { api?: ApiClient }) {
         </p>
       )}
       {status !== undefined && <BackupsView status={status} />}
+      <DataTransferSection api={api} />
     </main>
   );
 }

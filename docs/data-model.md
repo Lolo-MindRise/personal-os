@@ -87,6 +87,18 @@ subtracted too).
 - `npm run db:seed` fills the development database with an invented month.
   It refuses to run in production.
 
+## Full-data export and import (plan 0002, task 06)
+
+`GET /api/data/export` returns one JSON file (`src/shared/dataFile.ts`): `app`, `formatVersion`
+(1), `exportedAt`, `tables` (every table by SQL name, rows keyed by the Drizzle property names, in
+primary key order) and `sequences` (the AUTOINCREMENT counters, so ids deleted before the export
+are never reused). `POST /api/data/import` validates the whole file (shape, unique keys,
+references including the trigger-enforced `movements.account_id`, `tags.name_key`), refuses any
+database that already has data (only the default Principal account is ignored; it is replaced by
+the file's), and writes everything in one transaction in `TABLE_INSERT_ORDER`. Body limit 25 MiB.
+A test fails when a schema table or column is missing from the file definition. When you add a
+table: add it to `ROW_SCHEMAS`, `TABLE_INSERT_ORDER` and `referenceProblems`.
+
 ## Not yet modelled
 
 Expense sharing between two people (later, with its own migration).
