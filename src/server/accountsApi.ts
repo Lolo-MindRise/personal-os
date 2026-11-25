@@ -1,4 +1,4 @@
-import { asc, count, eq, or } from 'drizzle-orm';
+import { and, asc, count, eq, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { accountBalance } from '../shared/accountBalance.js';
 import type { AccountBalanceDto, AccountDto } from '../shared/api.js';
@@ -13,6 +13,7 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
+import { liveMovements, liveTransfers } from './db/live.js';
 import { accounts, movements, transfers } from './db/schema.js';
 import { registerTransfersApi } from './transfersApi.js';
 
@@ -57,6 +58,7 @@ export function accountBalances(db: Db): AccountBalanceDto[] {
       amountCents: movements.amountCents,
     })
     .from(movements)
+    .where(liveMovements())
     .all();
   const moved = db
     .select({
@@ -66,6 +68,7 @@ export function accountBalances(db: Db): AccountBalanceDto[] {
       toAccountId: transfers.toAccountId,
     })
     .from(transfers)
+    .where(liveTransfers())
     .all();
   return all.map((a) => ({ accountId: a.id, balanceCents: accountBalance(a, moves, moved) }));
 }
@@ -109,7 +112,9 @@ export function registerAccountsApi(app: FastifyInstance, db: Db): void {
       const first = db
         .select({ date: transfers.date })
         .from(transfers)
-        .where(or(eq(transfers.fromAccountId, id), eq(transfers.toAccountId, id)))
+        .where(
+          and(liveTransfers(), or(eq(transfers.fromAccountId, id), eq(transfers.toAccountId, id))),
+        )
         .orderBy(asc(transfers.date))
         .all()
         .find((t) => t.date <= newOpening);
@@ -133,6 +138,8 @@ export function registerAccountsApi(app: FastifyInstance, db: Db): void {
     if (id === DEFAULT_ACCOUNT_ID) {
       return conflict(reply, MESSAGES.isDefault);
     }
+    // Deliberately NOT filtered by liveMovements()/liveTransfers(): a row in the trash still uses
+    // its account, so that restoring it can never find the account gone.
     const usedByMovements = db
       .select({ n: count() })
       .from(movements)

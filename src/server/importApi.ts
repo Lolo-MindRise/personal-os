@@ -20,6 +20,7 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
+import { liveMovements } from './db/live.js';
 import { confirmedItemIds, dueEntries, getRecurringItem, skippedItemIds } from './db/recurring.js';
 import { categories, categoryRules, importSettings, movements } from './db/schema.js';
 
@@ -89,7 +90,7 @@ function preview(db: Db, rows: { date: string; concept: string; amountCents: num
       recurringItemId: movements.recurringItemId,
     })
     .from(movements)
-    .where(and(gte(movements.date, first), lte(movements.date, last)))
+    .where(and(liveMovements(), gte(movements.date, first), lte(movements.date, last)))
     .all();
   const months = [...new Set(rows.map((r) => monthOf(r.date)))];
   const pending = months.flatMap((month) => dueEntries(db, month).pending);

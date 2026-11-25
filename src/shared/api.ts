@@ -26,6 +26,22 @@ export interface TransferDto {
   notes: string | null;
 }
 
+/** A movement in the trash ("papelera"), with when it was deleted (ISO 8601 timestamp). */
+export interface TrashedMovementDto extends MovementDto {
+  deletedAt: string;
+}
+
+/** A transfer in the trash, with when it was deleted (ISO 8601 timestamp). */
+export interface TrashedTransferDto extends TransferDto {
+  deletedAt: string;
+}
+
+/** Everything in the trash, most recently deleted first. Nothing leaves it automatically. */
+export interface TrashDto {
+  movements: TrashedMovementDto[];
+  transfers: TrashedTransferDto[];
+}
+
 export interface CategoryDto {
   id: number;
   name: string;

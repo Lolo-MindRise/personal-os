@@ -16,6 +16,7 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
+import { liveMovements } from './db/live.js';
 import { appSettings, goals, movements } from './db/schema.js';
 
 const MESSAGES = {
@@ -41,6 +42,7 @@ export function allMovements(db: Db): SummaryMovement[] {
   return db
     .select({ date: movements.date, kind: movements.kind, amountCents: movements.amountCents })
     .from(movements)
+    .where(liveMovements())
     .all();
 }
 

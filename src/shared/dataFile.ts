@@ -21,6 +21,8 @@ const date = z.string().regex(/^\d{4}-[01]\d-[0-3]\d$/);
 const month = z.string().regex(/^\d{4}-[01]\d$/);
 const text = z.string().refine((s) => s.trim().length > 0);
 const notes = z.string().nullable();
+// Trash (plan 0003). Files exported before it have no such key: the row was never deleted.
+const deletedAt = timestamp.nullable().default(null);
 const kind = z.enum(KINDS);
 
 const categories = z.strictObject({
@@ -48,6 +50,7 @@ const transfers = z.strictObject({
   fromAccountId: id,
   toAccountId: id,
   notes,
+  deletedAt,
   createdAt: timestamp,
   updatedAt: timestamp,
 });
@@ -99,6 +102,7 @@ const movements = z.strictObject({
   debtId: nullableId,
   accountId: id,
   recurringItemId: nullableId,
+  deletedAt,
   createdAt: timestamp,
   updatedAt: timestamp,
 });
@@ -331,7 +335,8 @@ export function referenceProblems(file: DataFile): string[] {
     'movements',
     'fijo confirmado en el mismo mes',
     t.movements
-      .filter((r) => r.recurringItemId !== null)
+      // A trashed movement does not hold the slot (partial unique index, migration 0009).
+      .filter((r) => r.recurringItemId !== null && r.deletedAt === null)
       .map((r) => `${String(r.recurringItemId)}-${r.date.slice(0, 7)}`),
   );
 

@@ -25,15 +25,17 @@ async function cleanUp(request: APIRequestContext, accountName: string) {
   if (account === undefined) {
     return;
   }
-  const transfers = (await (await request.get('/api/transfers')).json()) as {
-    id: number;
-    fromAccountId: number;
-    toAccountId: number;
-  }[];
-  for (const t of transfers.filter(
-    (x) => x.fromAccountId === account.id || x.toAccountId === account.id,
-  )) {
+  type Transfer = { id: number; fromAccountId: number; toAccountId: number };
+  const uses = (x: Transfer) => x.fromAccountId === account.id || x.toAccountId === account.id;
+  // Deleting moves a transfer to the trash, which still counts as use of the account: the ones
+  // already deleted in the test and the ones deleted here are removed for good.
+  const live = (await (await request.get('/api/transfers')).json()) as Transfer[];
+  for (const t of live.filter(uses)) {
     await request.delete(`/api/transfers/${String(t.id)}`);
+  }
+  const trash = (await (await request.get('/api/trash')).json()) as { transfers: Transfer[] };
+  for (const t of trash.transfers.filter(uses)) {
+    await request.delete(`/api/trash/transfers/${String(t.id)}`);
   }
   await request.delete(`/api/accounts/${String(account.id)}`);
 }

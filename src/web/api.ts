@@ -23,6 +23,7 @@ import type {
   ProjectionDto,
   RecurringItemDto,
   TagDto,
+  TrashDto,
 } from '../shared/api.js';
 import type { Kind } from '../shared/constants.js';
 import type { DataFile, DataImportResultDto } from '../shared/dataFile.js';
@@ -171,6 +172,21 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
       request<MovementDto>(fetchFn, `/api/movements/${String(id)}`, json('PATCH', payload)),
     deleteMovement: (id: number) =>
       request<undefined>(fetchFn, `/api/movements/${String(id)}`, { method: 'DELETE' }),
+
+    // Trash (plan 0003): deleting moves to the trash; these list, restore or delete for good.
+    trash: () => request<TrashDto>(fetchFn, '/api/trash'),
+    restoreMovement: (id: number) =>
+      request<MovementDto>(fetchFn, `/api/trash/movements/${String(id)}/restore`, {
+        method: 'POST',
+      }),
+    restoreTransfer: (id: number) =>
+      request<TransferDto>(fetchFn, `/api/trash/transfers/${String(id)}/restore`, {
+        method: 'POST',
+      }),
+    deleteMovementForever: (id: number) =>
+      request<undefined>(fetchFn, `/api/trash/movements/${String(id)}`, { method: 'DELETE' }),
+    deleteTransferForever: (id: number) =>
+      request<undefined>(fetchFn, `/api/trash/transfers/${String(id)}`, { method: 'DELETE' }),
 
     // CSV import (task 0013)
     categoryRules: () => request<CategoryRuleDto[]>(fetchFn, '/api/category-rules'),

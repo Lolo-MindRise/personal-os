@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { TransferDto } from '../shared/api.js';
 import { transferDateError } from '../shared/accountBalance.js';
@@ -11,6 +11,7 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
+import { deletionTimestamp, liveTransfers } from './db/live.js';
 import { accounts, transfers } from './db/schema.js';
 
 const MESSAGES = {
@@ -29,15 +30,24 @@ const columns = {
 };
 
 export function getTransfer(db: Db, id: number): TransferDto | undefined {
-  return db.select(columns).from(transfers).where(eq(transfers.id, id)).get();
+  return db
+    .select(columns)
+    .from(transfers)
+    .where(and(liveTransfers(), eq(transfers.id, id)))
+    .get();
 }
 
 export function listTransfers(db: Db): TransferDto[] {
-  return db.select(columns).from(transfers).orderBy(desc(transfers.date), desc(transfers.id)).all();
+  return db
+    .select(columns)
+    .from(transfers)
+    .where(liveTransfers())
+    .orderBy(desc(transfers.date), desc(transfers.id))
+    .all();
 }
 
 /** Both accounts must exist and the date must be after both opening dates. */
-function checkTransfer(
+export function checkTransfer(
   db: Db,
   from: number,
   to: number,
@@ -108,7 +118,11 @@ export function registerTransfersApi(app: FastifyInstance, db: Db): void {
     if (id === undefined || getTransfer(db, id) === undefined) {
       return notFound(reply, MESSAGES.notFound);
     }
-    db.delete(transfers).where(eq(transfers.id, id)).run();
+    // To the trash, not gone: `deleted_at` hides it everywhere (trashApi.ts restores it).
+    db.update(transfers)
+      .set({ deletedAt: deletionTimestamp() })
+      .where(and(liveTransfers(), eq(transfers.id, id)))
+      .run();
     return reply.code(204).send();
   });
 }

@@ -12,6 +12,7 @@ import {
   type MovementRow,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
+import { liveMovements } from './db/live.js';
 import { categories, movements, movementTags, recurringItems, tags } from './db/schema.js';
 
 /**
@@ -27,7 +28,7 @@ export function registerMovementSearchApi(app: FastifyInstance, db: Db): void {
     }
     const f = parsed.data;
 
-    const conditions: SQL[] = [];
+    const conditions: SQL[] = [liveMovements()];
     if (f.categoryId !== undefined) {
       conditions.push(eq(movements.categoryId, f.categoryId));
     }

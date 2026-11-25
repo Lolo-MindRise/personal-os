@@ -2,6 +2,7 @@ import { and, asc, eq, gte, isNotNull, lte } from 'drizzle-orm';
 import type { PendingEntryDto, RecurringItemDto } from '../../shared/api.js';
 import { expectedDate, isDueInMonth } from '../../shared/recurring.js';
 import type { Db } from './index.js';
+import { liveMovements } from './live.js';
 import { categories, movements, recurringItems, recurringSkips } from './schema.js';
 
 const itemColumns = {
@@ -43,6 +44,7 @@ export function confirmedItemIds(db: Db, month: string): Set<number> {
     .from(movements)
     .where(
       and(
+        liveMovements(),
         isNotNull(movements.recurringItemId),
         gte(movements.date, `${month}-01`),
         lte(movements.date, `${month}-31`),

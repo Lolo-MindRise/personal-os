@@ -5,6 +5,7 @@ import { buildBudgetMonth } from '../shared/budget.js';
 import { budgetLineCreateSchema, isoMonth } from '../shared/schemas.js';
 import { badRequest, conflict, fieldErrors, MESSAGES as COMMON_MESSAGES } from './apiCommon.js';
 import type { Db } from './db/index.js';
+import { liveMovements } from './db/live.js';
 import { budgetLines, categories, movements } from './db/schema.js';
 
 const MESSAGES = {
@@ -26,7 +27,9 @@ export function budgetMonth(db: Db, month: string): BudgetMonthDto {
       total: sql<number>`coalesce(sum(${movements.amountCents}), 0)`,
     })
     .from(movements)
-    .where(and(gte(movements.date, `${month}-01`), lte(movements.date, `${month}-31`)))
+    .where(
+      and(liveMovements(), gte(movements.date, `${month}-01`), lte(movements.date, `${month}-31`)),
+    )
     .groupBy(movements.categoryId)
     .all();
   for (const row of totals) {
