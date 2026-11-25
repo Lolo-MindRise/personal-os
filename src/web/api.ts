@@ -19,10 +19,12 @@ import type {
   MonthSummaryDto,
   MovementDto,
   MovementSearchDto,
+  ConfirmAllResultDto,
   PendingEntryDto,
   ProjectionDto,
   RecurringItemDto,
   TagDto,
+  TrashDto,
 } from '../shared/api.js';
 import type { Kind } from '../shared/constants.js';
 import type { DataFile, DataImportResultDto } from '../shared/dataFile.js';
@@ -172,6 +174,21 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
     deleteMovement: (id: number) =>
       request<undefined>(fetchFn, `/api/movements/${String(id)}`, { method: 'DELETE' }),
 
+    // Trash (plan 0003): deleting moves to the trash; these list, restore or delete for good.
+    trash: () => request<TrashDto>(fetchFn, '/api/trash'),
+    restoreMovement: (id: number) =>
+      request<MovementDto>(fetchFn, `/api/trash/movements/${String(id)}/restore`, {
+        method: 'POST',
+      }),
+    restoreTransfer: (id: number) =>
+      request<TransferDto>(fetchFn, `/api/trash/transfers/${String(id)}/restore`, {
+        method: 'POST',
+      }),
+    deleteMovementForever: (id: number) =>
+      request<undefined>(fetchFn, `/api/trash/movements/${String(id)}`, { method: 'DELETE' }),
+    deleteTransferForever: (id: number) =>
+      request<undefined>(fetchFn, `/api/trash/transfers/${String(id)}`, { method: 'DELETE' }),
+
     // CSV import (task 0013)
     categoryRules: () => request<CategoryRuleDto[]>(fetchFn, '/api/category-rules'),
     createCategoryRule: (payload: { pattern: string; categoryId: number }) =>
@@ -207,7 +224,9 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
     confirmRecurring: (itemId: number, month: string, overrides: ConfirmPayload) =>
       request<MovementDto>(fetchFn, `${itemMonth(itemId, month)}/confirm`, json('POST', overrides)),
     confirmAll: (month: string) =>
-      request<MovementDto[]>(fetchFn, `/api/months/${enc(month)}/confirm-all`, { method: 'POST' }),
+      request<ConfirmAllResultDto>(fetchFn, `/api/months/${enc(month)}/confirm-all`, {
+        method: 'POST',
+      }),
     skipRecurring: (itemId: number, month: string) =>
       request<undefined>(fetchFn, `${itemMonth(itemId, month)}/skip`, { method: 'POST' }),
     undoSkip: (itemId: number, month: string) =>

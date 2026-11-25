@@ -60,7 +60,9 @@ describe('accounts migration', () => {
     const after = sqlite.prepare('SELECT * FROM movements ORDER BY id').all() as Row[];
     expect(after).toHaveLength(3);
     for (const [index, row] of after.entries()) {
-      const { account_id: accountId, ...rest } = row;
+      // deleted_at is added by the trash migration (0009), always NULL for existing rows.
+      const { account_id: accountId, deleted_at: deletedAt, ...rest } = row;
+      expect(deletedAt).toBeNull();
       expect(rest).toEqual(before[index]);
       expect(accountId).toBe(1);
     }

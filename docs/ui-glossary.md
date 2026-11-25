@@ -65,6 +65,10 @@ screen needs a concept, add it here first.
 | Where a copy is also stored | copia de reserva | espejo (in user text) |
 | Oldest backup you can still restore | copia más antigua | backup más viejo |
 | Which backups are kept, and why | qué se conserva | retención, tiers |
+| Where deleted movements and transfers wait until restored or deleted for good | papelera | basura, reciclaje, archivo |
+| A movement or transfer that is in the trash (adjective, with its date) | eliminado / eliminada ("Eliminado el 25/11/2026") | borrado, descartado |
+| Bring a row back from the trash | restaurar | recuperar, deshacer |
+| Remove a row from the trash for good (one at a time, cannot be undone) | eliminar definitivamente | vaciar, purgar |
 
 ## Verbs on buttons and links
 

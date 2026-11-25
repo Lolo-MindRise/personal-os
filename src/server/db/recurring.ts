@@ -2,6 +2,7 @@ import { and, asc, eq, gte, isNotNull, lte } from 'drizzle-orm';
 import type { PendingEntryDto, RecurringItemDto } from '../../shared/api.js';
 import { expectedDate, isDueInMonth } from '../../shared/recurring.js';
 import type { Db } from './index.js';
+import { liveMovements } from './live.js';
 import { categories, movements, recurringItems, recurringSkips } from './schema.js';
 
 const itemColumns = {
@@ -43,6 +44,32 @@ export function confirmedItemIds(db: Db, month: string): Set<number> {
     .from(movements)
     .where(
       and(
+        liveMovements(),
+        isNotNull(movements.recurringItemId),
+        gte(movements.date, `${month}-01`),
+        lte(movements.date, `${month}-31`),
+      ),
+    )
+    .all();
+  return new Set(rows.flatMap((row) => (row.id === null ? [] : [row.id])));
+}
+
+/** Shown when a trashed confirmation still holds the (fixed item, month) slot. */
+export const TRASH_HOLDS_SLOT =
+  'Hay un movimiento de este fijo en la papelera: restáuralo o elimínalo definitivamente.';
+
+/**
+ * Ids of the items whose confirmed movement for the month is in the trash. The unique index is
+ * not partial, so such a movement still holds the slot: the item shows as pending again, but
+ * confirming it must be refused until the trashed movement is restored or deleted for good.
+ */
+export function trashedItemIds(db: Db, month: string): Set<number> {
+  const rows = db
+    .select({ id: movements.recurringItemId })
+    .from(movements)
+    .where(
+      and(
+        isNotNull(movements.deletedAt),
         isNotNull(movements.recurringItemId),
         gte(movements.date, `${month}-01`),
         lte(movements.date, `${month}-31`),
@@ -61,7 +88,11 @@ export function skippedItemIds(db: Db, month: string): Set<number> {
   return new Set(rows.map((row) => row.id));
 }
 
-export function toEntry(item: RecurringItemDto, month: string): PendingEntryDto {
+export function toEntry(
+  item: RecurringItemDto,
+  month: string,
+  heldByTrash = false,
+): PendingEntryDto {
   return {
     recurringItemId: item.id,
     month,
@@ -72,6 +103,7 @@ export function toEntry(item: RecurringItemDto, month: string): PendingEntryDto 
     concept: item.concept,
     amountCents: item.amountCents,
     notes: item.notes,
+    heldByTrash,
   };
 }
 
@@ -90,13 +122,16 @@ export interface DueEntries {
 export function dueEntries(db: Db, month: string): DueEntries {
   const confirmed = confirmedItemIds(db, month);
   const skipped = skippedItemIds(db, month);
+  const trashed = trashedItemIds(db, month);
   const pending: PendingEntryDto[] = [];
   const skippedEntries: PendingEntryDto[] = [];
   for (const item of listRecurringItems(db)) {
     if (!isDueInMonth(item, month) || confirmed.has(item.id)) {
       continue;
     }
-    (skipped.has(item.id) ? skippedEntries : pending).push(toEntry(item, month));
+    (skipped.has(item.id) ? skippedEntries : pending).push(
+      toEntry(item, month, trashed.has(item.id)),
+    );
   }
   const byDate = (a: PendingEntryDto, b: PendingEntryDto) =>
     a.date.localeCompare(b.date) || a.recurringItemId - b.recurringItemId;

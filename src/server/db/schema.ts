@@ -94,6 +94,8 @@ export const transfers = sqliteTable(
       .notNull()
       .references(() => accounts.id),
     notes: text('notes'),
+    // Trash (plan 0003): ISO timestamp of the deletion; NULL = the row exists for every reader.
+    deletedAt: text('deleted_at'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -223,6 +225,8 @@ export const movements = sqliteTable(
     recurringItemId: integer('recurring_item_id').references(() => recurringItems.id, {
       onDelete: 'set null',
     }),
+    // Trash (plan 0003): ISO timestamp of the deletion; NULL = the row exists for every reader.
+    deletedAt: text('deleted_at'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -231,6 +235,8 @@ export const movements = sqliteTable(
     // indexes: UNIQUE INDEX movements_recurring_item_month_unique
     //   ON movements (recurring_item_id, substr(date, 1, 7))
     // = at most one confirmed movement per recurring item and month (NULLs never collide).
+    // It is NOT partial: a trashed confirmation still holds the slot, and the confirm paths
+    // refuse with a message until it is restored or deleted for good.
     // A movement's kind must match its category's kind.
     foreignKey({
       columns: [t.categoryId, t.kind],

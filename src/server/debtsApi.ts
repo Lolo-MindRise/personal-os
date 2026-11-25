@@ -1,4 +1,4 @@
-import { asc, desc, eq, isNotNull } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { DebtDto, DebtRepaymentDto } from '../shared/api.js';
 import { estimateDebt, type InstallmentInput } from '../shared/debts.js';
@@ -11,6 +11,7 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
+import { liveMovements } from './db/live.js';
 import { debts, movements, recurringItems } from './db/schema.js';
 
 const MESSAGES = {
@@ -28,7 +29,7 @@ function installmentsOf(db: Db, debtId: number): InstallmentInput[] {
     .select({ movementId: movements.id, date: movements.date, amountCents: movements.amountCents })
     .from(movements)
     .innerJoin(recurringItems, eq(recurringItems.id, movements.recurringItemId))
-    .where(eq(recurringItems.debtId, debtId))
+    .where(and(liveMovements(), eq(recurringItems.debtId, debtId)))
     .orderBy(asc(movements.date), asc(movements.id))
     .all();
 }
@@ -45,7 +46,7 @@ function repaymentsOf(db: Db, debtId: number): DebtRepaymentDto[] {
       .select({ id: movements.id })
       .from(movements)
       .innerJoin(recurringItems, eq(recurringItems.id, movements.recurringItemId))
-      .where(isNotNull(recurringItems.debtId))
+      .where(and(liveMovements(), isNotNull(recurringItems.debtId)))
       .all()
       .map((r) => r.id),
   );
@@ -57,7 +58,7 @@ function repaymentsOf(db: Db, debtId: number): DebtRepaymentDto[] {
       amountCents: movements.amountCents,
     })
     .from(movements)
-    .where(eq(movements.debtId, debtId))
+    .where(and(liveMovements(), eq(movements.debtId, debtId)))
     .orderBy(desc(movements.date), desc(movements.id))
     .all()
     .filter((r) => !installmentIds.has(r.movementId));

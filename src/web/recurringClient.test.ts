@@ -110,6 +110,7 @@ describe('confirming through the movement form', () => {
     concept: 'Internet',
     amountCents: 3_500,
     notes: null,
+    heldByTrash: false,
   };
 
   it('pre-fills the form with the expected values of the entry', () => {

@@ -597,7 +597,17 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
             onConfirm={confirm}
             onSkip={(entry) => void act(() => api.skipRecurring(entry.recurringItemId, month))}
             onUndo={(entry) => void act(() => api.undoSkip(entry.recurringItemId, month))}
-            onConfirmAll={() => void act(() => api.confirmAll(month))}
+            onConfirmAll={() =>
+              void act(async () => {
+                const result = await api.confirmAll(month);
+                const held = result.skippedHeldByTrash;
+                if (held.length > 0) {
+                  setActionError(
+                    `No se han confirmado ${String(held.length)} fijos porque tienen un movimiento en la papelera: ${held.map((h) => h.concept).join(', ')}`,
+                  );
+                }
+              })
+            }
           />
 
           <SidePanel

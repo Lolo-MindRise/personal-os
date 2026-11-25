@@ -26,6 +26,22 @@ export interface TransferDto {
   notes: string | null;
 }
 
+/** A movement in the trash ("papelera"), with when it was deleted (ISO 8601 timestamp). */
+export interface TrashedMovementDto extends MovementDto {
+  deletedAt: string;
+}
+
+/** A transfer in the trash, with when it was deleted (ISO 8601 timestamp). */
+export interface TrashedTransferDto extends TransferDto {
+  deletedAt: string;
+}
+
+/** Everything in the trash, most recently deleted first. Nothing leaves it automatically. */
+export interface TrashDto {
+  movements: TrashedMovementDto[];
+  transfers: TrashedTransferDto[];
+}
+
 export interface CategoryDto {
   id: number;
   name: string;
@@ -138,6 +154,14 @@ export interface PendingEntryDto {
   concept: string;
   amountCents: number;
   notes: string | null;
+  /** True when a trashed confirmation still holds this item's month slot: it cannot be confirmed. */
+  heldByTrash: boolean;
+}
+
+/** Result of confirm-all: held items are skipped, never confirmed, and stay pending. */
+export interface ConfirmAllResultDto {
+  created: MovementDto[];
+  skippedHeldByTrash: { id: number; concept: string }[];
 }
 
 export interface MonthSummaryDto {

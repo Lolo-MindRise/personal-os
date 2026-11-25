@@ -67,6 +67,7 @@ describe('Inicio accounts and next 30 days', () => {
                 concept: 'Internet',
                 amountCents: 3_500,
                 notes: null,
+                heldByTrash: false,
               },
             ],
             milestones: [

@@ -4,6 +4,7 @@ import { reportWindows, type ExpenseReportDto, isReportPeriod } from '../shared/
 import { isoMonth } from '../shared/schemas.js';
 import { badRequest, MESSAGES as COMMON_MESSAGES } from './apiCommon.js';
 import type { Db } from './db/index.js';
+import { liveMovements } from './db/live.js';
 import { categories, movements } from './db/schema.js';
 import { localToday } from './summaryApi.js';
 
@@ -29,6 +30,7 @@ export function expenseReport(db: Db, month: string, count: number): ExpenseRepo
     .from(movements)
     .where(
       and(
+        liveMovements(),
         eq(movements.kind, 'expense'),
         gte(movements.date, `${first}-01`),
         lte(movements.date, `${months[months.length - 1] ?? month}-31`),

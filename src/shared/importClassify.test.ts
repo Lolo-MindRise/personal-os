@@ -31,6 +31,7 @@ const pending = (over: Partial<PendingEntryDto>): PendingEntryDto => ({
   concept: 'Alquiler',
   amountCents: 70_000,
   notes: null,
+  heldByTrash: false,
   ...over,
 });
 
