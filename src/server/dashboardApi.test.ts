@@ -369,6 +369,42 @@ describe('with seed data', () => {
       400,
     );
   });
+
+  it('budget alerts: 85 % warns, 79 % does not, 100 % is over, no budget is not listed', async () => {
+    const all = (await app.inject({ method: 'GET', url: '/api/categories' })).json<CategoryDto[]>();
+    const id = (name: string) => all.find((c) => c.name === name)?.id;
+    const spend = (name: string, amountCents: number) =>
+      send('POST', '/api/movements', {
+        date: '2026-01-20',
+        kind: 'expense',
+        categoryId: id(name),
+        concept: 'Extra',
+        amountCents,
+      });
+    // Seed: Vivienda 700,00 of 700,00 (100 %), Supermercado 176,70 of 350,00, Ocio 24,00 of 100,00.
+    const groceries = await spend('Supermercado', 12_080); // 297,50 of 350,00 = 85 %
+    await spend('Ocio', 5_500); // 79,00 of 100,00 = 79 %
+    await spend('Suministros', 99_999); // no budget
+    const alerts = (await dashboard('2026-01')).budgetAlerts;
+    expect(alerts.map((a) => [a.categoryName, a.percent, a.state])).toEqual([
+      ['Vivienda', 100, 'over'],
+      ['Supermercado', 85, 'warning'],
+    ]);
+    expect(alerts[1]).toMatchObject({ budgetCents: 35_000, actualCents: 29_750 });
+
+    // A deleted movement is out of the figures, so the alert goes away.
+    const created = groceries.json<{ id: number }>();
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: `/api/movements/${String(created.id)}`,
+    });
+    expect(deleted.statusCode).toBe(204);
+    expect((await dashboard('2026-01')).budgetAlerts.map((a) => a.categoryName)).toEqual([
+      'Vivienda',
+    ]);
+    // Another month: nothing is spent against the budget.
+    expect((await dashboard('2026-02')).budgetAlerts).toEqual([]);
+  });
 });
 
 describe('with an empty database', () => {

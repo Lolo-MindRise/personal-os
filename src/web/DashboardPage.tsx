@@ -312,6 +312,48 @@ export function Next30Days({ next }: { next: DashboardDto['next30Days'] }) {
   );
 }
 
+/** Categories at or above 80 % of their budget in the month, each linking to its movements. */
+export function BudgetAlerts({ data }: { data: DashboardDto }) {
+  const alerts = data.budgetAlerts;
+  if (alerts.length === 0 && !data.setup.budget) {
+    return null;
+  }
+  const group = (state: 'over' | 'warning', title: string) => {
+    const items = alerts.filter((a) => a.state === state);
+    return items.length === 0 ? null : (
+      <>
+        <h3>{title}</h3>
+        <ul className="upcoming" data-testid={`budget-alerts-${state}`}>
+          {items.map((a) => (
+            <li key={a.categoryId} className={`budget-alert budget-alert-${state}`}>
+              <GoTo view="movements" params={{ category: String(a.categoryId), month: data.month }}>
+                {a.categoryName}
+              </GoTo>
+              : {String(a.percent)} % del presupuesto ({formatCents(a.actualCents)} de{' '}
+              {formatCents(a.budgetCents)})
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  };
+  return (
+    <section className="dashboard-section" data-testid="budget-alerts">
+      <h2>Presupuesto del mes</h2>
+      {alerts.length === 0 ? (
+        <p className="empty dashboard-empty">
+          Ninguna categoría ha llegado al 80 % de su presupuesto este mes.
+        </p>
+      ) : (
+        <>
+          {group('over', 'Presupuesto alcanzado o superado')}
+          {group('warning', 'Cerca del presupuesto')}
+        </>
+      )}
+    </section>
+  );
+}
+
 export function DashboardView({ data }: { data: DashboardDto }) {
   const { setup, keyFigures, upcoming } = data;
   return (
@@ -353,6 +395,8 @@ export function DashboardView({ data }: { data: DashboardDto }) {
           </EmptyState>
         )}
       </section>
+
+      <BudgetAlerts data={data} />
 
       <div className="dashboard-columns">
         <section className="dashboard-section">

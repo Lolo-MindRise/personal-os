@@ -29,6 +29,7 @@ const empty: DashboardDto = {
   },
   months: [],
   categories: [],
+  budgetAlerts: [],
   debts: { items: [], totalEstimatedCents: 0 },
   upcoming: { pending: [], milestones: [] },
   accounts: [{ accountId: 1, name: 'Principal', balanceCents: 0 }],
@@ -90,6 +91,51 @@ describe('Inicio accounts and next 30 days', () => {
     expect(html).toContain('Revisar seguros');
     expect(html).toContain('href="#/milestones"');
     expect(html).not.toContain('No hay fijos pendientes ni hitos');
+  });
+});
+
+describe('Inicio budget alerts', () => {
+  const withBudget = { ...empty, setup: { ...empty.setup, budget: true } };
+
+  it('is hidden without a budget and says so kindly when nothing is at 80 %', () => {
+    expect(renderToStaticMarkup(<DashboardView data={empty} />)).not.toContain('budget-alerts');
+    const html = renderToStaticMarkup(<DashboardView data={withBudget} />);
+    expect(html).toContain('Ninguna categoría ha llegado al 80 % de su presupuesto');
+  });
+
+  it('lists categories by state, with neutral wording and a filtered link', () => {
+    const html = renderToStaticMarkup(
+      <DashboardView
+        data={{
+          ...withBudget,
+          budgetAlerts: [
+            {
+              categoryId: 7,
+              categoryName: 'Vivienda',
+              budgetCents: 70_000,
+              actualCents: 75_000,
+              percent: 107,
+              state: 'over',
+            },
+            {
+              categoryId: 3,
+              categoryName: 'Supermercado',
+              budgetCents: 35_000,
+              actualCents: 29_750,
+              percent: 85,
+              state: 'warning',
+            },
+          ],
+        }}
+      />,
+    );
+    expect(html).toContain('data-testid="budget-alerts-over"');
+    expect(html).toContain('data-testid="budget-alerts-warning"');
+    expect(html).toContain('Presupuesto alcanzado o superado');
+    expect(html).toContain('Cerca del presupuesto');
+    expect(html).toMatch(/Supermercado<\/a>: 85 % del presupuesto/);
+    expect(html).toMatch(/Vivienda<\/a>: 107 % del presupuesto/);
+    expect(html).toContain('href="#/movements?category=3&amp;month=2026-03"');
   });
 });
 

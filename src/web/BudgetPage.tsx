@@ -1,5 +1,6 @@
 import { useEffect, useState, type SubmitEvent } from 'react';
 import type { BudgetMonthDto, CategoryDto } from '../shared/api.js';
+import { budgetAlert } from '../shared/budget.js';
 import { formatCents } from '../shared/money.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
 import {
@@ -22,6 +23,52 @@ const defaultApi = createApiClient();
 const messageOf = (error: unknown) => (error instanceof ApiError ? error.message : NETWORK_ERROR);
 
 type Errors = Partial<Record<BudgetField, string>>;
+
+const METER_TEXT = {
+  ok: '',
+  warning: 'Cerca del presupuesto',
+  over: 'Presupuesto alcanzado o superado',
+} as const;
+
+/**
+ * Progress against the budget. The state is in words and in the bar's shape (striped when over),
+ * not only in colour; the bar stops at 100 % but the percentage written beside it does not.
+ */
+export function BudgetMeter({
+  name,
+  budgetCents,
+  actualCents,
+}: {
+  name: string;
+  budgetCents: number | null;
+  actualCents: number;
+}) {
+  const { state, percent } = budgetAlert(budgetCents, actualCents);
+  if (state === 'none' || percent === null) {
+    return null;
+  }
+  return (
+    <>
+      <div
+        className={`budget-meter budget-meter-${state}`}
+        role="progressbar"
+        aria-label={`${name}: ${String(percent)} % del presupuesto`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.min(percent, 100)}
+        aria-valuetext={`${String(percent)} %`}
+      >
+        <span
+          className="budget-meter-fill"
+          style={{ width: `${String(Math.min(percent, 100))}%` }}
+        />
+      </div>
+      <span className="notes" data-testid="budget-meter-text">
+        {String(percent)} %{state === 'ok' ? '' : ` · ${METER_TEXT[state]}`}
+      </span>
+    </>
+  );
+}
 
 export function BudgetTable({
   data,
@@ -74,7 +121,14 @@ export function BudgetTable({
                 </>
               )}
             </td>
-            <td className="amount">{formatCents(row.actualCents)}</td>
+            <td className="amount">
+              {formatCents(row.actualCents)}
+              <BudgetMeter
+                name={row.categoryName}
+                budgetCents={row.budgetCents}
+                actualCents={row.actualCents}
+              />
+            </td>
             <td className={`amount diff-${differenceTone(row.differenceCents)}`}>
               {row.differenceCents === null ? '—' : formatCents(row.differenceCents)}
             </td>

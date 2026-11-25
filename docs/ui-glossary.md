@@ -42,6 +42,8 @@ screen needs a concept, add it here first.
 | Skip a fixed item for one month | saltar | omitir |
 | The planned monthly amount for a category | presupuesto | límite |
 | Budget minus actual | diferencia | desvío |
+| Spending at 80 % or more of a budget | cerca del presupuesto | alerta, aviso rojo |
+| Spending at 100 % or more of a budget | presupuesto alcanzado o superado | excedido (only in chart text) |
 | Money owed | deuda | préstamo (only in fixture names) |
 | A debt's regular payment | cuota | mensualidad |
 | A debt's recorded balance and date | saldo registrado, fecha del saldo | |

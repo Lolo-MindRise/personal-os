@@ -78,3 +78,35 @@ export function buildBudgetMonth(
     totals: { budgetCents, actualCents, differenceCents: budgetCents - actualCents },
   };
 }
+
+/** Share of the budget spent from which a category is flagged, and the share that is "over". */
+export const BUDGET_WARNING_PERCENT = 80;
+export const BUDGET_OVER_PERCENT = 100;
+
+export type BudgetAlertState = 'none' | 'ok' | 'warning' | 'over';
+
+export interface BudgetAlert {
+  state: BudgetAlertState;
+  /** Whole percent of the budget spent (rounded down); null when there is nothing to compare. */
+  percent: number | null;
+}
+
+/**
+ * How close a category is to its monthly budget, in integer cents (no floats). No budget, or a
+ * budget of 0, gives `none` (no alert). Below 80 %: `ok`; from 80 % up to but excluding 100 %:
+ * `warning`; from 100 %: `over`. The percentage can exceed 100.
+ */
+export function budgetAlert(budgetCents: number | null, actualCents: number): BudgetAlert {
+  if (budgetCents === null || budgetCents <= 0) {
+    return { state: 'none', percent: null };
+  }
+  const spent = Math.max(0, actualCents);
+  const percent = Math.floor((spent * 100) / budgetCents);
+  const state: BudgetAlertState =
+    spent * 100 >= BUDGET_OVER_PERCENT * budgetCents
+      ? 'over'
+      : spent * 100 >= BUDGET_WARNING_PERCENT * budgetCents
+        ? 'warning'
+        : 'ok';
+  return { state, percent };
+}
