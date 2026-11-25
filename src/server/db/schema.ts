@@ -8,7 +8,12 @@ import {
   text,
   unique,
 } from 'drizzle-orm/sqlite-core';
-import { KINDS, MILESTONE_STATUSES } from '../../shared/constants.js';
+import {
+  ACCOUNT_TYPES,
+  DEFAULT_ACCOUNT_ID,
+  KINDS,
+  MILESTONE_STATUSES,
+} from '../../shared/constants.js';
 
 // Conventions (ADR-0002, docs/data-model.md):
 // - Money: integer cents, always positive. The kind gives the direction.
@@ -16,6 +21,7 @@ import { KINDS, MILESTONE_STATUSES } from '../../shared/constants.js';
 // - Timestamps: ISO 8601 UTC text.
 
 const kindList = sql.raw(KINDS.map((k) => `'${k}'`).join(', '));
+const accountTypeList = sql.raw(ACCOUNT_TYPES.map((t) => `'${t}'`).join(', '));
 const statusList = sql.raw(MILESTONE_STATUSES.map((s) => `'${s}'`).join(', '));
 
 const DATE_GLOB = sql.raw("'[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'");
@@ -43,6 +49,29 @@ export const categories = sqliteTable(
     unique('categories_id_kind_unique').on(t.id, t.kind),
     check('categories_name_not_empty', sql`length(trim(${t.name})) > 0`),
     check('categories_kind_valid', sql`${t.kind} IN (${kindList})`),
+  ],
+);
+
+/**
+ * Where money is kept (plan 0002). Movements belong to one account. The migration creates
+ * "Principal" (id 1), the default account.
+ */
+export const accounts = sqliteTable(
+  'accounts',
+  {
+    id: id(),
+    name: text('name').notNull().unique(),
+    type: text('type', { enum: ACCOUNT_TYPES }).notNull(),
+    openingBalanceCents: integer('opening_balance_cents').notNull(),
+    openingBalanceDate: text('opening_balance_date').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check('accounts_name_not_empty', sql`length(trim(${t.name})) > 0`),
+    check('accounts_type_valid', sql`${t.type} IN (${accountTypeList})`),
+    check('accounts_opening_balance_integer', isInteger(t.openingBalanceCents)),
+    check('accounts_opening_balance_date', sql`${t.openingBalanceDate} GLOB ${DATE_GLOB}`),
   ],
 );
 
@@ -154,6 +183,9 @@ export const movements = sqliteTable(
     amountCents: integer('amount_cents').notNull(),
     notes: text('notes'),
     debtId: integer('debt_id').references(() => debts.id),
+    // No REFERENCES clause: SQLite cannot add a NOT NULL foreign key column to an existing table
+    // without rebuilding it. Triggers in the migration enforce that the account exists.
+    accountId: integer('account_id').notNull().default(DEFAULT_ACCOUNT_ID),
     // The recurring item this movement confirms. Deleting the item keeps the movement.
     recurringItemId: integer('recurring_item_id').references(() => recurringItems.id, {
       onDelete: 'set null',

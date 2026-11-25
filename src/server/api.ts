@@ -9,6 +9,7 @@ import {
   movementUpdateSchema,
 } from '../shared/schemas.js';
 import {
+  accountError,
   badRequest,
   categoryError,
   fieldErrors,
@@ -20,6 +21,7 @@ import {
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
 import { categories, debts, movements } from './db/schema.js';
+import { registerAccountsApi } from './accountsApi.js';
 import { registerBudgetApi } from './budgetApi.js';
 import { registerDashboardApi } from './dashboardApi.js';
 import { monthSummary } from './monthSummary.js';
@@ -42,9 +44,14 @@ const MESSAGES = {
 /** Checks the references of a validated movement; returns an error message or undefined. */
 function referenceError(
   db: Db,
-  m: { kind: string; categoryId: number; debtId?: number | null | undefined },
+  m: {
+    kind: string;
+    categoryId: number;
+    debtId?: number | null | undefined;
+    accountId?: number | undefined;
+  },
 ): { error: string; field: string } | undefined {
-  const problem = categoryError(db, m.kind, m.categoryId);
+  const problem = categoryError(db, m.kind, m.categoryId) ?? accountError(db, m.accountId);
   if (problem !== undefined) {
     return problem;
   }
@@ -133,6 +140,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
       amountCents: current.amountCents,
       notes: current.notes,
       debtId: current.debtId,
+      accountId: current.accountId,
       ...patch.data,
     });
     if (!merged.success) {
@@ -177,6 +185,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     return monthSummary(db, parsed.data);
   });
 
+  registerAccountsApi(app, db);
   registerBudgetApi(app, db);
   registerCategoriesApi(app, db);
   registerDashboardApi(app, db);

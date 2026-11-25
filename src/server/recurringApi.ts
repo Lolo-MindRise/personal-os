@@ -9,6 +9,7 @@ import {
   recurringItemUpdateSchema,
 } from '../shared/schemas.js';
 import {
+  accountError,
   badRequest,
   categoryError,
   conflict,
@@ -229,10 +230,15 @@ export function registerRecurringApi(app: FastifyInstance, db: Db): void {
       const message = MESSAGES.dateOutsideMonth(month);
       return badRequest(reply, message, { date: message });
     }
+    const accountProblem = accountError(db, overrides.data.accountId);
+    if (accountProblem !== undefined) {
+      return badRequest(reply, accountProblem.error, { accountId: accountProblem.error });
+    }
     const created = db
       .insert(movements)
       .values({
         ...base,
+        ...(overrides.data.accountId === undefined ? {} : { accountId: overrides.data.accountId }),
         date,
         amountCents: overrides.data.amountCents ?? base.amountCents,
         concept: overrides.data.concept ?? base.concept,
