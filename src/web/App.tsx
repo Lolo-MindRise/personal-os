@@ -23,6 +23,7 @@ const CategoriesPage = named(() => import('./CategoriesPage.js'), 'CategoriesPag
 const TagsPage = named(() => import('./TagsPage.js'), 'TagsPage');
 const AccountsPage = named(() => import('./AccountsPage.js'), 'AccountsPage');
 const BackupsPage = named(() => import('./BackupsPage.js'), 'BackupsPage');
+const TrashPage = named(() => import('./TrashPage.js'), 'TrashPage');
 
 const SCREENS: Record<View, React.LazyExoticComponent<React.ComponentType>> = {
   dashboard: DashboardPage,
@@ -40,6 +41,7 @@ const SCREENS: Record<View, React.LazyExoticComponent<React.ComponentType>> = {
   tags: TagsPage,
   accounts: AccountsPage,
   backups: BackupsPage,
+  trash: TrashPage,
 };
 
 interface NavItem {
@@ -88,6 +90,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { view: 'tags', label: 'Marcas' },
       { view: 'accounts', label: 'Cuentas' },
       { view: 'backups', label: 'Copias' },
+      { view: 'trash', label: 'Papelera' },
     ],
   },
 ];
