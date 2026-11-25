@@ -116,7 +116,33 @@ async function tagSomeMovements(handle: DbHandle): Promise<void> {
     },
   });
   const created = extra.json<{ id: number }>();
+  // Trash: stays in the export with its deletion date (the file is lossless).
   await app.inject({ method: 'DELETE', url: `/api/movements/${String(created.id)}` });
+  // Deleted for good: leaves the id counter ahead of the rows.
+  const gone = await app.inject({
+    method: 'POST',
+    url: '/api/movements',
+    payload: {
+      date: '2026-02-02',
+      kind: a?.kind,
+      categoryId: a?.categoryId,
+      concept: 'Borrado',
+      amountCents: 100,
+    },
+  });
+  const goneId = gone.json<{ id: number }>().id;
+  await app.inject({ method: 'DELETE', url: `/api/movements/${String(goneId)}` });
+  await app.inject({ method: 'DELETE', url: `/api/trash/movements/${String(goneId)}` });
+  // A trashed transfer too.
+  const transfer = await app.inject({
+    method: 'POST',
+    url: '/api/transfers',
+    payload: { date: '2026-02-03', amountCents: 500, fromAccountId: 1, toAccountId: 2 },
+  });
+  await app.inject({
+    method: 'DELETE',
+    url: `/api/transfers/${String(transfer.json<{ id: number }>().id)}`,
+  });
 }
 
 /** Every table row by row in primary key order, plus the id counters. */
@@ -207,8 +233,15 @@ describe('export', () => {
     expect(file.tables.tags.map((t) => t.nameKey)).toEqual(
       file.tables.tags.map((t) => tagKey(t.name)),
     );
-    expect(file.tables.movement_tags.length).toBe(3);
-    expect(file.tables.transfers).toHaveLength(1);
+    // The trashed movement keeps its marca link.
+    expect(file.tables.movement_tags.length).toBe(4);
+    expect(file.tables.transfers).toHaveLength(2);
+    // Trashed rows are kept, with their deletion date; live rows have none.
+    expect(file.tables.movements.filter((m) => m.deletedAt !== null).map((m) => m.concept)).toEqual(
+      ['Temporal'],
+    );
+    expect(file.tables.transfers.filter((t) => t.deletedAt !== null)).toHaveLength(1);
+    expect(file.tables.movements.filter((m) => m.deletedAt === null).length).toBeGreaterThan(0);
     // The deleted movement leaves the counter ahead of the highest id.
     const maxMovement = Math.max(...file.tables.movements.map((m) => m.id));
     expect(file.sequences.movements).toBeGreaterThan(maxMovement);
@@ -221,6 +254,32 @@ describe('export', () => {
     const response = await appOf(source).inject({ method: 'GET', url: '/api/data/export' });
     expect(response.statusCode).toBe(200);
     expect(dataFileSchema.safeParse(response.json()).success).toBe(true);
+  });
+});
+
+describe('files exported before the trash existed', () => {
+  it('import with deleted_at NULL on every movement and transfer', async () => {
+    const source = populatedSource();
+    const file = JSON.parse(JSON.stringify(exportData(source.db))) as {
+      tables: Record<string, Record<string, unknown>[]>;
+    };
+    for (const name of ['movements', 'transfers']) {
+      for (const row of file.tables[name] ?? []) {
+        delete row.deletedAt;
+      }
+    }
+    const target = open('old-format.db');
+    const response = await appOf(target).inject({
+      method: 'POST',
+      url: '/api/data/import',
+      payload: file,
+    });
+    expect(response.statusCode).toBe(200);
+    for (const table of ['movements', 'transfers']) {
+      const rows = target.sqlite.prepare(`SELECT deleted_at FROM ${table}`).all();
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows.every((r) => (r as { deleted_at: unknown }).deleted_at === null)).toBe(true);
+    }
   });
 });
 
@@ -252,6 +311,11 @@ describe('round trip', () => {
     for (const table of SCHEMA_TABLES) {
       expect(before[getTableName(table)]?.length, getTableName(table)).toBeGreaterThan(0);
     }
+    // The trash travels with the data: the deletion dates are identical too.
+    const dates = (rows: unknown[] | undefined) =>
+      (rows as { deleted_at: string | null }[]).map((r) => r.deleted_at);
+    expect(dates(after.movements).filter((d) => d !== null)).toHaveLength(1);
+    expect(dates(after.transfers).filter((d) => d !== null)).toHaveLength(1);
     // The counters survive: the next movement does not reuse the deleted id.
     const next = await appOf(target).inject({
       method: 'POST',
