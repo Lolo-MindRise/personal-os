@@ -81,10 +81,10 @@ function makeBackup(file: string, applied: Migration[]): void {
   db.close();
 }
 
-function rehearse(args: string[] = []): { status: number | null; out: string } {
+function rehearse(args: string[] = [], pathPrefix = ''): { status: number | null; out: string } {
   const result = spawnSync('bash', [join(appDir, 'scripts/rehearse-migration.sh'), ...args], {
     env: {
-      PATH: `${NODE_DIR}:/usr/bin:/bin`,
+      PATH: `${pathPrefix}${NODE_DIR}:/usr/bin:/bin`,
       HOME: join(root, 'home'),
       TMPDIR: tmpWork,
       PERSONAL_OS_INSTANCE_ENV: envFile,
@@ -222,6 +222,25 @@ describe('rehearsing', () => {
     makeBackup(join(dataDir, 'backups', pre), [BASE]);
     expect(rehearse().out).toContain(pre);
   });
+
+  // Regression: `list_backups | head -n 1` under pipefail died of SIGPIPE (status 141)
+  // whenever head exited before the listing was fully written. A long listing makes
+  // that certain, so any early-closing reader in the pipeline fails this test.
+  it('copes with a long backup listing (no SIGPIPE, newest chosen)', () => {
+    const backups = join(dataDir, 'backups');
+    const template = join(backups, NEWEST);
+    for (let i = 0; i < 200; i++) {
+      const stamp = `20260101T${String(i % 24).padStart(2, '0')}0000${String(i).padStart(3, '0')}Z`;
+      cpSync(template, join(backups, `personal-os-${stamp}-daily.sqlite`));
+    }
+    const newest = 'personal-os-20261201T000000000Z-pre-migration.sqlite';
+    cpSync(template, join(backups, newest));
+    for (let run = 0; run < 3; run++) {
+      const result = rehearse();
+      expect(result.status).toBe(0);
+      expect(result.out).toContain(newest);
+    }
+  });
 });
 
 describe('the temporary copy', () => {
@@ -323,6 +342,19 @@ describe('errors', () => {
     const result = rehearse();
     expect(result.status).toBe(1);
     expect(result.out).toContain('not a valid backup');
+    expect(readdirSync(tmpWork)).toEqual([]);
+  });
+
+  it('refuses to go on when the copy differs from the original, and changes nothing', () => {
+    const stubs = join(root, 'stubs');
+    mkdirSync(stubs);
+    writeFileSync(join(stubs, 'cmp'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    const before = fingerprint(dataDir);
+    const result = rehearse([], `${stubs}:`);
+    expect(result.status).toBe(1);
+    expect(result.out).toContain('not trustworthy');
+    expect(result.out).toContain('Nothing was changed');
+    expect(fingerprint(dataDir)).toEqual(before);
     expect(readdirSync(tmpWork)).toEqual([]);
   });
 

@@ -32,7 +32,10 @@ ensure_node "$APP_DIR"
 
 BACKUPS_DIR="$PERSONAL_OS_DATA_DIR/backups"
 [[ -d "$BACKUPS_DIR" ]] || die "no backup folder found: $BACKUPS_DIR. Start the app once so it takes a backup."
-newest="$(list_backups "$BACKUPS_DIR" | head -n 1)"
+# Read the whole listing first: an early-closing reader (`| head -n 1`) would make
+# the writer die of SIGPIPE (status 141) under pipefail.
+mapfile -t backup_names < <(list_backups "$BACKUPS_DIR")
+newest="${backup_names[0]:-}"
 [[ -n "$newest" ]] || die "no backup found in $BACKUPS_DIR. Start the app once so it takes a backup, then try again."
 backup_file="$BACKUPS_DIR/$newest"
 
@@ -53,7 +56,7 @@ trap cleanup EXIT
 # check, migration) runs on the copy, so SQLite never creates -wal/-shm next to it.
 copy="$work_dir/rehearsal.sqlite"
 cp -- "$backup_file" "$copy"
-cmp -s -- "$backup_file" "$copy" || die "the copy of $newest differs from the original. Nothing was changed."
+cmp -s -- "$backup_file" "$copy" || die "the copy of $newest differs from the original, so the copy is not trustworthy. Nothing was changed."
 
 if ! check_out="$(node "$APP_DIR/scripts/lib/sqlite-tool.mjs" check "$copy" 2>&1)"; then
   die "$newest is not a valid backup ($check_out). Nothing was changed."

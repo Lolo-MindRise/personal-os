@@ -162,7 +162,8 @@ the default.
    difference) and the migrations applied. Differences must be 0 or positive
    and the exit code 0; if a migration fails or a table loses rows it exits
    non-zero: do not deploy. Mind that it compares ROW COUNTS only: a migration
-   that deletes N rows and inserts N others, or empties a column, still shows 0. It never opens your live database; the backup file is only read (copied
+   that deletes N rows and inserts N others, or empties a column, still shows 0.
+   It never opens your live database; the backup file is only read (copied
    and compared), and it writes nowhere but the temporary folder (deleted
    afterwards; with `--keep` its path is printed, and that folder holds the
    migrated copy and possibly its `-wal`/`-shm` files). The app may be

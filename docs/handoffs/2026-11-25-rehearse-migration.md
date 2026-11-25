@@ -43,3 +43,15 @@ Branch `agent/0003/00-rehearse-migration` (from `integration/0003-data-safety-an
   the --keep folder may hold -wal/-shm. `--help` prints line 11. Script mode is 100755.
 - common.sh list_backups uses `LC_ALL=C sort -r`.
 - PR text /tmp/pr-body-0003-00.md updated (file names checked in src/server/db/config.ts, backups.ts).
+
+## Fix round 2 (CI failed: exit status 141)
+- Root cause: `newest="$(list_backups ... | head -n 1)"` under `set -o pipefail`. head exits after
+  the first line, the writer (list_backups) gets SIGPIPE on its next echo, the pipeline returns 141
+  and `set -e` aborts with empty output. Timing-dependent (CI), so a real bug for Manuel too.
+- Fix: `mapfile -t backup_names < <(list_backups ...)`, first element is the newest. common.sh has
+  no early-closing reader; restore.sh reads the listing fully (while-read), so it is unaffected
+  and unchanged.
+- Test: 200 fixture backups plus a newer one, three runs, expects exit 0 and the newest name.
+  Proven to fail (141) with `| head -n 1` reintroduced, pass with the fix; 6 repeated runs stable.
+- Minors: cmp failure says the copy is not trustworthy and nothing was changed (new test with a
+  stub cmp); long README line wrapped.
