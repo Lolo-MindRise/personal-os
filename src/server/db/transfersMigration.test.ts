@@ -63,7 +63,13 @@ describe('transfers migration', () => {
     const after = tables.map(
       (t) => sqlite.prepare(`SELECT * FROM ${t} ORDER BY id`).all() as Row[],
     );
-    expect(after).toEqual(before);
+    // deleted_at is added by the trash migration (0009), always NULL for existing rows.
+    expect(after.flat().every((row) => !('deleted_at' in row) || row.deleted_at === null)).toBe(
+      true,
+    );
+    const withoutDeletedAt = (row: Row) =>
+      Object.fromEntries(Object.entries(row).filter(([key]) => key !== 'deleted_at'));
+    expect(after.map((rows) => rows.map(withoutDeletedAt))).toEqual(before);
     expect(sqlite.prepare('SELECT count(*) AS n FROM transfers').get()).toEqual({ n: 0 });
   });
 });

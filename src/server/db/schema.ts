@@ -94,6 +94,8 @@ export const transfers = sqliteTable(
       .notNull()
       .references(() => accounts.id),
     notes: text('notes'),
+    // Trash (plan 0003): ISO timestamp of the deletion; NULL = the row exists for every reader.
+    deletedAt: text('deleted_at'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -223,14 +225,17 @@ export const movements = sqliteTable(
     recurringItemId: integer('recurring_item_id').references(() => recurringItems.id, {
       onDelete: 'set null',
     }),
+    // Trash (plan 0003): ISO timestamp of the deletion; NULL = the row exists for every reader.
+    deletedAt: text('deleted_at'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     // Also in the migrations, written by hand because drizzle-kit mangles expression
     // indexes: UNIQUE INDEX movements_recurring_item_month_unique
-    //   ON movements (recurring_item_id, substr(date, 1, 7))
-    // = at most one confirmed movement per recurring item and month (NULLs never collide).
+    //   ON movements (recurring_item_id, substr(date, 1, 7)) WHERE deleted_at IS NULL
+    // = at most one live confirmed movement per recurring item and month (NULLs never collide;
+    // a trashed movement does not hold the slot, migration 0009).
     // A movement's kind must match its category's kind.
     foreignKey({
       columns: [t.categoryId, t.kind],
