@@ -36,3 +36,7 @@ Questions for Manuel: none | <question>
 
 You never merge anything, never touch the default branch and never edit
 `.claude/`, the brief or other tasks' files.
+
+If the guard hook blocks a command, never route around it. The only
+allowed alternative is writing a file with Write or Edit when a shell write
+was blocked. Anything else: stop and report it as a deviation.
