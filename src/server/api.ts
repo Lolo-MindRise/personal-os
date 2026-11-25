@@ -37,6 +37,7 @@ import { registerDataImportApi } from './dataImportApi.js';
 import { registerDebtsApi } from './debtsApi.js';
 import { registerImportApi } from './importApi.js';
 import { registerMovementSearchApi } from './movementSearchApi.js';
+import { registerSuggestApi } from './suggestApi.js';
 import { registerProjectionApi } from './projectionApi.js';
 import { registerMilestonesApi } from './milestonesApi.js';
 import { registerRecurringApi } from './recurringApi.js';
@@ -235,6 +236,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
   registerDebtsApi(app, db);
   registerImportApi(app, db);
   registerMovementSearchApi(app, db);
+  registerSuggestApi(app, db);
   registerProjectionApi(app, db);
   registerMilestonesApi(app, db);
   registerRecurringApi(app, db);
