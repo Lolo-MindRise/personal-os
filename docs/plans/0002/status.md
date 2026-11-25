@@ -6,8 +6,8 @@ Integration branch: `integration/0002-insights-and-accounts`
 |------|-----------|-------|----|-------|
 | 00 housekeeping | – | merged | #53 | approve (1 round); plain lint passes with 9 worktrees |
 | 01 accounts-model | 00 | merged | #54 | approve (1 round); risk high (migration); PR body wrong on GitHub, `gh pr edit` fails |
-| 02 reports | 00 | pending | – | no migration |
-| 03 transfers-cuentas | 01 | pending | – | owns the migration slot |
+| 02 reports | 00 | merged | #55 | approve after 3 rounds (the limit); whole-period links on averages/changes are an orchestrator change from the brief |
+| 03 transfers-cuentas | 01 | in review (fix round 1) | #56 | owns the migration slot; round 1 changes required (Principal opening date) |
 | 04 tags | 03 | pending | – | owns the migration slot |
 | 05 dashboard-additions | 03 | pending | – | no migration; parallel with 04 |
 | 06 data-export-import | 01, 03, 04 | pending | – | last |

@@ -25,6 +25,7 @@ import type {
 } from '../shared/api.js';
 import type { Kind } from '../shared/constants.js';
 import type { ImportMapping } from '../shared/csvImport.js';
+import type { ExpenseReportDto } from '../shared/reports.js';
 import type { AccountPayload, TransferPayload } from './accountForms.js';
 import type { BudgetPayload } from './budgetForm.js';
 import type { CommitRow } from './importState.js';
@@ -111,6 +112,11 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
     backupStatus: () => request<BackupStatusDto>(fetchFn, '/api/backups/status'),
     dashboard: (month: string, today: string) =>
       request<DashboardDto>(fetchFn, `/api/dashboard?month=${enc(month)}&today=${enc(today)}`),
+    expenseReport: (month: string, months: number) =>
+      request<ExpenseReportDto>(
+        fetchFn,
+        `/api/reports/expenses?month=${enc(month)}&months=${String(months)}`,
+      ),
     budget: (month: string) => request<BudgetMonthDto>(fetchFn, `/api/months/${enc(month)}/budget`),
     addBudgetLine: (payload: BudgetPayload) =>
       request<BudgetMonthDto>(fetchFn, '/api/budget-lines', json('POST', payload)),
