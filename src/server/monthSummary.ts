@@ -1,6 +1,7 @@
 import { and, gte, lte, sql } from 'drizzle-orm';
 import type { MonthSummaryDto } from '../shared/api.js';
 import type { Db } from './db/index.js';
+import { liveMovements } from './db/live.js';
 import { dueEntries } from './db/recurring.js';
 import { movements } from './db/schema.js';
 
@@ -15,7 +16,9 @@ export function monthSummary(db: Db, month: string): MonthSummaryDto {
       total: sql<number>`coalesce(sum(${movements.amountCents}), 0)`,
     })
     .from(movements)
-    .where(and(gte(movements.date, `${month}-01`), lte(movements.date, `${month}-31`)))
+    .where(
+      and(liveMovements(), gte(movements.date, `${month}-01`), lte(movements.date, `${month}-31`)),
+    )
     .groupBy(movements.kind)
     .all();
   const sumOf = (kind: string) => totals.find((row) => row.kind === kind)?.total ?? 0;

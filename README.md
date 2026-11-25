@@ -146,7 +146,30 @@ the default.
 6. **Stop** with the stop shortcut or `bash ~/apps/personal-os/scripts/stop.sh`.
    It waits for the app to close its database; it never force-kills.
 
-7. **Update after merging a PR:** stop the app, run
+7. **Rehearse a deployment** (before updating, whenever the new build has
+   migrations). From the build you are about to deploy (your development clone,
+   updated), run:
+
+   ```sh
+   git checkout main && git pull --ff-only && npm ci
+   bash scripts/rehearse-migration.sh          # add --keep to keep the copy
+   ```
+
+   The helper uses the `node_modules` of the dev clone and the migrations of
+   the checked-out branch, hence the commands above. The script takes your
+   newest local backup, copies it to a temporary folder, applies this build's
+   migrations to the copy and prints a table (table, rows before, rows after,
+   difference) and the migrations applied. Differences must be 0 or positive
+   and the exit code 0; if a migration fails or a table loses rows it exits
+   non-zero: do not deploy. Mind that it compares ROW COUNTS only: a migration
+   that deletes N rows and inserts N others, or empties a column, still shows 0.
+   It never opens your live database; the backup file is only read (copied
+   and compared), and it writes nowhere but the temporary folder (deleted
+   afterwards; with `--keep` its path is printed, and that folder holds the
+   migrated copy and possibly its `-wal`/`-shm` files). The app may be
+   running. It reads the instance config like `start.sh`.
+
+8. **Update after merging a PR:** stop the app, run
    `bash ~/apps/personal-os/scripts/deploy-local.sh`, start it again. The deploy
    refuses to run while the app is up, or if the instance directory has local
    changes (it must stay a clean copy of `main`). Migrations run on start, after

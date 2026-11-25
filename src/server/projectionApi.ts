@@ -12,6 +12,7 @@ import { projectionQuerySchema } from '../shared/schemas.js';
 import { accumulatedAt, monthsBetween } from '../shared/summary.js';
 import { badRequest, fieldErrors, MESSAGES } from './apiCommon.js';
 import type { Db } from './db/index.js';
+import { liveMovements } from './db/live.js';
 import { confirmedItemIds, listRecurringItems } from './db/recurring.js';
 import { budgetLines, categories, goals, movements, recurringSkips } from './db/schema.js';
 import { allMovements, localToday, readSettings } from './summaryApi.js';
@@ -47,6 +48,7 @@ export function buildProjection(db: Db, today: string, endMonth: string): Projec
       cents: movements.amountCents,
     })
     .from(movements)
+    .where(liveMovements())
     .all()) {
     const counts =
       m.date.slice(0, 7) === currentMonth &&

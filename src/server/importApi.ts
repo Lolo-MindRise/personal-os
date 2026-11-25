@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { CategoryRuleDto, ImportPreviewRowDto, ImportSummaryDto } from '../shared/api.js';
 import type { ImportMapping } from '../shared/csvImport.js';
 import { classifyRows, normalizeText } from '../shared/importClassify.js';
+import { DEFAULT_ACCOUNT_ID } from '../shared/constants.js';
 import { isDueInMonth, monthOf } from '../shared/recurring.js';
 import {
   categoryRuleCreateSchema,
@@ -11,6 +12,7 @@ import {
   importPreviewSchema,
 } from '../shared/schemas.js';
 import {
+  accountError,
   badRequest,
   categoryError,
   conflict,
@@ -20,7 +22,15 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
-import { confirmedItemIds, dueEntries, getRecurringItem, skippedItemIds } from './db/recurring.js';
+import { liveMovements } from './db/live.js';
+import {
+  confirmedItemIds,
+  dueEntries,
+  getRecurringItem,
+  skippedItemIds,
+  TRASH_HOLDS_SLOT,
+  trashedItemIds,
+} from './db/recurring.js';
 import { categories, categoryRules, importSettings, movements } from './db/schema.js';
 
 const MESSAGES = {
@@ -89,10 +99,14 @@ function preview(db: Db, rows: { date: string; concept: string; amountCents: num
       recurringItemId: movements.recurringItemId,
     })
     .from(movements)
-    .where(and(gte(movements.date, first), lte(movements.date, last)))
+    .where(and(liveMovements(), gte(movements.date, first), lte(movements.date, last)))
     .all();
   const months = [...new Set(rows.map((r) => monthOf(r.date)))];
-  const pending = months.flatMap((month) => dueEntries(db, month).pending);
+  // Items whose slot is held by a trashed confirmation are not offered as a match: the commit
+  // would refuse them, and the preview must never propose what the commit rejects.
+  const pending = months.flatMap((month) =>
+    dueEntries(db, month).pending.filter((entry) => !entry.heldByTrash),
+  );
   return classifyRows(rows, { rules: listRules(db), existing, pending });
 }
 
@@ -178,6 +192,11 @@ export function registerImportApi(app: FastifyInstance, db: Db): void {
     if (!parsed.success) {
       return badRequest(reply, MESSAGES.invalid, fieldErrors(parsed.error));
     }
+    const accountId = parsed.data.accountId ?? DEFAULT_ACCOUNT_ID;
+    const accountProblem = accountError(db, accountId);
+    if (accountProblem !== undefined) {
+      return badRequest(reply, accountProblem.error, { accountId: accountProblem.error });
+    }
     try {
       // One transaction: if any row is wrong, nothing is imported.
       const summary = db.transaction((tx): ImportSummaryDto => {
@@ -208,6 +227,9 @@ export function registerImportApi(app: FastifyInstance, db: Db): void {
               fail('el fijo ya está confirmado en ese mes.');
             } else if (skippedItemIds(db, month).has(itemId)) {
               fail('el fijo está saltado en ese mes.');
+            } else if (trashedItemIds(db, month).has(itemId)) {
+              // Lowercase first letter: it follows "Fila N: " like the other row problems.
+              fail(`${TRASH_HOLDS_SLOT.charAt(0).toLowerCase()}${TRASH_HOLDS_SLOT.slice(1)}`);
             }
             result.confirmedRecurring++;
           } else {
@@ -222,6 +244,7 @@ export function registerImportApi(app: FastifyInstance, db: Db): void {
               amountCents: row.amountCents,
               notes,
               recurringItemId: itemId,
+              accountId,
             })
             .run();
         });

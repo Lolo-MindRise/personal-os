@@ -642,6 +642,29 @@ td.amount {
   text-align: center;
 }
 
+/* «Deshacer» after deleting: fixed at the bottom, text plus a button (never colour alone). */
+.undo-region {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  left: var(--space-4);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.undo-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  pointer-events: auto;
+}
+
 .budget tfoot th,
 .budget tfoot td {
   border-top: 2px solid var(--border);
@@ -923,6 +946,39 @@ td.amount {
   border-radius: 4px;
 }
 
+/* Budget progress: state is also written in words; "over" is striped so colour is not the only cue. */
+.budget-meter {
+  height: 8px;
+  margin-top: var(--space-1, 4px);
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.budget-meter-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.budget-meter-warning .budget-meter-fill {
+  background: var(--repayment);
+}
+
+.budget-meter-over .budget-meter-fill {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--danger),
+    var(--danger) 4px,
+    transparent 4px,
+    transparent 6px
+  );
+}
+
+.budget-alert-over {
+  font-weight: 600;
+}
+
 .upcoming {
   margin: 0;
   padding: 0;
@@ -1004,4 +1060,26 @@ td.amount {
 .rule-list li {
   padding: var(--space-1) 0;
   border-bottom: 1px solid var(--border);
+}
+
+/* Quick add (key N): the sidebar button with its key, the "saved" line and the suggestion. */
+.quick-add-button kbd {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font-size: var(--text-sm);
+}
+
+.quick-add-saved {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+}
+
+.quick-add-saved:empty {
+  display: none;
+}
+
+.suggestion:empty {
+  display: none;
 }

@@ -21,6 +21,13 @@ const date = z.string().regex(/^\d{4}-[01]\d-[0-3]\d$/);
 const month = z.string().regex(/^\d{4}-[01]\d$/);
 const text = z.string().refine((s) => s.trim().length > 0);
 const notes = z.string().nullable();
+// Trash (plan 0003). Files exported before it have no such key: the row was never deleted.
+// Same shape the app writes (ISO 8601 UTC, as createdAt and the trash's Date#toISOString).
+const deletedAt = z
+  .string()
+  .regex(/^\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d(\.\d+)?Z$/)
+  .nullable()
+  .default(null);
 const kind = z.enum(KINDS);
 
 const categories = z.strictObject({
@@ -48,8 +55,19 @@ const transfers = z.strictObject({
   fromAccountId: id,
   toAccountId: id,
   notes,
+  deletedAt,
   createdAt: timestamp,
   updatedAt: timestamp,
+});
+
+const reconciliations = z.strictObject({
+  id,
+  accountId: id,
+  date,
+  bankBalanceCents: int,
+  appBalanceCents: int,
+  differenceCents: int,
+  createdAt: timestamp,
 });
 
 const debts = z.strictObject({
@@ -99,6 +117,7 @@ const movements = z.strictObject({
   debtId: nullableId,
   accountId: id,
   recurringItemId: nullableId,
+  deletedAt,
   createdAt: timestamp,
   updatedAt: timestamp,
 });
@@ -168,6 +187,7 @@ export const ROW_SCHEMAS = {
   categories,
   accounts,
   transfers,
+  reconciliations,
   debts,
   recurring_items: recurringItems,
   recurring_skips: recurringSkips,
@@ -199,6 +219,7 @@ export const TABLE_INSERT_ORDER: readonly DataTableName[] = [
   'movements',
   'movement_tags',
   'transfers',
+  'reconciliations',
   'budget_lines',
   'category_rules',
   'goals',
@@ -208,8 +229,16 @@ export const TABLE_INSERT_ORDER: readonly DataTableName[] = [
 ];
 
 const tableShape = Object.fromEntries(
-  Object.entries(ROW_SCHEMAS).map(([name, row]) => [name, z.array(row)]),
-) as { [K in DataTableName]: z.ZodArray<(typeof ROW_SCHEMAS)[K]> };
+  Object.entries(ROW_SCHEMAS).map(([name, row]) => [
+    name,
+    // Files exported before the reconciliations (plan 0003, task 06) have no such table: empty.
+    name === 'reconciliations' ? z.array(row).default([]) : z.array(row),
+  ]),
+) as {
+  [K in DataTableName]: K extends 'reconciliations'
+    ? z.ZodDefault<z.ZodArray<(typeof ROW_SCHEMAS)[K]>>
+    : z.ZodArray<(typeof ROW_SCHEMAS)[K]>;
+};
 
 export const dataFileSchema = z.strictObject({
   app: z.literal(DATA_FILE_APP),
@@ -331,6 +360,7 @@ export function referenceProblems(file: DataFile): string[] {
     'movements',
     'fijo confirmado en el mismo mes',
     t.movements
+      // A trashed movement still holds the slot (the unique index is not partial).
       .filter((r) => r.recurringItemId !== null)
       .map((r) => `${String(r.recurringItemId)}-${r.date.slice(0, 7)}`),
   );
@@ -395,6 +425,12 @@ export function referenceProblems(file: DataFile): string[] {
     ref('transfers', r.id, 'una cuenta de destino', accountIds.has(r.toAccountId));
     if (r.fromAccountId === r.toAccountId) {
       add(`transfers: la fila ${String(r.id)} tiene la misma cuenta de origen y destino`);
+    }
+  }
+  for (const r of t.reconciliations) {
+    ref('reconciliations', r.id, 'una cuenta', accountIds.has(r.accountId));
+    if (r.differenceCents !== r.bankBalanceCents - r.appBalanceCents) {
+      add(`reconciliations: la fila ${String(r.id)} tiene una diferencia que no cuadra`);
     }
   }
   for (const r of t.budget_lines) {

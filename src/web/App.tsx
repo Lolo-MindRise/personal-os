@@ -1,5 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import { BackupBanner } from './BackupBanner.js';
+import { openQuickAdd } from './quickAdd.js';
+import { QuickAdd } from './QuickAdd.js';
 import { hrefFor, useRoute, type View } from './router.js';
 import { ThemeToggle } from './theme.js';
 
@@ -23,6 +25,7 @@ const CategoriesPage = named(() => import('./CategoriesPage.js'), 'CategoriesPag
 const TagsPage = named(() => import('./TagsPage.js'), 'TagsPage');
 const AccountsPage = named(() => import('./AccountsPage.js'), 'AccountsPage');
 const BackupsPage = named(() => import('./BackupsPage.js'), 'BackupsPage');
+const TrashPage = named(() => import('./TrashPage.js'), 'TrashPage');
 
 const SCREENS: Record<View, React.LazyExoticComponent<React.ComponentType>> = {
   dashboard: DashboardPage,
@@ -40,6 +43,7 @@ const SCREENS: Record<View, React.LazyExoticComponent<React.ComponentType>> = {
   tags: TagsPage,
   accounts: AccountsPage,
   backups: BackupsPage,
+  trash: TrashPage,
 };
 
 interface NavItem {
@@ -88,6 +92,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { view: 'tags', label: 'Marcas' },
       { view: 'accounts', label: 'Cuentas' },
       { view: 'backups', label: 'Copias' },
+      { view: 'trash', label: 'Papelera' },
     ],
   },
 ];
@@ -146,12 +151,22 @@ export function App() {
           </button>
         </div>
         <div className="sidebar-body" id="sidebar-body">
+          <button
+            type="button"
+            className="quick-add-button"
+            title="Atajo de teclado: N"
+            aria-keyshortcuts="N"
+            onClick={openQuickAdd}
+          >
+            Nuevo movimiento <kbd>N</kbd>
+          </button>
           <Navigation view={view} />
           <ThemeToggle />
         </div>
       </aside>
       <div className="content">
         <BackupBanner />
+        <QuickAdd />
         <Suspense fallback={<p className="page loading">Cargando…</p>}>
           <Screen />
         </Suspense>

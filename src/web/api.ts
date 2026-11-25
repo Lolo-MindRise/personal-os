@@ -2,6 +2,8 @@ import type {
   AccountBalanceDto,
   AccountDto,
   TransferDto,
+  ReconciliationDto,
+  ReconciliationPreviewDto,
   ApiErrorBody,
   BackupStatusDto,
   BudgetMonthDto,
@@ -18,17 +20,20 @@ import type {
   YearSummaryDto,
   MonthSummaryDto,
   MovementDto,
+  CategorySuggestionDto,
   MovementSearchDto,
+  ConfirmAllResultDto,
   PendingEntryDto,
   ProjectionDto,
   RecurringItemDto,
   TagDto,
+  TrashDto,
 } from '../shared/api.js';
 import type { Kind } from '../shared/constants.js';
 import type { DataFile, DataImportResultDto } from '../shared/dataFile.js';
 import type { ImportMapping } from '../shared/csvImport.js';
 import type { ExpenseReportDto } from '../shared/reports.js';
-import type { AccountPayload, TransferPayload } from './accountForms.js';
+import type { AccountPayload, ReconcilePayload, TransferPayload } from './accountForms.js';
 import type { BudgetPayload } from './budgetForm.js';
 import type { CommitRow } from './importState.js';
 import type { DebtPayload } from './debtForm.js';
@@ -104,6 +109,18 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
       request<AccountDto>(fetchFn, `/api/accounts/${String(id)}`, json('PATCH', payload)),
     deleteAccount: (id: number) =>
       request<undefined>(fetchFn, `/api/accounts/${String(id)}`, { method: 'DELETE' }),
+    reconciliations: () => request<ReconciliationDto[]>(fetchFn, '/api/reconciliations'),
+    reconciliationPreview: (accountId: number, date: string) =>
+      request<ReconciliationPreviewDto>(
+        fetchFn,
+        `/api/accounts/${String(accountId)}/reconciliation-preview?date=${enc(date)}`,
+      ),
+    createReconciliation: (accountId: number, payload: ReconcilePayload) =>
+      request<ReconciliationDto>(
+        fetchFn,
+        `/api/accounts/${String(accountId)}/reconciliations`,
+        json('POST', payload),
+      ),
     transfers: () => request<TransferDto[]>(fetchFn, '/api/transfers'),
     createTransfer: (payload: TransferPayload) =>
       request<TransferDto>(fetchFn, '/api/transfers', json('POST', payload)),
@@ -163,6 +180,11 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
       request<ProjectionDto>(fetchFn, `/api/projection?to=${enc(to)}&today=${enc(today)}`),
     searchMovements: (query: SearchQuery, page: number) =>
       request<MovementSearchDto>(fetchFn, `/api/movements/search?${searchParams(query, page)}`),
+    suggestCategory: (kind: 'income' | 'expense', concept: string) =>
+      request<CategorySuggestionDto>(
+        fetchFn,
+        `/api/movements/suggest-category?kind=${enc(kind)}&concept=${enc(concept)}`,
+      ),
     summary: (month: string) =>
       request<MonthSummaryDto>(fetchFn, `/api/months/${enc(month)}/summary`),
     createMovement: (payload: MovementPayload) =>
@@ -171,6 +193,21 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
       request<MovementDto>(fetchFn, `/api/movements/${String(id)}`, json('PATCH', payload)),
     deleteMovement: (id: number) =>
       request<undefined>(fetchFn, `/api/movements/${String(id)}`, { method: 'DELETE' }),
+
+    // Trash (plan 0003): deleting moves to the trash; these list, restore or delete for good.
+    trash: () => request<TrashDto>(fetchFn, '/api/trash'),
+    restoreMovement: (id: number) =>
+      request<MovementDto>(fetchFn, `/api/trash/movements/${String(id)}/restore`, {
+        method: 'POST',
+      }),
+    restoreTransfer: (id: number) =>
+      request<TransferDto>(fetchFn, `/api/trash/transfers/${String(id)}/restore`, {
+        method: 'POST',
+      }),
+    deleteMovementForever: (id: number) =>
+      request<undefined>(fetchFn, `/api/trash/movements/${String(id)}`, { method: 'DELETE' }),
+    deleteTransferForever: (id: number) =>
+      request<undefined>(fetchFn, `/api/trash/transfers/${String(id)}`, { method: 'DELETE' }),
 
     // CSV import (task 0013)
     categoryRules: () => request<CategoryRuleDto[]>(fetchFn, '/api/category-rules'),
@@ -187,8 +224,12 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
         '/api/import/preview',
         json('POST', { rows }),
       ),
-    importCommit: (rows: CommitRow[]) =>
-      request<ImportSummaryDto>(fetchFn, '/api/import/commit', json('POST', { rows })),
+    importCommit: (rows: CommitRow[], accountId?: number) =>
+      request<ImportSummaryDto>(
+        fetchFn,
+        '/api/import/commit',
+        json('POST', accountId === undefined ? { rows } : { accountId, rows }),
+      ),
 
     // Recurring items (ADR-0005)
     recurringItems: () => request<RecurringItemDto[]>(fetchFn, '/api/recurring-items'),
@@ -207,7 +248,9 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
     confirmRecurring: (itemId: number, month: string, overrides: ConfirmPayload) =>
       request<MovementDto>(fetchFn, `${itemMonth(itemId, month)}/confirm`, json('POST', overrides)),
     confirmAll: (month: string) =>
-      request<MovementDto[]>(fetchFn, `/api/months/${enc(month)}/confirm-all`, { method: 'POST' }),
+      request<ConfirmAllResultDto>(fetchFn, `/api/months/${enc(month)}/confirm-all`, {
+        method: 'POST',
+      }),
     skipRecurring: (itemId: number, month: string) =>
       request<undefined>(fetchFn, `${itemMonth(itemId, month)}/skip`, { method: 'POST' }),
     undoSkip: (itemId: number, month: string) =>

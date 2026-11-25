@@ -38,6 +38,12 @@ async function cleanUp(request: APIRequestContext, month: string, concepts: stri
   for (const movement of movements) {
     await request.delete(`/api/movements/${String(movement.id)}`);
   }
+  // Deleting only moves to the trash, and a trashed confirmation still holds its fixed item's
+  // month slot: delete for good so the next test can confirm again.
+  const trash = (await (await request.get('/api/trash')).json()) as { movements: MovementRow[] };
+  for (const movement of trash.movements) {
+    await request.delete(`/api/trash/movements/${String(movement.id)}`);
+  }
   const items = (await (await request.get('/api/recurring-items')).json()) as ItemRow[];
   for (const item of items) {
     // 404 when there is no skip: fine.

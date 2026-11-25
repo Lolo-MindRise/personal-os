@@ -4,6 +4,7 @@ import type {
   CategoryDto,
   MonthSummaryDto,
   MovementDto,
+  ConfirmAllResultDto,
   PendingEntryDto,
   RecurringItemDto,
 } from '../shared/api.js';
@@ -343,6 +344,8 @@ describe('confirm one', () => {
     const kept = await post(confirmUrl(id, '2026-01'));
     expect(kept.json<MovementDto>().notes).toBe('Del contrato');
     await del(`/api/movements/${String(kept.json<MovementDto>().id)}`);
+    // The trashed confirmation holds the slot until it is deleted for good.
+    await del(`/api/trash/movements/${String(kept.json<MovementDto>().id)}`);
     const cleared = await post(confirmUrl(id, '2026-01'), { notes: null });
     expect(cleared.json<MovementDto>().notes).toBeNull();
   });
@@ -450,7 +453,10 @@ describe('confirm one', () => {
 
     expect((await del(`/api/movements/${String(movement.id)}`)).statusCode).toBe(204);
     expect(concepts(await pending('2026-01'))).toContain('Internet');
-    // And it can be confirmed again.
+    // Confirming again is refused while the movement is in the trash (it holds the slot)...
+    expect((await post(confirmUrl(id, '2026-01'))).statusCode).toBe(409);
+    // ...and works once it is deleted for good.
+    expect((await del(`/api/trash/movements/${String(movement.id)}`)).statusCode).toBe(204);
     expect((await post(confirmUrl(id, '2026-01'))).statusCode).toBe(201);
   });
 });
@@ -490,7 +496,8 @@ describe('confirm all', () => {
   it('confirms every pending entry with its expected values', async () => {
     const response = await post('/api/months/2026-01/confirm-all');
     expect(response.statusCode).toBe(201);
-    const created = response.json<MovementDto[]>();
+    const { created, skippedHeldByTrash } = response.json<ConfirmAllResultDto>();
+    expect(skippedHeldByTrash).toEqual([]);
     expect(created.map((m) => [m.concept, m.date, m.amountCents])).toEqual([
       ['Internet', '2026-01-10', 3_500],
       ['Electricidad', '2026-01-12', 6_500],
@@ -505,13 +512,13 @@ describe('confirm all', () => {
     await post('/api/months/2026-01/confirm-all');
     const again = await post('/api/months/2026-01/confirm-all');
     expect(again.statusCode).toBe(201);
-    expect(again.json<MovementDto[]>()).toEqual([]);
+    expect(again.json<ConfirmAllResultDto>()).toEqual({ created: [], skippedHeldByTrash: [] });
     expect(await movementsOf('2026-01')).toHaveLength(9);
   });
 
   it('leaves skipped entries alone and other months untouched', async () => {
     await post(skipUrl(await itemId('Gimnasio'), '2026-01'));
-    const created = (await post('/api/months/2026-01/confirm-all')).json<MovementDto[]>();
+    const { created } = (await post('/api/months/2026-01/confirm-all')).json<ConfirmAllResultDto>();
     expect(created.map((m) => m.concept)).toEqual(['Internet', 'Electricidad']);
     expect(concepts(await skipped('2026-01'))).toEqual(['Gimnasio']);
     expect(await movementsOf('2026-02')).toEqual([]);

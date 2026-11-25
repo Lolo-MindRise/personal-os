@@ -23,7 +23,9 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
+import { deletionTimestamp, liveMovements } from './db/live.js';
 import { categories, debts, movements } from './db/schema.js';
+import { registerTrashApi } from './trashApi.js';
 import { registerAccountsApi } from './accountsApi.js';
 import { registerBudgetApi } from './budgetApi.js';
 import { registerDashboardApi } from './dashboardApi.js';
@@ -35,9 +37,11 @@ import { registerDataImportApi } from './dataImportApi.js';
 import { registerDebtsApi } from './debtsApi.js';
 import { registerImportApi } from './importApi.js';
 import { registerMovementSearchApi } from './movementSearchApi.js';
+import { registerSuggestApi } from './suggestApi.js';
 import { registerProjectionApi } from './projectionApi.js';
 import { registerMilestonesApi } from './milestonesApi.js';
 import { registerRecurringApi } from './recurringApi.js';
+import { registerReconciliationsApi } from './reconciliationsApi.js';
 import { registerSummaryApi } from './summaryApi.js';
 import { registerTagsApi } from './tagsApi.js';
 
@@ -106,7 +110,11 @@ export function registerApi(app: FastifyInstance, db: Db): void {
       .from(movements)
       .innerJoin(categories, eq(categories.id, movements.categoryId))
       .where(
-        and(gte(movements.date, `${parsed.data}-01`), lte(movements.date, `${parsed.data}-31`)),
+        and(
+          liveMovements(),
+          gte(movements.date, `${parsed.data}-01`),
+          lte(movements.date, `${parsed.data}-31`),
+        ),
       )
       .orderBy(desc(movements.date), desc(movements.id))
       .all();
@@ -136,7 +144,13 @@ export function registerApi(app: FastifyInstance, db: Db): void {
   app.patch('/api/movements/:id', (request, reply) => {
     const id = parseId((request.params as { id: string }).id);
     const current =
-      id === undefined ? undefined : db.select().from(movements).where(eq(movements.id, id)).get();
+      id === undefined
+        ? undefined
+        : db
+            .select()
+            .from(movements)
+            .where(and(liveMovements(), eq(movements.id, id)))
+            .get();
     if (id === undefined || current === undefined) {
       return notFound(reply, MESSAGES.notFound);
     }
@@ -190,7 +204,13 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     const deleted =
       id === undefined
         ? []
-        : db.delete(movements).where(eq(movements.id, id)).returning({ id: movements.id }).all();
+        : // To the trash, not gone: `deleted_at` hides it everywhere (trashApi.ts restores it).
+          db
+            .update(movements)
+            .set({ deletedAt: deletionTimestamp() })
+            .where(and(liveMovements(), eq(movements.id, id)))
+            .returning({ id: movements.id })
+            .all();
     if (deleted.length === 0) {
       return notFound(reply, MESSAGES.notFound);
     }
@@ -206,6 +226,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
   });
 
   registerAccountsApi(app, db);
+  registerReconciliationsApi(app, db);
   registerBudgetApi(app, db);
   registerCategoriesApi(app, db);
   registerDashboardApi(app, db);
@@ -215,9 +236,11 @@ export function registerApi(app: FastifyInstance, db: Db): void {
   registerDebtsApi(app, db);
   registerImportApi(app, db);
   registerMovementSearchApi(app, db);
+  registerSuggestApi(app, db);
   registerProjectionApi(app, db);
   registerMilestonesApi(app, db);
   registerRecurringApi(app, db);
   registerSummaryApi(app, db);
   registerTagsApi(app, db);
+  registerTrashApi(app, db);
 }

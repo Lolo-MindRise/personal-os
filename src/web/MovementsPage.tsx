@@ -35,6 +35,8 @@ import {
   type MovementPayload,
 } from './movementForm.js';
 import { LinkedMovements } from './LinkedMovements.js';
+import { openQuickAdd } from './quickAdd.js';
+import { useMovementSaved } from './QuickAdd.js';
 import { SidePanel, usePanel } from './SidePanel.js';
 import { monthLabel } from './months.js';
 import { FilterBar, PageHeader } from './PageHeader.js';
@@ -49,6 +51,8 @@ import {
 } from './movementsCsv.js';
 import { PendingList } from './PendingList.js';
 import { SummaryBar } from './SummaryBar.js';
+import { UndoToast } from './UndoToast.js';
+import { useUndo } from './useUndo.js';
 
 const defaultApi = createApiClient();
 
@@ -204,6 +208,9 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   const reload = useCallback(() => {
     setReloads((n) => n + 1);
   }, []);
+  const undo = useUndo(reload, setActionError);
+  // A movement saved from the quick-add panel (key N) refreshes the list shown here.
+  useMovementSaved(reload);
 
   // The search across all months (task 0013, block 3). While a search is active, the monthly
   // view (pending entries, form, list) is hidden; "Volver a la vista mensual" restores it.
@@ -365,14 +372,15 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   };
 
   const remove = async (movement: MovementDto) => {
-    if (!window.confirm(`¿Eliminar «${movement.concept}»? Esta acción no se puede deshacer.`)) {
-      return;
-    }
+    // No confirmation: the movement goes to the papelera and «Deshacer» brings it back.
     try {
       await api.deleteMovement(movement.id);
       if (editingId === movement.id) {
         resetForm();
       }
+      undo.show(`Movimiento «${movement.concept}» eliminado. Está en la papelera.`, () =>
+        api.restoreMovement(movement.id),
+      );
       reload();
     } catch (error) {
       setLoadError(messageOf(error));
@@ -424,14 +432,15 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     setExporting(true);
     setExportError(undefined);
     try {
+      const accountList = await api.accounts();
       if (search === undefined) {
         downloadCsv(
           monthCsvFilename(month, categoryFilter === undefined ? undefined : categoryName),
-          movementsToCsv(shownMovements),
+          movementsToCsv(shownMovements, accountList),
         );
       } else {
         const rows = await fetchAllSearchRows((page) => api.searchMovements(search.query, page));
-        downloadCsv('movimientos-busqueda.csv', movementsToCsv(rows));
+        downloadCsv('movimientos-busqueda.csv', movementsToCsv(rows, accountList));
       }
     } catch (error) {
       setExportError(messageOf(error));
@@ -458,10 +467,9 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
             <button
               type="button"
               className="primary"
-              onClick={() => {
-                resetForm();
-                panel.show();
-              }}
+              title="Atajo de teclado: N"
+              aria-keyshortcuts="N"
+              onClick={openQuickAdd}
             >
               Añadir movimiento
             </button>
@@ -596,7 +604,17 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
             onConfirm={confirm}
             onSkip={(entry) => void act(() => api.skipRecurring(entry.recurringItemId, month))}
             onUndo={(entry) => void act(() => api.undoSkip(entry.recurringItemId, month))}
-            onConfirmAll={() => void act(() => api.confirmAll(month))}
+            onConfirmAll={() =>
+              void act(async () => {
+                const result = await api.confirmAll(month);
+                const held = result.skippedHeldByTrash;
+                if (held.length > 0) {
+                  setActionError(
+                    `No se han confirmado ${String(held.length)} fijos porque tienen un movimiento en la papelera: ${held.map((h) => h.concept).join(', ')}`,
+                  );
+                }
+              })
+            }
           />
 
           <SidePanel
@@ -638,6 +656,12 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
           />
         </>
       )}
+      <UndoToast
+        toast={undo.toast}
+        busy={undo.busy}
+        onUndo={(t) => void undo.undo(t)}
+        onExpire={undo.expire}
+      />
     </main>
   );
 }

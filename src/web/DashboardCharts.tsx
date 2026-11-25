@@ -156,7 +156,10 @@ export function MonthsChart({ months }: { months: DashboardMonthDto[] }) {
   );
 }
 
-/** The category label on the axis; over-budget ones say so in words, not only in colour. */
+/**
+ * The category label on the axis; over-budget ones say so in words, not only in colour.
+ * `overBudget` is strictly above budget; the Inicio alert state is `over` from 100 %: deliberate.
+ */
 export function categoryLabel(c: DashboardCategoryDto): string {
   return c.overBudget ? `${c.categoryName} (excedido)` : c.categoryName;
 }

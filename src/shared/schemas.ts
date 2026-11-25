@@ -40,6 +40,12 @@ export const accountCreateSchema = z.strictObject({
 /** PATCH body: any subset of the account's fields. */
 export const accountUpdateSchema = accountCreateSchema.partial();
 
+/** Reconciling an account: the bank's real balance (signed cents) at a date. */
+export const reconciliationCreateSchema = z.strictObject({
+  date: isoDate,
+  bankBalanceCents: z.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER),
+});
+
 const accountRef = z.number().int().positive();
 
 const transferFieldsSchema = z.strictObject({
@@ -225,6 +231,8 @@ export const importPreviewSchema = z.strictObject({
 
 /** The checked rows of the preview: each becomes a movement, or confirms a pending fixed item. */
 export const importCommitSchema = z.strictObject({
+  /** Target account; absent means Principal. */
+  accountId: z.number().int().positive().optional(),
   rows: z
     .array(
       z.strictObject({

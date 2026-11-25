@@ -1,4 +1,4 @@
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { CategoryDto, CategoryUsageDto } from '../shared/api.js';
 import { categoryCreateSchema, categoryUpdateSchema } from '../shared/schemas.js';
@@ -11,6 +11,7 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
+import { liveMovements, trashedMovements } from './db/live.js';
 import { budgetLines, categories, movements, recurringItems } from './db/schema.js';
 
 const MESSAGES = {
@@ -18,6 +19,7 @@ const MESSAGES = {
   notFound: 'No se ha encontrado la categoría.',
   duplicate: 'Ya existe una categoría con ese nombre.',
   inUse: 'No se puede eliminar: la categoría tiene movimientos, fijos o presupuestos asociados.',
+  inTrash: 'No se puede eliminar: hay movimientos eliminados de esta categoría en la papelera.',
 } as const;
 
 const columns = { id: categories.id, name: categories.name, kind: categories.kind };
@@ -49,13 +51,20 @@ function usageByCategory(db: Db): Map<number, Usage> {
     }
     return usage;
   };
-  const counts = (table: typeof movements | typeof recurringItems | typeof budgetLines) =>
+  const counts = (table: typeof recurringItems | typeof budgetLines) =>
     db
       .select({ id: table.categoryId, n: sql<number>`count(*)` })
       .from(table)
       .groupBy(table.categoryId)
       .all();
-  for (const row of counts(movements)) {
+  // The count shown to the user is of movements that exist; the trash is counted apart for the
+  // deletion check (`trashedMovementsOf`).
+  for (const row of db
+    .select({ id: movements.categoryId, n: sql<number>`count(*)` })
+    .from(movements)
+    .where(liveMovements())
+    .groupBy(movements.categoryId)
+    .all()) {
     slot(row.id).movements = row.n;
   }
   for (const row of counts(recurringItems)) {
@@ -126,6 +135,15 @@ export function registerCategoriesApi(app: FastifyInstance, db: Db): void {
     const usage = usageOf(db, id);
     if (usage.movements + usage.recurringItems + usage.budgetLines > 0) {
       return conflict(reply, MESSAGES.inUse);
+    }
+    // Deliberately counts the trash too: restoring a movement must never find its category gone.
+    const inTrash = db
+      .select({ n: sql<number>`count(*)` })
+      .from(movements)
+      .where(and(trashedMovements(), eq(movements.categoryId, id)))
+      .get();
+    if ((inTrash?.n ?? 0) > 0) {
+      return conflict(reply, MESSAGES.inTrash);
     }
     db.delete(categories).where(eq(categories.id, id)).run();
     return reply.code(204).send();

@@ -16,6 +16,42 @@ export interface AccountBalanceDto {
   balanceCents: number;
 }
 
+/** A saved comparison of an account with the bank (plan 0003, task 06). Never changes movements. */
+export interface ReconciliationDto {
+  id: number;
+  accountId: number;
+  /** `YYYY-MM-DD`: the date of the bank's balance. */
+  date: string;
+  bankBalanceCents: number;
+  /** The app's own balance at that date, frozen when saved. */
+  appBalanceCents: number;
+  /** Bank minus app, signed. */
+  differenceCents: number;
+  createdAt: string;
+}
+
+/** A movement listed in a reconciliation (what changed the balance since the last one). */
+export interface ReconcileMovementDto {
+  id: number;
+  date: string;
+  kind: Kind;
+  concept: string;
+  amountCents: number;
+}
+
+/** What the app knows about an account at a date, before saving a reconciliation. */
+export interface ReconciliationPreviewDto {
+  accountId: number;
+  date: string;
+  /** The app's balance at the end of that date (same rule as the account balance). */
+  appBalanceCents: number;
+  /** The previous reconciliation of the account, if any. */
+  last: ReconciliationDto | null;
+  /** Movements dated after the last reconciliation (all if none) up to the date. */
+  movements: ReconcileMovementDto[];
+  transfers: TransferDto[];
+}
+
 /** Money moved between two accounts; never income, expense or savings. */
 export interface TransferDto {
   id: number;
@@ -24,6 +60,22 @@ export interface TransferDto {
   fromAccountId: number;
   toAccountId: number;
   notes: string | null;
+}
+
+/** A movement in the trash ("papelera"), with when it was deleted (ISO 8601 timestamp). */
+export interface TrashedMovementDto extends MovementDto {
+  deletedAt: string;
+}
+
+/** A transfer in the trash, with when it was deleted (ISO 8601 timestamp). */
+export interface TrashedTransferDto extends TransferDto {
+  deletedAt: string;
+}
+
+/** Everything in the trash, most recently deleted first. Nothing leaves it automatically. */
+export interface TrashDto {
+  movements: TrashedMovementDto[];
+  transfers: TrashedTransferDto[];
 }
 
 export interface CategoryDto {
@@ -64,6 +116,11 @@ export interface MovementDto {
 }
 
 /** One page of the movement search, with the totals of the whole filtered set (task 0013). */
+/** The category a concept suggests; null when no similar past movement exists. */
+export interface CategorySuggestionDto {
+  categoryId: number | null;
+}
+
 export interface MovementSearchDto {
   /** The page asked for, newest first. */
   rows: MovementDto[];
@@ -138,6 +195,14 @@ export interface PendingEntryDto {
   concept: string;
   amountCents: number;
   notes: string | null;
+  /** True when a trashed confirmation still holds this item's month slot: it cannot be confirmed. */
+  heldByTrash: boolean;
+}
+
+/** Result of confirm-all: held items are skipped, never confirmed, and stay pending. */
+export interface ConfirmAllResultDto {
+  created: MovementDto[];
+  skippedHeldByTrash: { id: number; concept: string }[];
 }
 
 export interface MonthSummaryDto {
@@ -374,6 +439,8 @@ export interface DashboardDto {
   /** The 12 months ending at `month`, oldest first. */
   months: DashboardMonthDto[];
   categories: DashboardCategoryDto[];
+  /** Categories at or above 80 % of their budget; over first, then by percent. */
+  budgetAlerts: DashboardBudgetAlertDto[];
   debts: { items: DashboardDebtDto[]; totalEstimatedCents: number };
   upcoming: {
     pending: PendingEntryDto[];
@@ -391,6 +458,17 @@ export interface DashboardDto {
     /** Milestones not done with a target date in the window. */
     milestones: MilestoneDto[];
   };
+}
+
+/** An expense category at or above 80 % of its budget in the selected month. */
+export interface DashboardBudgetAlertDto {
+  categoryId: number;
+  categoryName: string;
+  budgetCents: number;
+  actualCents: number;
+  /** Whole percent spent, rounded down; can exceed 100. */
+  percent: number;
+  state: 'warning' | 'over';
 }
 
 export interface DashboardAccountDto extends AccountBalanceDto {

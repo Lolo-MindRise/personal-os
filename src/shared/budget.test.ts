@@ -1,5 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { buildBudgetMonth, lineInEffect, type BudgetCategory } from './budget.js';
+import { budgetAlert, buildBudgetMonth, lineInEffect, type BudgetCategory } from './budget.js';
+
+describe('budgetAlert', () => {
+  it('has no alert without a usable budget', () => {
+    expect(budgetAlert(null, 5_000)).toEqual({ state: 'none', percent: null });
+    expect(budgetAlert(0, 5_000)).toEqual({ state: 'none', percent: null });
+  });
+
+  it('is ok with nothing spent and below 80 %', () => {
+    expect(budgetAlert(10_000, 0)).toEqual({ state: 'ok', percent: 0 });
+    expect(budgetAlert(10_000, 7_999)).toEqual({ state: 'ok', percent: 79 });
+  });
+
+  it('warns from exactly 80 % up to 99 %', () => {
+    expect(budgetAlert(10_000, 8_000)).toEqual({ state: 'warning', percent: 80 });
+    expect(budgetAlert(10_000, 9_999)).toEqual({ state: 'warning', percent: 99 });
+  });
+
+  it('is over from exactly 100 %, and the percentage can exceed it', () => {
+    expect(budgetAlert(10_000, 10_000)).toEqual({ state: 'over', percent: 100 });
+    expect(budgetAlert(10_000, 25_050)).toEqual({ state: 'over', percent: 250 });
+  });
+
+  it('rounds the percentage down and never goes below 0 (refunds)', () => {
+    expect(budgetAlert(3, 1)).toEqual({ state: 'ok', percent: 33 });
+    expect(budgetAlert(10_000, -500)).toEqual({ state: 'ok', percent: 0 });
+  });
+});
 
 const cats: BudgetCategory[] = [
   { id: 1, name: 'Vivienda', kind: 'expense' },

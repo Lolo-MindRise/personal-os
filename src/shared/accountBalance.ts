@@ -61,3 +61,39 @@ export function accountBalance(
   }
   return total;
 }
+
+/**
+ * The same balance as of the end of `date`: only movements and transfers dated on or before it
+ * count (the opening-date rule is unchanged: they must also be after the opening date). Used by
+ * the reconciliation; the caller refuses a `date` before the opening date.
+ */
+export function accountBalanceAt(
+  account: Pick<AccountDto, 'id' | 'openingBalanceCents' | 'openingBalanceDate'>,
+  movements: readonly BalanceMovement[],
+  transfers: readonly BalanceTransfer[],
+  date: string,
+): number {
+  return accountBalance(
+    account,
+    movements.filter((m) => m.date <= date),
+    transfers.filter((t) => t.date <= date),
+  );
+}
+
+/**
+ * Whether a row dated `rowDate` is part of what changed the balance since the last
+ * reconciliation: after the opening date (and after the last reconciliation date, if any) and on
+ * or before the reconciled date.
+ */
+export function inReconcilePeriod(
+  rowDate: string,
+  openingBalanceDate: string,
+  lastReconciliationDate: string | undefined,
+  date: string,
+): boolean {
+  const from =
+    lastReconciliationDate !== undefined && lastReconciliationDate > openingBalanceDate
+      ? lastReconciliationDate
+      : openingBalanceDate;
+  return rowDate > from && rowDate <= date;
+}

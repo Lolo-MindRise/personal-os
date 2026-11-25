@@ -11,7 +11,8 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
-import { movementTags, tags } from './db/schema.js';
+import { liveMovements } from './db/live.js';
+import { movements, movementTags, tags } from './db/schema.js';
 
 const MESSAGES = {
   ...COMMON_MESSAGES,
@@ -24,6 +25,8 @@ function listTags(db: Db): TagDto[] {
     db
       .select({ tagId: movementTags.tagId, n: count() })
       .from(movementTags)
+      .innerJoin(movements, eq(movements.id, movementTags.movementId))
+      .where(liveMovements())
       .groupBy(movementTags.tagId)
       .all()
       .map((r) => [r.tagId, r.n]),

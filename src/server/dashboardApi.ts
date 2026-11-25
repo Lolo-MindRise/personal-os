@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import type { DashboardDto } from '../shared/api.js';
+import type { DashboardBudgetAlertDto, DashboardDto } from '../shared/api.js';
+import { budgetAlert } from '../shared/budget.js';
 import {
   debtProgressPercent,
   monthRows,
@@ -20,6 +21,7 @@ import { accountBalances } from './accountsApi.js';
 import { budgetMonth } from './budgetApi.js';
 import { listDebts, totalDebtAt } from './debtsApi.js';
 import type { Db } from './db/index.js';
+import { liveMovements } from './db/live.js';
 import { dueEntries } from './db/recurring.js';
 import { accounts, budgetLines, debts, goals, movements } from './db/schema.js';
 import { listMilestones } from './milestonesApi.js';
@@ -31,10 +33,17 @@ const MESSAGES = {
   invalidToday: 'La fecha no es válida.',
 } as const;
 
-function countRows(
-  db: Db,
-  table: typeof goals | typeof budgetLines | typeof debts | typeof movements,
-) {
+function liveMovementCount(db: Db): number {
+  return (
+    db
+      .select({ n: sql<number>`count(*)` })
+      .from(movements)
+      .where(liveMovements())
+      .get()?.n ?? 0
+  );
+}
+
+function countRows(db: Db, table: typeof goals | typeof budgetLines | typeof debts) {
   return (
     db
       .select({ n: sql<number>`count(*)` })
@@ -100,8 +109,33 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
       categoryName: r.categoryName,
       budgetCents: r.budgetCents,
       actualCents: r.actualCents,
+      // Strictly above budget. The alert state in shared/budget.ts is `over` from 100 %: deliberate.
       overBudget: r.budgetCents !== null && r.actualCents > r.budgetCents,
     }));
+
+  // Same figures as the chart above and the budget screen: the alert only classifies them.
+  const budgetAlerts: DashboardBudgetAlertDto[] = [];
+  for (const c of categories) {
+    const alert = budgetAlert(c.budgetCents, c.actualCents);
+    if (c.budgetCents !== null && alert.percent !== null) {
+      if (alert.state === 'warning' || alert.state === 'over') {
+        budgetAlerts.push({
+          categoryId: c.categoryId,
+          categoryName: c.categoryName,
+          budgetCents: c.budgetCents,
+          actualCents: c.actualCents,
+          percent: alert.percent,
+          state: alert.state,
+        });
+      }
+    }
+  }
+  budgetAlerts.sort(
+    (a, b) =>
+      Number(b.state === 'over') - Number(a.state === 'over') ||
+      b.percent - a.percent ||
+      a.categoryName.localeCompare(b.categoryName, 'es'),
+  );
 
   const ahead = next30DaysWindow(today);
   const accountNames = new Map(
@@ -117,7 +151,7 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
     today,
     setup: {
       initialBalance: settings.initialSavingsDate !== null,
-      movements: countRows(db, movements) > 0,
+      movements: liveMovementCount(db) > 0,
       goals: countRows(db, goals) > 0,
       budget: countRows(db, budgetLines) > 0,
       debts: countRows(db, debts) > 0,
@@ -137,6 +171,7 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
     },
     months: window,
     categories,
+    budgetAlerts,
     debts: { items: debtItems, totalEstimatedCents },
     upcoming: {
       pending: dueEntries(db, month).pending,

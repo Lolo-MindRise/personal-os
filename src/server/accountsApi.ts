@@ -1,4 +1,4 @@
-import { asc, count, eq, or } from 'drizzle-orm';
+import { and, asc, count, eq, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { accountBalance } from '../shared/accountBalance.js';
 import type { AccountBalanceDto, AccountDto } from '../shared/api.js';
@@ -13,6 +13,7 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
+import { liveMovements, liveTransfers } from './db/live.js';
 import { accounts, movements, transfers } from './db/schema.js';
 import { registerTransfersApi } from './transfersApi.js';
 
@@ -21,6 +22,8 @@ const MESSAGES = {
   notFound: 'No se ha encontrado la cuenta.',
   duplicate: 'Ya existe una cuenta con ese nombre.',
   inUse: 'La cuenta tiene movimientos o transferencias y no se puede eliminar.',
+  inTrash:
+    'No se puede eliminar: hay movimientos o transferencias eliminados de esta cuenta en la papelera.',
   isDefault: 'La cuenta Principal no se puede eliminar.',
 } as const;
 
@@ -57,6 +60,7 @@ export function accountBalances(db: Db): AccountBalanceDto[] {
       amountCents: movements.amountCents,
     })
     .from(movements)
+    .where(liveMovements())
     .all();
   const moved = db
     .select({
@@ -66,6 +70,7 @@ export function accountBalances(db: Db): AccountBalanceDto[] {
       toAccountId: transfers.toAccountId,
     })
     .from(transfers)
+    .where(liveTransfers())
     .all();
   return all.map((a) => ({ accountId: a.id, balanceCents: accountBalance(a, moves, moved) }));
 }
@@ -109,7 +114,9 @@ export function registerAccountsApi(app: FastifyInstance, db: Db): void {
       const first = db
         .select({ date: transfers.date })
         .from(transfers)
-        .where(or(eq(transfers.fromAccountId, id), eq(transfers.toAccountId, id)))
+        .where(
+          and(liveTransfers(), or(eq(transfers.fromAccountId, id), eq(transfers.toAccountId, id))),
+        )
         .orderBy(asc(transfers.date))
         .all()
         .find((t) => t.date <= newOpening);
@@ -133,6 +140,8 @@ export function registerAccountsApi(app: FastifyInstance, db: Db): void {
     if (id === DEFAULT_ACCOUNT_ID) {
       return conflict(reply, MESSAGES.isDefault);
     }
+    // Deliberately NOT filtered by liveMovements()/liveTransfers(): a row in the trash still uses
+    // its account, so that restoring it can never find the account gone.
     const usedByMovements = db
       .select({ n: count() })
       .from(movements)
@@ -144,7 +153,21 @@ export function registerAccountsApi(app: FastifyInstance, db: Db): void {
       .where(or(eq(transfers.fromAccountId, id), eq(transfers.toAccountId, id)))
       .get();
     if ((usedByMovements?.n ?? 0) + (usedByTransfers?.n ?? 0) > 0) {
-      return conflict(reply, MESSAGES.inUse);
+      const liveMovementUse = db
+        .select({ n: count() })
+        .from(movements)
+        .where(and(eq(movements.accountId, id), liveMovements()))
+        .get();
+      const liveTransferUse = db
+        .select({ n: count() })
+        .from(transfers)
+        .where(
+          and(or(eq(transfers.fromAccountId, id), eq(transfers.toAccountId, id)), liveTransfers()),
+        )
+        .get();
+      // Only trashed rows left: say so, since nothing is visible in the lists.
+      const onlyTrash = (liveMovementUse?.n ?? 0) + (liveTransferUse?.n ?? 0) === 0;
+      return conflict(reply, onlyTrash ? MESSAGES.inTrash : MESSAGES.inUse);
     }
     db.delete(accounts).where(eq(accounts.id, id)).run();
     return reply.code(204).send();

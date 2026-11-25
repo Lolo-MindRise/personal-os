@@ -13,6 +13,25 @@ async function cleanUp(request: APIRequestContext) {
   }
 }
 
+test('aborts the export with an error and no download when the accounts cannot be loaded', async ({
+  page,
+}) => {
+  await page.goto('/#/movements?month=2027-11');
+  await expect(page.getByRole('button', { name: 'Exportar mes' })).toBeEnabled();
+  let downloads = 0;
+  page.on('download', () => {
+    downloads += 1;
+  });
+  // Only from now on: the page itself has already loaded its data.
+  await page.route('**/api/accounts', (route) =>
+    route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"boom"}' }),
+  );
+  await page.getByRole('button', { name: 'Exportar mes' }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Exportar mes' })).toBeEnabled();
+  expect(downloads).toBe(0);
+});
+
 test('exports the month and every search result as a Spanish CSV', async ({ page, request }) => {
   try {
     const categories = (await (await request.get('/api/categories')).json()) as {
@@ -50,9 +69,11 @@ test('exports the month and every search result as a Spanish CSV', async ({ page
       ]);
       expect(download.suggestedFilename()).toBe('movimientos-2027-11.csv');
       const text = readFileSync(await download.path(), 'utf8');
-      expect(text.startsWith('﻿Fecha;Tipo;Categoría;Concepto;Importe;Notas;Marcas\r\n')).toBe(true);
+      expect(
+        text.startsWith('﻿Fecha;Tipo;Categoría;Concepto;Importe;Notas;Marcas;Cuenta\r\n'),
+      ).toBe(true);
       expect(text).toContain(
-        '03/11/2027;Gasto;Supermercado;"zzexporta ""Compra""; con ñ";1.234,56;',
+        '03/11/2027;Gasto;Supermercado;"zzexporta ""Compra""; con ñ";1.234,56;;;Principal\r\n',
       );
       expect(text.trim().split('\r\n')).toHaveLength(54);
     });
@@ -69,7 +90,7 @@ test('exports the month and every search result as a Spanish CSV', async ({ page
       expect(download.suggestedFilename()).toBe('movimientos-busqueda.csv');
       const text = readFileSync(await download.path(), 'utf8');
       expect(text.trim().split('\r\n')).toHaveLength(54);
-      expect(text).toContain('10/11/2027;Gasto;Supermercado;zzexporta pan 52;1,00;');
+      expect(text).toContain('10/11/2027;Gasto;Supermercado;zzexporta pan 52;1,00;;;Principal\r\n');
     });
   } finally {
     await cleanUp(request);

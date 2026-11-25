@@ -94,6 +94,8 @@ export const transfers = sqliteTable(
       .notNull()
       .references(() => accounts.id),
     notes: text('notes'),
+    // Trash (plan 0003): ISO timestamp of the deletion; NULL = the row exists for every reader.
+    deletedAt: text('deleted_at'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -105,6 +107,38 @@ export const transfers = sqliteTable(
     check('transfers_amount_integer', isInteger(t.amountCents)),
     check('transfers_amount_positive', sql`${t.amountCents} > 0`),
     check('transfers_accounts_differ', sql`${t.fromAccountId} <> ${t.toAccountId}`),
+  ],
+);
+
+/**
+ * A record of comparing an account with the bank (plan 0003, task 06): the bank's real balance at
+ * a date, the app's own balance at that date and their difference, all frozen when saved. It never
+ * changes any movement. Deleting the account deletes its records (they only describe it).
+ */
+export const reconciliations = sqliteTable(
+  'reconciliations',
+  {
+    id: id(),
+    accountId: integer('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    date: text('date').notNull(),
+    bankBalanceCents: integer('bank_balance_cents').notNull(),
+    appBalanceCents: integer('app_balance_cents').notNull(),
+    /** Bank minus app, signed. */
+    differenceCents: integer('difference_cents').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('reconciliations_account_idx').on(t.accountId, t.date),
+    check('reconciliations_date_format', sql`${t.date} GLOB ${DATE_GLOB}`),
+    check('reconciliations_bank_integer', isInteger(t.bankBalanceCents)),
+    check('reconciliations_app_integer', isInteger(t.appBalanceCents)),
+    check('reconciliations_difference_integer', isInteger(t.differenceCents)),
+    check(
+      'reconciliations_difference_consistent',
+      sql`${t.differenceCents} = ${t.bankBalanceCents} - ${t.appBalanceCents}`,
+    ),
   ],
 );
 
@@ -223,6 +257,8 @@ export const movements = sqliteTable(
     recurringItemId: integer('recurring_item_id').references(() => recurringItems.id, {
       onDelete: 'set null',
     }),
+    // Trash (plan 0003): ISO timestamp of the deletion; NULL = the row exists for every reader.
+    deletedAt: text('deleted_at'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -231,6 +267,8 @@ export const movements = sqliteTable(
     // indexes: UNIQUE INDEX movements_recurring_item_month_unique
     //   ON movements (recurring_item_id, substr(date, 1, 7))
     // = at most one confirmed movement per recurring item and month (NULLs never collide).
+    // It is NOT partial: a trashed confirmation still holds the slot, and the confirm paths
+    // refuse with a message until it is restored or deleted for good.
     // A movement's kind must match its category's kind.
     foreignKey({
       columns: [t.categoryId, t.kind],

@@ -1,9 +1,10 @@
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { FastifyReply } from 'fastify';
 import type { ZodError } from 'zod';
 import type { ApiErrorBody, MovementDto } from '../shared/api.js';
 import { tagKey } from '../shared/schemas.js';
 import type { Db } from './db/index.js';
+import { liveMovements } from './db/live.js';
 import { accounts, categories, movements, movementTags, tags } from './db/schema.js';
 
 // Helpers shared by the API route files (movements, recurring items).
@@ -152,7 +153,7 @@ export function getMovement(db: Db, id: number): MovementDto | undefined {
     .select(movementColumns)
     .from(movements)
     .innerJoin(categories, eq(categories.id, movements.categoryId))
-    .where(eq(movements.id, id))
+    .where(and(liveMovements(), eq(movements.id, id)))
     .get();
   return row === undefined ? undefined : withTags(db, [row])[0];
 }

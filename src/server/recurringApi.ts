@@ -1,6 +1,11 @@
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import type { MovementDto, PendingEntryDto, RecurringItemDto } from '../shared/api.js';
+import type {
+  ConfirmAllResultDto,
+  MovementDto,
+  PendingEntryDto,
+  RecurringItemDto,
+} from '../shared/api.js';
 import { isDueInMonth, monthOf } from '../shared/recurring.js';
 import {
   confirmOverridesSchema,
@@ -26,7 +31,9 @@ import {
   getRecurringItem,
   listRecurringItems,
   skippedItemIds,
+  TRASH_HOLDS_SLOT,
   toEntry,
+  trashedItemIds,
 } from './db/recurring.js';
 import { debts, movements, recurringItems, recurringSkips } from './db/schema.js';
 
@@ -223,6 +230,9 @@ export function registerRecurringApi(app: FastifyInstance, db: Db): void {
     if (skippedItemIds(db, month).has(item.id)) {
       return conflict(reply, MESSAGES.skippedBlocksConfirm);
     }
+    if (trashedItemIds(db, month).has(item.id)) {
+      return conflict(reply, TRASH_HOLDS_SLOT);
+    }
 
     const base = movementFor(toEntry(item, month));
     const date = overrides.data.date ?? base.date;
@@ -254,9 +264,14 @@ export function registerRecurringApi(app: FastifyInstance, db: Db): void {
     if (!parsed.success) {
       return badRequest(reply, MESSAGES.invalidMonth, { month: MESSAGES.invalidMonth });
     }
-    // Every pending entry, with its expected values; skipped ones are left alone.
+    // Every pending entry, with its expected values; skipped ones are left alone. Items whose
+    // slot is held by a trashed confirmation are skipped too and reported; the rest are
+    // confirmed in one transaction (atomic).
+    const all = dueEntries(db, parsed.data).pending;
+    const held = all.filter((entry) => entry.heldByTrash);
+    const pending = all.filter((entry) => !entry.heldByTrash);
     const confirmed = db.transaction((tx) =>
-      dueEntries(db, parsed.data).pending.map(
+      pending.map(
         (entry) =>
           tx.insert(movements).values(movementFor(entry)).returning({ id: movements.id }).get().id,
       ),
@@ -265,7 +280,14 @@ export function registerRecurringApi(app: FastifyInstance, db: Db): void {
       const movement = getMovement(db, id);
       return movement === undefined ? [] : [movement];
     });
-    return reply.code(201).send(result);
+    const body: ConfirmAllResultDto = {
+      created: result,
+      skippedHeldByTrash: held.map((entry) => ({
+        id: entry.recurringItemId,
+        concept: entry.concept,
+      })),
+    };
+    return reply.code(201).send(body);
   });
 
   app.post('/api/recurring-items/:id/months/:month/skip', (request, reply) => {
