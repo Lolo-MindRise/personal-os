@@ -69,6 +69,8 @@ test('12-month totals of two months equal the movements screen totals per catego
     await add('2025-12-03', groceries, 4_321);
     await add('2025-12-20', groceries, 1_234);
     await add('2025-12-21', leisure, 999);
+    // Spending in the previous 12-month period, so Supermercado shows up under "changed most".
+    await add('2025-01-10', groceries, 1_000);
     await page.goto('/#/reports?month=2026-01&months=12');
     await page.getByTestId('chart-stacked').getByText('Ver los datos').click();
     const table = page.getByTestId('table-stacked');
@@ -97,10 +99,44 @@ test('12-month totals of two months equal the movements screen totals per catego
       const total = amounts.reduce((sum, text) => sum + toCents(text), 0);
       expect(total, month).toBe(expected);
     }
+
+    // Whole-period links: follow them and compare the search's expense total with Informes.
+    const searchExpenses = async () => {
+      await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeVisible();
+      const panel = page.getByRole('form', { name: 'Buscar movimientos' });
+      await expect(panel.getByLabel('Categoría')).toHaveValue(String(groceries));
+      await expect(panel.getByLabel('Desde (fecha)')).toHaveValue('2025-02-01');
+      await expect(panel.getByLabel('Hasta (fecha)')).toHaveValue('2026-01-31');
+      const totals = page.getByTestId('search-totals');
+      await expect(totals).toContainText('Gastos');
+      const text = await totals.innerText();
+      const match = /Gastos\s+([\d.,]+\s€)/.exec(text);
+      expect(match, text).not.toBeNull();
+      return toCents(match?.[1] ?? '');
+    };
+    await page.goto('/#/reports?month=2026-01&months=12');
+    const averagesRow = page.getByTestId('table-averages').getByRole('row', {
+      name: /^Supermercado/,
+    });
+    const periodTotal = toCents(await averagesRow.locator('td').nth(1).innerText());
+    expect(periodTotal).toBe(5_555 + 17_670);
+    await averagesRow.getByRole('link', { name: 'Supermercado' }).click();
+    expect(await searchExpenses()).toBe(periodTotal);
+
+    await page.goto('/#/reports?month=2026-01&months=12');
+    const changed = page
+      .getByTestId('list-changes')
+      .getByRole('listitem')
+      .filter({ hasText: 'Supermercado' });
+    await expect(changed).toContainText('10,00');
+    await changed.getByRole('link', { name: 'Supermercado' }).click();
+    expect(await searchExpenses()).toBe(periodTotal);
   } finally {
+    const failed: string[] = [];
     for (const id of created) {
       const res = await request.delete(`/api/movements/${String(id)}`);
-      expect(res.ok(), `delete movement ${String(id)}`).toBe(true);
+      if (!res.ok()) failed.push(String(id));
     }
+    expect(failed, 'movements that could not be deleted').toEqual([]);
   }
 });
