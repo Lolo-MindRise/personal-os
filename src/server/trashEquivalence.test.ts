@@ -107,6 +107,19 @@ const ENDPOINTS: Endpoint[] = [
   { name: 'account balances', method: 'GET', url: '/api/accounts/balances', affected: true },
   { name: 'accounts', method: 'GET', url: '/api/accounts', affected: false },
   {
+    name: 'reconciliation preview (Principal)',
+    method: 'GET',
+    url: '/api/accounts/1/reconciliation-preview?date=2026-03-31',
+    affected: true,
+  },
+  {
+    name: 'reconciliation preview (Efectivo)',
+    method: 'GET',
+    url: '/api/accounts/2/reconciliation-preview?date=2026-03-31',
+    affected: true,
+  },
+  { name: 'reconciliations', method: 'GET', url: '/api/reconciliations', affected: false },
+  {
     name: 'dashboard (month)',
     method: 'GET',
     url: `/api/dashboard?month=2026-03&today=${TODAY}`,

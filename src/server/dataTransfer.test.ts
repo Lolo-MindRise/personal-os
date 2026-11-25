@@ -28,6 +28,7 @@ import {
   importSettings,
   movements,
   recurringItems,
+  reconciliations,
   recurringSkips,
   transfers,
 } from './db/schema.js';
@@ -72,6 +73,24 @@ function populatedSource(): DbHandle {
   const { db } = handle;
   db.insert(transfers)
     .values({ date: '2026-01-15', amountCents: 2_000, fromAccountId: 1, toAccountId: 2 })
+    .run();
+  db.insert(reconciliations)
+    .values([
+      {
+        accountId: 1,
+        date: '2026-01-31',
+        bankBalanceCents: 10_000,
+        appBalanceCents: 9_000,
+        differenceCents: 1_000,
+      },
+      {
+        accountId: 2,
+        date: '2026-02-01',
+        bankBalanceCents: -500,
+        appBalanceCents: -500,
+        differenceCents: 0,
+      },
+    ])
     .run();
   db.insert(appSettings)
     .values({ id: 1, initialSavingsCents: 12_300, initialSavingsDate: '2026-01-01' })
@@ -280,6 +299,40 @@ describe('files exported before the trash existed', () => {
       expect(rows.length).toBeGreaterThan(0);
       expect(rows.every((r) => (r as { deleted_at: unknown }).deleted_at === null)).toBe(true);
     }
+  });
+});
+
+describe('files exported before the reconciliations existed', () => {
+  it('import with no reconciliations', async () => {
+    const source = populatedSource();
+    const file = JSON.parse(JSON.stringify(exportData(source.db))) as {
+      tables: Record<string, unknown>;
+    };
+    expect((file.tables.reconciliations as unknown[]).length).toBe(2);
+    delete file.tables.reconciliations;
+    const target = open('old-format-reconciliations.db');
+    const response = await appOf(target).inject({
+      method: 'POST',
+      url: '/api/data/import',
+      payload: file,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(target.sqlite.prepare('SELECT count(*) AS n FROM reconciliations').get()).toEqual({
+      n: 0,
+    });
+    expect(target.sqlite.prepare('SELECT count(*) AS n FROM movements').get()).not.toEqual({
+      n: 0,
+    });
+  });
+
+  it('refuses a reconciliation of an account that is not in the file or with a wrong difference', () => {
+    const source = populatedSource();
+    const base = JSON.parse(JSON.stringify(exportData(source.db))) as DataFile;
+    const bad = structuredClone(base);
+    (bad.tables.reconciliations[0] ?? ({} as never)).accountId = 99;
+    (bad.tables.reconciliations[1] ?? ({} as never)).differenceCents = 7;
+    expect(referenceProblems(bad)).toHaveLength(2);
+    expect(referenceProblems(base)).toEqual([]);
   });
 });
 

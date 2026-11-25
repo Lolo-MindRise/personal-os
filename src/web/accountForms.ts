@@ -87,6 +87,45 @@ export function validateAccountForm(values: AccountFormValues): FormResult<Accou
   };
 }
 
+export interface ReconcileFormValues {
+  /** Euros as typed; may be negative. */
+  bankBalance: string;
+  date: string;
+}
+
+export interface ReconcilePayload {
+  date: string;
+  bankBalanceCents: number;
+}
+
+export const emptyReconcileForm = (today: string = todayISO()): ReconcileFormValues => ({
+  bankBalance: '',
+  date: today,
+});
+
+/** Validates the reconcile form; a date before the account's opening date is refused. */
+export function validateReconcileForm(
+  values: ReconcileFormValues,
+  account: Pick<AccountDto, 'name' | 'openingBalanceDate'>,
+): FormResult<ReconcilePayload> {
+  const errors: Record<string, string> = {};
+  const balance = parseSignedMoney(values.bankBalance);
+  if (!balance.ok) {
+    errors.bankBalance = balance.error;
+  }
+  const date = isoDate.safeParse(values.date);
+  if (!date.success) {
+    errors.date = 'Elige una fecha válida.';
+  } else if (values.date < account.openingBalanceDate) {
+    const [y, m, d] = account.openingBalanceDate.split('-');
+    errors.date = `La fecha no puede ser anterior a la fecha del saldo inicial de la cuenta «${account.name}» (${d ?? ''}/${m ?? ''}/${y ?? ''}).`;
+  }
+  if (!balance.ok || Object.keys(errors).length > 0) {
+    return { ok: false, errors };
+  }
+  return { ok: true, payload: { date: values.date, bankBalanceCents: balance.cents } };
+}
+
 export interface TransferFormValues {
   date: string;
   amount: string;
