@@ -26,7 +26,9 @@ import {
   getRecurringItem,
   listRecurringItems,
   skippedItemIds,
+  TRASH_HOLDS_SLOT,
   toEntry,
+  trashedItemIds,
 } from './db/recurring.js';
 import { debts, movements, recurringItems, recurringSkips } from './db/schema.js';
 
@@ -223,6 +225,9 @@ export function registerRecurringApi(app: FastifyInstance, db: Db): void {
     if (skippedItemIds(db, month).has(item.id)) {
       return conflict(reply, MESSAGES.skippedBlocksConfirm);
     }
+    if (trashedItemIds(db, month).has(item.id)) {
+      return conflict(reply, TRASH_HOLDS_SLOT);
+    }
 
     const base = movementFor(toEntry(item, month));
     const date = overrides.data.date ?? base.date;
@@ -254,9 +259,16 @@ export function registerRecurringApi(app: FastifyInstance, db: Db): void {
     if (!parsed.success) {
       return badRequest(reply, MESSAGES.invalidMonth, { month: MESSAGES.invalidMonth });
     }
-    // Every pending entry, with its expected values; skipped ones are left alone.
+    // Every pending entry, with its expected values; skipped ones are left alone. If a pending
+    // item has a trashed confirmation holding its slot, the whole request is refused before
+    // anything is written (never half done).
+    const trashed = trashedItemIds(db, parsed.data);
+    const pending = dueEntries(db, parsed.data).pending;
+    if (pending.some((entry) => trashed.has(entry.recurringItemId))) {
+      return conflict(reply, TRASH_HOLDS_SLOT);
+    }
     const confirmed = db.transaction((tx) =>
-      dueEntries(db, parsed.data).pending.map(
+      pending.map(
         (entry) =>
           tx.insert(movements).values(movementFor(entry)).returning({ id: movements.id }).get().id,
       ),

@@ -7,8 +7,8 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MIGRATIONS_DIR } from './config.js';
 
-// The trash migration (plan 0003, task 01) adds `deleted_at` to movements and transfers and makes
-// the (recurring item, month) unique index partial. Every existing row must survive untouched.
+// The trash migration (plan 0003, task 01) only adds `deleted_at` to movements and transfers; the
+// (recurring item, month) unique index is left as it was. Every existing row must survive.
 
 const TRASH_MIGRATION = '0009_trash';
 
@@ -88,20 +88,29 @@ describe('trash migration', () => {
     expect(sqlite.prepare('SELECT * FROM movement_tags').all()).toEqual(linksBefore);
   });
 
-  it('lets a trashed movement and a live one share a fixed item and month, but not two live ones', () => {
+  it('keeps the original full unique index: a trashed movement still holds the month slot', () => {
     migrate(drizzle(sqlite), { migrationsFolder: MIGRATIONS_DIR });
+    const index = sqlite
+      .prepare(`SELECT sql FROM sqlite_master WHERE name = 'movements_recurring_item_month_unique'`)
+      .get() as { sql: string } | undefined;
+    expect(index?.sql).toBeDefined();
+    expect(index?.sql).not.toMatch(/WHERE/i);
     sqlite.exec(`
       INSERT INTO categories (id, name, kind) VALUES (1, 'Ocio', 'expense');
       INSERT INTO recurring_items (id, kind, category_id, concept, amount_cents, expected_day, start_month)
         VALUES (1, 'expense', 1, 'Gimnasio', 3000, 5, '2026-01');
       INSERT INTO movements (id, date, kind, category_id, concept, amount_cents, recurring_item_id, deleted_at)
         VALUES (1, '2026-02-05', 'expense', 1, 'Gimnasio', 3000, 1, '2026-02-06T10:00:00.000Z');
-      INSERT INTO movements (id, date, kind, category_id, concept, amount_cents, recurring_item_id)
-        VALUES (2, '2026-02-07', 'expense', 1, 'Gimnasio', 3000, 1);
     `);
     expect(() =>
       sqlite.exec(`INSERT INTO movements (date, kind, category_id, concept, amount_cents, recurring_item_id)
         VALUES ('2026-02-09', 'expense', 1, 'Gimnasio', 3000, 1)`),
     ).toThrow(/UNIQUE/);
+  });
+
+  it('is only two ADD COLUMN statements: nothing is dropped or rebuilt', () => {
+    const sql = readFileSync(join(MIGRATIONS_DIR, `${TRASH_MIGRATION}.sql`), 'utf8');
+    expect(sql).not.toMatch(/DROP|CREATE|RENAME/i);
+    expect(sql.match(/ALTER TABLE/g)).toHaveLength(2);
   });
 });

@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type {
   MovementDto,
@@ -19,7 +19,7 @@ import {
   type MovementRow,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
-import { liveMovements, trashedMovements, trashedTransfers } from './db/live.js';
+import { trashedMovements, trashedTransfers } from './db/live.js';
 import { categories, debts, movements, recurringSkips, transfers } from './db/schema.js';
 import { checkTransfer, getTransfer } from './transfersApi.js';
 
@@ -31,8 +31,6 @@ const MESSAGES = {
   movementNotFound: 'No se ha encontrado el movimiento en la papelera.',
   transferNotFound: 'No se ha encontrado la transferencia en la papelera.',
   noDebt: 'No se puede restaurar: la deuda ya no existe.',
-  slotTaken:
-    'No se puede restaurar: ese fijo ya tiene otro movimiento confirmado en el mes. Elimina ese primero o borra definitivamente este.',
   skipped:
     'No se puede restaurar: ese fijo está saltado en el mes. Deshaz el salto o borra definitivamente este.',
 } as const;
@@ -67,21 +65,8 @@ function movementRestoreProblem(
     return { error: MESSAGES.noDebt };
   }
   if (m.recurringItemId !== null) {
-    // The slot (fixed item, month) holds one live movement at most; a newer confirmation wins.
-    const taken = db
-      .select({ id: movements.id })
-      .from(movements)
-      .where(
-        and(
-          liveMovements(),
-          eq(movements.recurringItemId, m.recurringItemId),
-          sql`substr(${movements.date}, 1, 7) = ${monthOf(m.date)}`,
-        ),
-      )
-      .get();
-    if (taken !== undefined) {
-      return { error: MESSAGES.slotTaken };
-    }
+    // No live movement can hold the slot (the unique index is not partial and the confirm paths
+    // refuse while this one is trashed), so only a skip can block the restore.
     const skipped = db
       .select({ id: recurringSkips.id })
       .from(recurringSkips)

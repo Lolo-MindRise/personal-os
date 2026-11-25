@@ -54,6 +54,31 @@ export function confirmedItemIds(db: Db, month: string): Set<number> {
   return new Set(rows.flatMap((row) => (row.id === null ? [] : [row.id])));
 }
 
+/** Shown when a trashed confirmation still holds the (fixed item, month) slot. */
+export const TRASH_HOLDS_SLOT =
+  'Hay un movimiento de este fijo en la papelera: restáuralo o elimínalo definitivamente.';
+
+/**
+ * Ids of the items whose confirmed movement for the month is in the trash. The unique index is
+ * not partial, so such a movement still holds the slot: the item shows as pending again, but
+ * confirming it must be refused until the trashed movement is restored or deleted for good.
+ */
+export function trashedItemIds(db: Db, month: string): Set<number> {
+  const rows = db
+    .select({ id: movements.recurringItemId })
+    .from(movements)
+    .where(
+      and(
+        isNotNull(movements.deletedAt),
+        isNotNull(movements.recurringItemId),
+        gte(movements.date, `${month}-01`),
+        lte(movements.date, `${month}-31`),
+      ),
+    )
+    .all();
+  return new Set(rows.flatMap((row) => (row.id === null ? [] : [row.id])));
+}
+
 export function skippedItemIds(db: Db, month: string): Set<number> {
   const rows = db
     .select({ id: recurringSkips.recurringItemId })

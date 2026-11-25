@@ -21,7 +21,14 @@ import {
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
 import { liveMovements } from './db/live.js';
-import { confirmedItemIds, dueEntries, getRecurringItem, skippedItemIds } from './db/recurring.js';
+import {
+  confirmedItemIds,
+  dueEntries,
+  getRecurringItem,
+  skippedItemIds,
+  TRASH_HOLDS_SLOT,
+  trashedItemIds,
+} from './db/recurring.js';
 import { categories, categoryRules, importSettings, movements } from './db/schema.js';
 
 const MESSAGES = {
@@ -209,6 +216,8 @@ export function registerImportApi(app: FastifyInstance, db: Db): void {
               fail('el fijo ya está confirmado en ese mes.');
             } else if (skippedItemIds(db, month).has(itemId)) {
               fail('el fijo está saltado en ese mes.');
+            } else if (trashedItemIds(db, month).has(itemId)) {
+              fail(TRASH_HOLDS_SLOT);
             }
             result.confirmedRecurring++;
           } else {

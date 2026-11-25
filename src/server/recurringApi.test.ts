@@ -343,6 +343,8 @@ describe('confirm one', () => {
     const kept = await post(confirmUrl(id, '2026-01'));
     expect(kept.json<MovementDto>().notes).toBe('Del contrato');
     await del(`/api/movements/${String(kept.json<MovementDto>().id)}`);
+    // The trashed confirmation holds the slot until it is deleted for good.
+    await del(`/api/trash/movements/${String(kept.json<MovementDto>().id)}`);
     const cleared = await post(confirmUrl(id, '2026-01'), { notes: null });
     expect(cleared.json<MovementDto>().notes).toBeNull();
   });
@@ -450,7 +452,10 @@ describe('confirm one', () => {
 
     expect((await del(`/api/movements/${String(movement.id)}`)).statusCode).toBe(204);
     expect(concepts(await pending('2026-01'))).toContain('Internet');
-    // And it can be confirmed again.
+    // Confirming again is refused while the movement is in the trash (it holds the slot)...
+    expect((await post(confirmUrl(id, '2026-01'))).statusCode).toBe(409);
+    // ...and works once it is deleted for good.
+    expect((await del(`/api/trash/movements/${String(movement.id)}`)).statusCode).toBe(204);
     expect((await post(confirmUrl(id, '2026-01'))).statusCode).toBe(201);
   });
 });

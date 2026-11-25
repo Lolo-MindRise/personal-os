@@ -222,27 +222,92 @@ describe('fixed items and the month slot', () => {
     expect((await pending()).map((p) => p.recurringItemId)).toEqual([item.id]);
   });
 
-  it('order 1: confirm again while the old one is trashed, then the old one cannot come back', async () => {
-    const { item } = await fixedItem();
+  const HOLDS = /papelera: restáuralo o elimínalo definitivamente/;
+  const importCommit = (itemId: number, rent: number) =>
+    call('POST', '/api/import/commit', {
+      rows: [
+        {
+          date: '2026-03-01',
+          kind: 'expense',
+          categoryId: rent,
+          concept: 'Alquiler',
+          amountCents: 60_000,
+          recurringItemId: itemId,
+        },
+        {
+          date: '2026-03-02',
+          kind: 'expense',
+          categoryId: rent,
+          concept: 'Otro',
+          amountCents: 100,
+        },
+      ],
+    });
+
+  it('order 1: while the old one is trashed, confirming again is refused (single, all, import)', async () => {
+    const { rent, item } = await fixedItem();
     const first = (await confirm(item.id)).json<MovementDto>();
     await call('DELETE', `/api/movements/${String(first.id)}`);
-    const second = await confirm(item.id);
-    expect(second.statusCode).toBe(201);
-    expect(await pending()).toEqual([]);
 
-    const refused = await call('POST', `/api/trash/movements/${String(first.id)}/restore`);
-    expect(refused.statusCode).toBe(409);
-    expect(refused.json<ApiErrorBody>().error).toMatch(/^No se puede restaurar: ese fijo ya tiene/);
-    // Nothing half done: the old one is still in the trash, the new one still live.
-    expect((await trash()).movements.map((m) => m.id)).toEqual([first.id]);
-    expect((await month('2026-03')).map((m) => m.id)).toEqual([second.json<MovementDto>().id]);
+    const single = await confirm(item.id);
+    expect(single.statusCode).toBe(409);
+    expect(single.json<ApiErrorBody>().error).toMatch(HOLDS);
 
-    // Once the newer one is trashed, the old one can come back.
-    await call('DELETE', `/api/movements/${String(second.json<MovementDto>().id)}`);
+    const all = await call('POST', '/api/months/2026-03/confirm-all');
+    expect(all.statusCode).toBe(409);
+    expect(all.json<ApiErrorBody>().error).toMatch(HOLDS);
+
+    const imported = await importCommit(item.id, rent);
+    expect(imported.statusCode).toBe(400);
+    expect(imported.json<ApiErrorBody>().error).toMatch(HOLDS);
+
+    // Nothing written by any of them: no live movement, not even the plain import row.
+    expect(rowCount(movements)).toBe(1);
+    expect(await month('2026-03')).toEqual([]);
+    expect((await pending()).map((p) => p.recurringItemId)).toEqual([item.id]);
+
+    // The restore is conflict-free and the item is confirmed again.
     expect(
       (await call('POST', `/api/trash/movements/${String(first.id)}/restore`)).statusCode,
     ).toBe(200);
     expect(await pending()).toEqual([]);
+  });
+
+  it('confirm-all does not fail halfway: nothing is written when one item is held', async () => {
+    const { rent, item } = await fixedItem();
+    const other = (
+      await call('POST', '/api/recurring-items', {
+        kind: 'expense',
+        categoryId: rent,
+        concept: 'Internet',
+        amountCents: 3_000,
+        expectedDay: 5,
+        startMonth: '2026-01',
+      })
+    ).json<RecurringItemDto>();
+    const first = (await confirm(item.id)).json<MovementDto>();
+    await call('DELETE', `/api/movements/${String(first.id)}`);
+    expect((await call('POST', '/api/months/2026-03/confirm-all')).statusCode).toBe(409);
+    expect(rowCount(movements)).toBe(1);
+    expect((await pending()).map((p) => p.recurringItemId).sort()).toEqual(
+      [item.id, other.id].sort(),
+    );
+  });
+
+  it('once the trashed one is deleted for good, confirming works again', async () => {
+    const { item } = await fixedItem();
+    const first = (await confirm(item.id)).json<MovementDto>();
+    await call('DELETE', `/api/movements/${String(first.id)}`);
+    await call('DELETE', `/api/trash/movements/${String(first.id)}`);
+    expect((await confirm(item.id)).statusCode).toBe(201);
+    expect(await pending()).toEqual([]);
+  });
+
+  it('import commit still confirms a fixed item with no trashed confirmation', async () => {
+    const { rent, item } = await fixedItem();
+    const ok = await importCommit(item.id, rent);
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json()).toEqual({ created: 1, confirmedRecurring: 1 });
   });
 
   it('order 2: restore the old one first, then confirming again is refused as already confirmed', async () => {
@@ -269,15 +334,6 @@ describe('fixed items and the month slot', () => {
     expect(refused.statusCode).toBe(409);
     expect(refused.json<ApiErrorBody>().error).toMatch(/saltado/);
     expect((await trash()).movements).toHaveLength(1);
-  });
-
-  it('confirm-all and the month summary ignore a trashed confirmation', async () => {
-    const { item } = await fixedItem();
-    const first = (await confirm(item.id)).json<MovementDto>();
-    await call('DELETE', `/api/movements/${String(first.id)}`);
-    const all = await call('POST', '/api/months/2026-03/confirm-all');
-    expect(all.statusCode).toBe(201);
-    expect(all.json<MovementDto[]>()).toHaveLength(1);
   });
 });
 
@@ -307,7 +363,9 @@ describe('references of a trashed movement', () => {
     ).json<{ id: number }>().id;
     const m = await movement(await category('Comida'), { accountId: cash });
     await call('DELETE', `/api/movements/${String(m.id)}`);
-    expect((await call('DELETE', `/api/accounts/${String(cash)}`)).statusCode).toBe(409);
+    const refused = await call('DELETE', `/api/accounts/${String(cash)}`);
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json<ApiErrorBody>().error).toMatch(/papelera/);
   });
 
   it('refuses to restore when its category is gone (damaged data), leaving it in the trash', async () => {

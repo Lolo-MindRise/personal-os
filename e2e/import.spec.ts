@@ -25,6 +25,11 @@ async function cleanUp(request: APIRequestContext) {
   for (const movement of movements) {
     await request.delete(`/api/movements/${String(movement.id)}`);
   }
+  // A trashed confirmation still holds its fixed item's month slot: delete for good.
+  const trash = (await (await request.get('/api/trash')).json()) as { movements: { id: number }[] };
+  for (const movement of trash.movements) {
+    await request.delete(`/api/trash/movements/${String(movement.id)}`);
+  }
   const rules = (await (await request.get('/api/category-rules')).json()) as { id: number }[];
   for (const rule of rules) {
     await request.delete(`/api/category-rules/${String(rule.id)}`);

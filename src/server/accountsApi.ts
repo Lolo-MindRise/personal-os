@@ -22,6 +22,8 @@ const MESSAGES = {
   notFound: 'No se ha encontrado la cuenta.',
   duplicate: 'Ya existe una cuenta con ese nombre.',
   inUse: 'La cuenta tiene movimientos o transferencias y no se puede eliminar.',
+  inTrash:
+    'No se puede eliminar: hay movimientos o transferencias eliminados de esta cuenta en la papelera.',
   isDefault: 'La cuenta Principal no se puede eliminar.',
 } as const;
 
@@ -151,7 +153,21 @@ export function registerAccountsApi(app: FastifyInstance, db: Db): void {
       .where(or(eq(transfers.fromAccountId, id), eq(transfers.toAccountId, id)))
       .get();
     if ((usedByMovements?.n ?? 0) + (usedByTransfers?.n ?? 0) > 0) {
-      return conflict(reply, MESSAGES.inUse);
+      const liveMovementUse = db
+        .select({ n: count() })
+        .from(movements)
+        .where(and(eq(movements.accountId, id), liveMovements()))
+        .get();
+      const liveTransferUse = db
+        .select({ n: count() })
+        .from(transfers)
+        .where(
+          and(or(eq(transfers.fromAccountId, id), eq(transfers.toAccountId, id)), liveTransfers()),
+        )
+        .get();
+      // Only trashed rows left: say so, since nothing is visible in the lists.
+      const onlyTrash = (liveMovementUse?.n ?? 0) + (liveTransferUse?.n ?? 0) === 0;
+      return conflict(reply, onlyTrash ? MESSAGES.inTrash : MESSAGES.inUse);
     }
     db.delete(accounts).where(eq(accounts.id, id)).run();
     return reply.code(204).send();

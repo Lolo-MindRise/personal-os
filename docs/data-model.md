@@ -96,10 +96,13 @@ invisible to every reader. Every query that reads the two tables for the app's f
 a server file imports a table without them and `trashEquivalence.test.ts` fails when an endpoint
 forgets the exclusion. Endpoints: `GET /api/trash`, `POST /api/trash/{movements,transfers}/:id/restore`,
 `DELETE /api/trash/{movements,transfers}/:id` (only rows already in the trash). Nothing is deleted
-automatically. The unique index `movements_recurring_item_month_unique` is partial
-(`WHERE deleted_at IS NULL`): a trashed confirmation does not hold the month. Restoring is
-refused (409, "No se puede restaurar: ...") when the slot is taken by a live movement, the fixed
-item is skipped that month, or the category, account or debt is gone or mismatched. Deleting a
+automatically. The unique index `movements_recurring_item_month_unique` is unchanged (full, not
+partial): a trashed confirmation still holds the (fixed item, month) slot. The item shows as
+pending again (pending logic is live-only), but confirming it (single, confirm-all, CSV import
+commit) is refused with 409 / 400 "Hay un movimiento de este fijo en la papelera: restáuralo o
+elimínalo definitivamente." and nothing is written. So restoring is never blocked by the slot;
+it is refused (409, "No se puede restaurar: ...") only when the fixed item is skipped that month,
+or the category, account or debt is gone or mismatched. Deleting a
 category or an account keeps counting trashed rows as "in use". The full JSON export keeps trashed
 rows with `deletedAt`; the importer accepts files without that key (`null`).
 

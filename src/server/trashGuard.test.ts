@@ -26,10 +26,14 @@ function sourceFiles(dir: string, prefix = ''): string[] {
   });
 }
 
+// A tripwire, not the protection: it only checks that a file touching the tables mentions a live
+// or trashed helper somewhere. The real protection is trashEquivalence.test.ts, which exercises
+// every endpoint against trashed rows. Imports are matched from any relative path ending in
+// `schema.js` (so a new subfolder is caught) and `schema.movements` / `schema.transfers` usages.
 const importsTable = (text: string, table: 'movements' | 'transfers'): boolean =>
-  new RegExp(`import\\s*\\{[^}]*\\b${table}\\b[^}]*\\}\\s*from\\s*'\\./(db/)?schema\\.js'`).test(
-    text,
-  );
+  new RegExp(
+    `import\\s*\\{[^}]*\\b${table}\\b[^}]*\\}\\s*from\\s*'(\\.{1,2}/)+([\\w-]+/)*schema\\.js'`,
+  ).test(text) || new RegExp(`\\bschema\\.${table}\\b`).test(text);
 
 describe('trash guard', () => {
   it('every file reading movements or transfers uses the live/trashed helpers', () => {
@@ -61,5 +65,7 @@ describe('trash guard', () => {
     );
     expect(importsTable("import { a } from './schema.js';", 'movements')).toBe(false);
     expect(importsTable("import { transfers } from './db/schema.js';", 'movements')).toBe(false);
+    expect(importsTable("import { movements } from '../db/schema.js';", 'movements')).toBe(true);
+    expect(importsTable('db.select().from(schema.transfers)', 'transfers')).toBe(true);
   });
 });
