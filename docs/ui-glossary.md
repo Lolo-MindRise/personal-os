@@ -30,6 +30,7 @@ screen needs a concept, add it here first.
 | Date of that opening balance | fecha del saldo inicial de la cuenta | fecha del saldo inicial |
 | Account a transfer takes money from / puts money into | cuenta de origen / cuenta de destino | |
 | The account every movement gets unless another is chosen | Principal | por defecto, general |
+| Inicio block with fixed items and milestones due from today to 30 days later | Próximos 30 días | próximas semanas, agenda |
 | A monthly recurring income or expense | fijo (plural fijos) | gasto fijo, recurrente, suscripción |
 | A fixed item waiting to be confirmed this month | pendiente | previsto |
 | The amount and date a fixed item is expected to have | importe previsto, fecha prevista | |

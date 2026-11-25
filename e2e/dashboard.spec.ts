@@ -116,6 +116,25 @@ test('debts, goal and upcoming items, with links to their screens', async ({ pag
   await expect(page.getByRole('heading', { name: 'Hitos', level: 1 })).toBeVisible();
 });
 
+test('account balances and the next 30 days, counted from the page date', async ({ page }) => {
+  await page.goto('/');
+  // Seed: Principal and Efectivo (opening 50,00 on 2026-01-01, less its seeded expenses).
+  const accounts = page.getByTestId('dashboard-accounts');
+  await expect(accounts.getByTestId('dashboard-account')).toHaveCount(2);
+  await expect(accounts).toContainText('Principal');
+  await expect(accounts).toContainText(/Efectivo\s+26,00\s€/);
+
+  // Window 2026-01-15 .. 2026-02-14: Gimnasio (on the 15th, today) plus four of February's items
+  // (Nómina, Alquiler, Internet, Electricidad); January's earlier ones are already past.
+  const next = page.getByTestId('dashboard-next30');
+  await expect(next.getByTestId('next30-fixed')).toHaveCount(5);
+  await expect(next).toContainText('Gimnasio');
+  await expect(next.getByTestId('next30-milestone')).toHaveCount(0);
+
+  await accounts.getByRole('link', { name: 'Efectivo' }).click();
+  await expect(page.getByRole('heading', { name: 'Cuentas', level: 1 })).toBeVisible();
+});
+
 test('the month selector changes the figures, and the 12 months end at that month', async ({
   page,
 }) => {

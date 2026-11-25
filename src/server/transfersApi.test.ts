@@ -230,7 +230,16 @@ describe('invariant: a transfer changes only the two balances', () => {
       '/api/years/2026/summary',
       '/api/movements?month=2026-02',
     ];
-    return Promise.all(urls.map(async (url) => [url, (await get(url)).json()] as const));
+    return Promise.all(
+      urls.map(async (url) => {
+        const body = (await get(url)).json<Record<string, unknown>>();
+        // The dashboard also lists the account balances, which a transfer does move.
+        if (url.startsWith('/api/dashboard')) {
+          delete body.accounts;
+        }
+        return [url, body] as const;
+      }),
+    );
   };
 
   it('moves exactly 100 € between the balances and leaves every total unchanged', async () => {
