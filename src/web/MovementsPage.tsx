@@ -38,7 +38,13 @@ import { monthLabel } from './months.js';
 import { FilterBar, PageHeader } from './PageHeader.js';
 import { hrefFor, navigate, useMonth, useRoute } from './router.js';
 import type { SearchQuery } from './movementSearch.js';
-import { downloadCsv, movementsToCsv } from './movementsCsv.js';
+import {
+  canExportMonth,
+  downloadCsv,
+  fetchAllSearchRows,
+  monthCsvFilename,
+  movementsToCsv,
+} from './movementsCsv.js';
 import { PendingList } from './PendingList.js';
 import { SummaryBar } from './SummaryBar.js';
 
@@ -97,6 +103,8 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [debts, setDebts] = useState<DebtDto[]>([]);
   const [movements, setMovements] = useState<MovementDto[]>([]);
+  /** The month `movements` belongs to; it lags `month` while a new month loads or fails to. */
+  const [loadedMonth, setLoadedMonth] = useState<string | undefined>();
   const [pending, setPending] = useState<PendingEntryDto[]>([]);
   const [skipped, setSkipped] = useState<PendingEntryDto[]>([]);
   const [summary, setSummary] = useState<MonthSummaryDto | undefined>();
@@ -151,6 +159,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
       ([rows, totals, due, skippedEntries]) => {
         if (active) {
           setMovements(rows);
+          setLoadedMonth(month);
           setSummary(totals);
           setPending(due);
           setSkipped(skippedEntries);
@@ -392,17 +401,12 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     setExportError(undefined);
     try {
       if (search === undefined) {
-        downloadCsv(`movimientos-${month}.csv`, movementsToCsv(shownMovements));
+        downloadCsv(
+          monthCsvFilename(month, categoryFilter === undefined ? undefined : categoryName),
+          movementsToCsv(shownMovements),
+        );
       } else {
-        const rows: MovementDto[] = [];
-        let page = 1;
-        let pageCount = 1;
-        do {
-          const result = await api.searchMovements(search.query, page);
-          rows.push(...result.rows);
-          pageCount = result.pageCount;
-          page += 1;
-        } while (page <= pageCount);
+        const rows = await fetchAllSearchRows((page) => api.searchMovements(search.query, page));
         downloadCsv('movimientos-busqueda.csv', movementsToCsv(rows));
       }
     } catch (error) {
@@ -464,10 +468,19 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
       <div className="form-actions">
         <button
           type="button"
-          disabled={exporting || (search !== undefined && searchResult === undefined)}
+          disabled={
+            exporting ||
+            (search === undefined
+              ? !canExportMonth(loadedMonth, month, loadError)
+              : searchResult === undefined)
+          }
           onClick={() => void exportCsv()}
         >
-          {search === undefined ? 'Exportar mes' : 'Exportar resultados'}
+          {search !== undefined
+            ? 'Exportar resultados'
+            : categoryFilter !== undefined
+              ? 'Exportar mes (categoría)'
+              : 'Exportar mes'}
         </button>
       </div>
       {exportError !== undefined && (

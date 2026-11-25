@@ -1,4 +1,4 @@
-import type { MovementDto } from '../shared/api.js';
+import type { MovementDto, MovementSearchDto } from '../shared/api.js';
 import { KIND_LABELS } from './labels.js';
 import { formatDate } from './months.js';
 
@@ -40,6 +40,50 @@ export function movementsToCsv(movements: MovementDto[]): string {
     ].join(SEPARATOR),
   );
   return BOM + [CSV_HEADER.join(SEPARATOR), ...rows].join('\r\n') + '\r\n';
+}
+
+/** Lowercase, accents stripped, anything but letters and digits turned into single `-`. */
+export function slugify(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/** File name of the month export; carries the category when a category filter is active. */
+export function monthCsvFilename(month: string, categoryName?: string): string {
+  if (categoryName === undefined) {
+    return `movimientos-${month}.csv`;
+  }
+  const slug = slugify(categoryName);
+  return `movimientos-${month}-${slug === '' ? 'categoria' : slug}.csv`;
+}
+
+/** The month export may only run when the rows on screen are those of `month` and loaded fine. */
+export function canExportMonth(
+  loadedMonth: string | undefined,
+  month: string,
+  loadError: string | undefined,
+): boolean {
+  return loadedMonth === month && loadError === undefined;
+}
+
+/** Fetches every page of a search, in order. Any failing page rejects the whole export. */
+export async function fetchAllSearchRows(
+  fetchPage: (page: number) => Promise<MovementSearchDto>,
+): Promise<MovementDto[]> {
+  const rows: MovementDto[] = [];
+  let page = 1;
+  let pageCount = 1;
+  while (page <= pageCount) {
+    const result = await fetchPage(page);
+    rows.push(...result.rows);
+    pageCount = result.pageCount;
+    page += 1;
+  }
+  return rows;
 }
 
 /** Starts a browser download of `text` as a CSV file. Nothing goes to the server. */
