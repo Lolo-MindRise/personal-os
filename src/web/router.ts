@@ -13,10 +13,13 @@ export const VIEW_IDS = [
   'recurring',
   'projection',
   'debts',
+  'reports',
   'summary',
   'goals',
   'milestones',
   'categories',
+  'tags',
+  'accounts',
   'backups',
 ] as const;
 

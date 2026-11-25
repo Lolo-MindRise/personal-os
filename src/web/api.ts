@@ -1,4 +1,7 @@
 import type {
+  AccountBalanceDto,
+  AccountDto,
+  TransferDto,
   ApiErrorBody,
   BackupStatusDto,
   BudgetMonthDto,
@@ -19,9 +22,13 @@ import type {
   PendingEntryDto,
   ProjectionDto,
   RecurringItemDto,
+  TagDto,
 } from '../shared/api.js';
 import type { Kind } from '../shared/constants.js';
+import type { DataFile, DataImportResultDto } from '../shared/dataFile.js';
 import type { ImportMapping } from '../shared/csvImport.js';
+import type { ExpenseReportDto } from '../shared/reports.js';
+import type { AccountPayload, TransferPayload } from './accountForms.js';
 import type { BudgetPayload } from './budgetForm.js';
 import type { CommitRow } from './importState.js';
 import type { DebtPayload } from './debtForm.js';
@@ -89,9 +96,32 @@ const itemMonth = (itemId: number, month: string) =>
 export function createApiClient(fetchFn: typeof fetch = fetch) {
   return {
     categories: () => request<CategoryDto[]>(fetchFn, '/api/categories'),
+    accounts: () => request<AccountDto[]>(fetchFn, '/api/accounts'),
+    accountBalances: () => request<AccountBalanceDto[]>(fetchFn, '/api/accounts/balances'),
+    createAccount: (payload: AccountPayload) =>
+      request<AccountDto>(fetchFn, '/api/accounts', json('POST', payload)),
+    updateAccount: (id: number, payload: Partial<AccountPayload>) =>
+      request<AccountDto>(fetchFn, `/api/accounts/${String(id)}`, json('PATCH', payload)),
+    deleteAccount: (id: number) =>
+      request<undefined>(fetchFn, `/api/accounts/${String(id)}`, { method: 'DELETE' }),
+    transfers: () => request<TransferDto[]>(fetchFn, '/api/transfers'),
+    createTransfer: (payload: TransferPayload) =>
+      request<TransferDto>(fetchFn, '/api/transfers', json('POST', payload)),
+    updateTransfer: (id: number, payload: Partial<TransferPayload>) =>
+      request<TransferDto>(fetchFn, `/api/transfers/${String(id)}`, json('PATCH', payload)),
+    deleteTransfer: (id: number) =>
+      request<undefined>(fetchFn, `/api/transfers/${String(id)}`, { method: 'DELETE' }),
     backupStatus: () => request<BackupStatusDto>(fetchFn, '/api/backups/status'),
+    exportData: () => request<DataFile>(fetchFn, '/api/data/export'),
+    importData: (file: unknown) =>
+      request<DataImportResultDto>(fetchFn, '/api/data/import', json('POST', file)),
     dashboard: (month: string, today: string) =>
       request<DashboardDto>(fetchFn, `/api/dashboard?month=${enc(month)}&today=${enc(today)}`),
+    expenseReport: (month: string, months: number) =>
+      request<ExpenseReportDto>(
+        fetchFn,
+        `/api/reports/expenses?month=${enc(month)}&months=${String(months)}`,
+      ),
     budget: (month: string) => request<BudgetMonthDto>(fetchFn, `/api/months/${enc(month)}/budget`),
     addBudgetLine: (payload: BudgetPayload) =>
       request<BudgetMonthDto>(fetchFn, '/api/budget-lines', json('POST', payload)),
@@ -122,6 +152,11 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
       request<CategoryDto>(fetchFn, `/api/categories/${String(id)}`, json('PATCH', { name })),
     deleteCategory: (id: number) =>
       request<undefined>(fetchFn, `/api/categories/${String(id)}`, { method: 'DELETE' }),
+    tags: () => request<TagDto[]>(fetchFn, '/api/tags'),
+    renameTag: (id: number, name: string) =>
+      request<TagDto>(fetchFn, `/api/tags/${String(id)}`, json('PATCH', { name })),
+    deleteTag: (id: number) =>
+      request<undefined>(fetchFn, `/api/tags/${String(id)}`, { method: 'DELETE' }),
     movements: (month: string) =>
       request<MovementDto[]>(fetchFn, `/api/movements?month=${enc(month)}`),
     projection: (to: string, today: string) =>

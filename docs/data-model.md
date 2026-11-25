@@ -19,7 +19,11 @@ Creation schemas (Zod, shared with the future API and frontend):
 | Table | Fields | Rules |
 |-------|--------|-------|
 | `categories` | `name`, `kind` (`income`/`expense`/`repayment`) | `name` unique, not blank |
-| `movements` | `date`, `kind`, `category_id`, `concept`, `amount_cents`, `notes?`, `debt_id?`, `recurring_item_id?` | amount > 0; kind must equal the category's kind (composite FK `(category_id, kind)`); `debt_id` only when kind is `repayment`; at most one movement per `(recurring_item_id, month of date)`; deleting the item sets `recurring_item_id` to null |
+| `accounts` | `name`, `type` (`bank`/`cash`/`savings`), `opening_balance_cents`, `opening_balance_date` | `name` unique, not blank; balance may be negative; the migration creates "Principal" (id 1, `bank`, balance 0, dated the day before the earliest movement, or 2025-12-31, so its balance counts every existing movement); `DELETE /api/accounts/:id` refuses Principal and any account with movements (trigger) or transfers (foreign key) |
+| `transfers` | `date`, `amount_cents`, `from_account_id`, `to_account_id`, `notes?` | plan 0002 task 03, migration `0007`; money between two accounts, never income, expense or savings; amount > 0; the accounts must differ (CHECK); both are real foreign keys (no action), so an account with transfers cannot be deleted. Account balance = opening balance + movements on it dated after the opening date (income +, expense and repayment −) ± transfers dated after it; a transfer dated on or before either account's opening date is refused (`src/shared/accountBalance.ts`) |
+| `tags` | `name`, `name_key` | plan 0002 task 04, migration `0008` ("marcas" in the UI); `name_key` is the trimmed, lower-cased name and is unique, so names are unique ignoring case and surrounding spaces; created on the fly when a movement is saved with them; renaming to an existing name is refused |
+| `movement_tags` | `movement_id`, `tag_id` | many to many, primary key on both columns; both are real foreign keys with `ON DELETE CASCADE`: deleting a tag removes only its links, deleting a movement removes only its links. The search filters by tag ids, and a movement must carry all selected tags (conservative choice); unknown ids are ignored |
+| `movements` | `date`, `kind`, `category_id`, `concept`, `amount_cents`, `notes?`, `debt_id?`, `account_id`, `recurring_item_id?` | `account_id` not null, default 1; no FK clause (SQLite cannot add one without a table rebuild), triggers reject an unknown account; amount > 0; kind must equal the category's kind (composite FK `(category_id, kind)`); `debt_id` only when kind is `repayment`; at most one movement per `(recurring_item_id, month of date)`; deleting the item sets `recurring_item_id` to null |
 | `recurring_items` | `kind`, `category_id`, `concept`, `amount_cents`, `expected_day`, `start_month`, `end_month?`, `notes?`, `debt_id?` | `debt_id` (task 0013) only when kind is `repayment`; confirming a linked item reduces the debt's estimated balance by the principal part (French amortization, computed on read, never stored); amount > 0; kind must equal the category's kind (composite FK); day 1–31; `end_month` not before `start_month` |
 | `recurring_skips` | `recurring_item_id`, `month` | unique `(recurring_item_id, month)`; deleted with the item |
 | `budget_lines` | `category_id`, `amount_cents`, `valid_from` (month) | amount > 0; unique `(category_id, valid_from)` |
@@ -82,6 +86,18 @@ subtracted too).
 - Tests: `:memory:`.
 - `npm run db:seed` fills the development database with an invented month.
   It refuses to run in production.
+
+## Full-data export and import (plan 0002, task 06)
+
+`GET /api/data/export` returns one JSON file (`src/shared/dataFile.ts`): `app`, `formatVersion`
+(1), `exportedAt`, `tables` (every table by SQL name, rows keyed by the Drizzle property names, in
+primary key order) and `sequences` (the AUTOINCREMENT counters, so ids deleted before the export
+are never reused). `POST /api/data/import` validates the whole file (shape, unique keys,
+references including the trigger-enforced `movements.account_id`, `tags.name_key`), refuses any
+database that already has data (only the default Principal account is ignored; it is replaced by
+the file's), and writes everything in one transaction in `TABLE_INSERT_ORDER`. Body limit 25 MiB.
+A test fails when a schema table or column is missing from the file definition. When you add a
+table: add it to `ROW_SCHEMAS`, `TABLE_INSERT_ORDER` and `referenceProblems`.
 
 ## Not yet modelled
 

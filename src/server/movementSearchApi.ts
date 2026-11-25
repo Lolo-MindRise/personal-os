@@ -1,11 +1,18 @@
-import { and, desc, eq, gte, inArray, lte, or, type SQL } from 'drizzle-orm';
+import { and, desc, eq, exists, gte, inArray, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import type { MovementDto, MovementSearchDto } from '../shared/api.js';
+import type { MovementSearchDto } from '../shared/api.js';
 import { normalizeText } from '../shared/importClassify.js';
 import { movementSearchSchema, SEARCH_DEFAULT_PAGE_SIZE } from '../shared/schemas.js';
-import { badRequest, fieldErrors, MESSAGES, movementColumns } from './apiCommon.js';
+import {
+  badRequest,
+  fieldErrors,
+  MESSAGES,
+  movementColumns,
+  withTags,
+  type MovementRow,
+} from './apiCommon.js';
 import type { Db } from './db/index.js';
-import { categories, movements, recurringItems } from './db/schema.js';
+import { categories, movements, movementTags, recurringItems, tags } from './db/schema.js';
 
 /**
  * Search across all months. Structured filters run in SQL; the text filter runs here so it
@@ -59,7 +66,22 @@ export function registerMovementSearchApi(app: FastifyInstance, db: Db): void {
       conditions.push(lte(movements.amountCents, f.maxAmountCents));
     }
 
-    let rows: MovementDto[] = db
+    if (f.tagIds !== undefined) {
+      // Unknown tag ids are ignored; the movement must carry every known one.
+      const known = db.select({ id: tags.id }).from(tags).where(inArray(tags.id, f.tagIds)).all();
+      for (const { id } of known) {
+        conditions.push(
+          exists(
+            db
+              .select({ one: sql`1` })
+              .from(movementTags)
+              .where(and(eq(movementTags.movementId, movements.id), eq(movementTags.tagId, id))),
+          ),
+        );
+      }
+    }
+
+    let rows: MovementRow[] = db
       .select(movementColumns)
       .from(movements)
       .innerJoin(categories, eq(categories.id, movements.categoryId))
@@ -91,7 +113,7 @@ export function registerMovementSearchApi(app: FastifyInstance, db: Db): void {
     const pageSize = f.pageSize ?? SEARCH_DEFAULT_PAGE_SIZE;
     const page = f.page ?? 1;
     const result: MovementSearchDto = {
-      rows: rows.slice((page - 1) * pageSize, page * pageSize),
+      rows: withTags(db, rows.slice((page - 1) * pageSize, page * pageSize)),
       page,
       pageSize,
       count: rows.length,

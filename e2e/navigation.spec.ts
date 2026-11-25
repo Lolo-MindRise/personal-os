@@ -15,13 +15,16 @@ test('every sidebar entry opens its screen with its own URL', async ({ page }) =
     ['Inicio', 'Inicio', /#\/dashboard/],
     ['Movimientos', 'Movimientos', /#\/movements/],
     ['Importar', 'Importar', /#\/import/],
+    ['Informes', 'Informes', /#\/reports/],
     ['Presupuesto', 'Presupuesto', /#\/budget/],
     ['Fijos', 'Fijos', /#\/recurring/],
     ['Proyección', 'Proyección', /#\/projection/],
     ['Deudas', 'Deudas', /#\/debts/],
     ['Objetivos y resumen', 'Resumen', /#\/summary/],
     ['Hitos', 'Hitos', /#\/milestones/],
+    ['Cuentas', 'Cuentas', /#\/accounts/],
     ['Categorías', 'Categorías', /#\/categories/],
+    ['Marcas', 'Marcas', /#\/tags/],
     ['Copias', 'Copias', /#\/backups/],
   ];
   for (const [label, heading, url] of entries) {

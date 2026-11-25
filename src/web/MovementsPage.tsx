@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type {
+  AccountDto,
   CategoryDto,
   DebtDto,
   MonthSummaryDto,
   MovementDto,
   PendingEntryDto,
+  TagDto,
 } from '../shared/api.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
 import { MovementForm, type FieldErrors, type FormMode } from './MovementForm.js';
@@ -102,6 +104,8 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   const panel = usePanel();
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [debts, setDebts] = useState<DebtDto[]>([]);
+  const [accounts, setAccounts] = useState<AccountDto[]>([]);
+  const [tags, setTags] = useState<TagDto[]>([]);
   const [movements, setMovements] = useState<MovementDto[]>([]);
   /** The month `movements` belongs to; it lags `month` while a new month loads or fails to. */
   const [loadedMonth, setLoadedMonth] = useState<string | undefined>();
@@ -146,7 +150,27 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     api.debts().then(setDebts, (error: unknown) => {
       setLoadError(messageOf(error));
     });
+    api.accounts().then(setAccounts, (error: unknown) => {
+      setLoadError(messageOf(error));
+    });
   }, [api]);
+
+  // Tags change when a movement is saved (new ones are created on the fly): reload with the month.
+  useEffect(() => {
+    let active = true;
+    api.tags().then(
+      (rows) => {
+        if (active) {
+          setTags(rows);
+        }
+      },
+      // Only a convenience (suggestions and the filter): the screen works without it.
+      () => undefined,
+    );
+    return () => {
+      active = false;
+    };
+  }, [api, reloads]);
 
   useEffect(() => {
     let active = true;
@@ -493,6 +517,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
         <MovementFilters
           values={filters}
           categories={categories}
+          tags={tags}
           errors={filterErrors}
           busy={searchBusy}
           onChange={(values) => {
@@ -525,6 +550,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
           result={searchResult}
           query={search.query}
           categories={categories}
+          tags={tags}
           busy={searchBusy}
           onPage={(page) => {
             dispatch({ type: 'page', page });
@@ -588,6 +614,8 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
               values={form}
               categories={categories}
               debts={debts}
+              accounts={accounts}
+              tagNames={tags.map((t) => t.name)}
               errors={fieldErrors}
               formError={formError}
               mode={mode}
@@ -604,6 +632,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
 
           <MovementList
             movements={shownMovements}
+            accounts={accounts}
             onEdit={edit}
             onDelete={(movement) => void remove(movement)}
           />

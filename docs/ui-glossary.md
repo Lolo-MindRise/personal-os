@@ -10,8 +10,8 @@ screen needs a concept, add it here first.
 | Home | Inicio |
 | Daily | Día a día → Movimientos, Importar |
 | Planning | Planificar → Presupuesto, Fijos, Proyección |
-| Tracking | Seguimiento → Deudas, Objetivos y resumen, Hitos |
-| Settings | Ajustes → Categorías, Copias |
+| Tracking | Seguimiento → Deudas, Informes, Objetivos y resumen, Hitos |
+| Settings | Ajustes → Categorías, Marcas, Cuentas, Copias |
 
 ## Things
 
@@ -22,6 +22,19 @@ screen needs a concept, add it here first.
 | What a movement is about (text) | concepto | descripción |
 | Amount of money | importe | cantidad, monto |
 | A category of movements | categoría | etiqueta |
+| A free word attached to a movement, several allowed (English: tag) | marca (plural marcas) | etiqueta (that word is avoided so it is never confused with a category), tag |
+| Filter that needs every selected marca on the movement | marcas (all of them must match: "marcas A y B") | alguna de |
+| Where money is kept (a movement belongs to one) | cuenta | banco, monedero |
+| Account type: bank account / cash in hand / savings account | cuenta bancaria / efectivo / ahorro | corriente, caja |
+| Money moved between two accounts (not income or expense) | transferencia | traspaso, movimiento entre cuentas |
+| Balance of an account: opening balance plus later movements and transfers | saldo de la cuenta | saldo actual |
+| Amount an account starts with (not the savings "saldo inicial") | saldo inicial de la cuenta | |
+| Date of that opening balance | fecha del saldo inicial de la cuenta | fecha del saldo inicial |
+| Account a transfer takes money from / puts money into | cuenta de origen / cuenta de destino | |
+| The account every movement gets unless another is chosen | Principal | por defecto, general |
+| Download every piece of data as one file, to move to a new installation | Exportar datos | descargar copia, backup |
+| Load such a file into an empty installation (not a restore) | Importar datos | restaurar |
+| Inicio block with fixed items and milestones due from today to 30 days later | Próximos 30 días | próximas semanas, agenda |
 | A monthly recurring income or expense | fijo (plural fijos) | gasto fijo, recurrente, suscripción |
 | A fixed item waiting to be confirmed this month | pendiente | previsto |
 | The amount and date a fixed item is expected to have | importe previsto, fecha prevista | |
@@ -40,6 +53,12 @@ screen needs a concept, add it here first.
 | A savings target with an amount and a date | objetivo | meta |
 | A dated step towards the goals | hito | tarea |
 | Year table of monthly figures | resumen (del año) | informe |
+| Screen with spending charts over several months | Informes | reportes, estadísticas |
+| One category's spending month by month, as a line chart | evolución de una categoría | tendencia, histórico |
+| Table with the figures of a chart, folded under it | Ver los datos | detalle, tabla de datos |
+| Number of months an Informes screen covers | periodo | rango |
+| Average spending of a category per month over the period | media mensual | promedio |
+| Spending change of a category versus the previous period | cambio respecto al periodo anterior | variación, desvío |
 | What the money will do in the future | proyección | previsión |
 | Download movements as a spreadsheet file (CSV) | Exportar mes / Exportar mes (categoría) / Exportar resultados | descargar, volcar |
 | Automatic safety copies of the data | copias | backups, respaldos |

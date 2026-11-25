@@ -1,9 +1,11 @@
 import type { SubmitEvent } from 'react';
-import type { CategoryDto, DebtDto } from '../shared/api.js';
-import { KINDS, type Kind } from '../shared/constants.js';
+import type { AccountDto, CategoryDto, DebtDto } from '../shared/api.js';
+import { DEFAULT_ACCOUNT_ID, KINDS, type Kind } from '../shared/constants.js';
 import { Field } from './Field.js';
 import { KIND_LABELS } from './labels.js';
 import {
+  commitTagDraft,
+  removeTag,
   validateMovementForm,
   type MovementField,
   type MovementFormValues,
@@ -37,7 +39,11 @@ interface Props {
   categories: CategoryDto[];
   /** Debts a repayment can be linked to. */
   debts?: Pick<DebtDto, 'id' | 'name'>[];
+  /** Accounts a movement can belong to; the selector is hidden while there are none. */
+  accounts?: Pick<AccountDto, 'id' | 'name'>[];
   /** Errors to show next to each field (client-side or returned by the API). */
+  /** Names of the existing tags, offered while typing. */
+  tagNames?: string[];
   errors: FieldErrors;
   /** Message not tied to a field (for example a network failure). */
   formError?: string | undefined;
@@ -54,6 +60,7 @@ export function MovementForm(props: Props) {
   const options = categories.filter((c) => c.kind === values.kind);
   const locked = mode === 'confirm';
   const debts = props.debts ?? [];
+  const accounts = props.accounts ?? [];
   // A repayment may be linked to a debt (not while confirming a fixed item: it has no debt).
   const showDebt =
     values.kind === 'repayment' && !locked && (debts.length > 0 || values.debtId !== '');
@@ -130,6 +137,28 @@ export function MovementForm(props: Props) {
             ))}
           </select>
         </Field>
+        {accounts.length > 0 && (
+          <Field id="movement-accountId" label="Cuenta" error={errors.accountId}>
+            <select
+              id="movement-accountId"
+              value={
+                values.accountId === undefined || values.accountId === ''
+                  ? String(DEFAULT_ACCOUNT_ID)
+                  : values.accountId
+              }
+              aria-describedby={describe('accountId')}
+              onChange={(e) => {
+                set('accountId', e.target.value);
+              }}
+            >
+              {accounts.map((a) => (
+                <option key={a.id} value={String(a.id)}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         {showDebt && (
           <Field id="movement-debtId" label="Deuda (opcional)" error={errors.debtId}>
             <select
@@ -184,6 +213,55 @@ export function MovementForm(props: Props) {
             }}
           />
         </Field>
+        {!locked && (
+          <Field id="movement-tagDraft" label="Marcas" error={errors.tags}>
+            <div className="tag-input">
+              {(values.tags ?? []).length > 0 && (
+                <ul className="tag-chips" aria-label="Marcas del movimiento">
+                  {(values.tags ?? []).map((t) => (
+                    <li key={t} className="tag-chip">
+                      {t}
+                      <button
+                        type="button"
+                        aria-label={`Quitar la marca ${t}`}
+                        onClick={() => {
+                          props.onChange(removeTag(values, t));
+                        }}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <input
+                id="movement-tagDraft"
+                type="text"
+                list="movement-tag-options"
+                placeholder="Escribe y pulsa Intro o coma"
+                value={values.tagDraft ?? ''}
+                aria-describedby={describe('tags')}
+                onChange={(e) => {
+                  // A comma ends the tag being typed.
+                  const next = { ...values, tagDraft: e.target.value };
+                  props.onChange(e.target.value.includes(',') ? commitTagDraft(next) : next);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    // Enter adds the tag; it must not save the movement.
+                    e.preventDefault();
+                    props.onChange(commitTagDraft(values));
+                  }
+                }}
+              />
+              <datalist id="movement-tag-options">
+                {(props.tagNames ?? []).map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            </div>
+          </Field>
+        )}
       </div>
       {props.formError !== undefined && (
         <p className="form-error" role="alert">

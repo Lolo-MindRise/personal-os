@@ -9,6 +9,8 @@ export interface FilterValues {
   categoryId: string;
   /** A kind, or '' for any. */
   kind: Kind | '';
+  /** Tag ids joined by commas ('' for any). A movement must have all of them. */
+  tagIds: string;
   from: string;
   to: string;
   /** Euros in Spanish format, or '' for no limit. */
@@ -26,6 +28,7 @@ export interface SearchQuery {
   debtId?: number;
   recurringItemId?: number;
   kind?: Kind;
+  tagIds?: number[];
   from?: string;
   to?: string;
   minAmountCents?: number;
@@ -43,13 +46,23 @@ export const FILTER_ERRORS = {
 } as const;
 
 export function emptyFilters(): FilterValues {
-  return { q: '', categoryId: '', kind: '', from: '', to: '', minAmount: '', maxAmount: '' };
+  return {
+    q: '',
+    categoryId: '',
+    kind: '',
+    tagIds: '',
+    from: '',
+    to: '',
+    minAmount: '',
+    maxAmount: '',
+  };
 }
 
 export const FILTER_FIELDS: FilterField[] = [
   'q',
   'categoryId',
   'kind',
+  'tagIds',
   'from',
   'to',
   'minAmount',
@@ -59,6 +72,26 @@ export const FILTER_FIELDS: FilterField[] = [
 /** True when at least one filter is filled in. */
 export function hasFilters(values: FilterValues): boolean {
   return FILTER_FIELDS.some((field) => values[field].trim() !== '');
+}
+
+/** At most this many tags in one filter (the API's limit). */
+export const MAX_TAG_FILTERS = 20;
+
+/**
+ * Tag ids from a comma list: valid ids only, no repeats, at most MAX_TAG_FILTERS; undefined when
+ * none is left. Anything else in the text is ignored one by one.
+ */
+export function parseTagIds(text: string | undefined): number[] | undefined {
+  const ids = [
+    ...new Set(
+      (text ?? '')
+        .split(',')
+        .map((part) => part.trim())
+        .filter((part) => /^[1-9]\d{0,9}$/.test(part))
+        .map(Number),
+    ),
+  ].slice(0, MAX_TAG_FILTERS);
+  return ids.length > 0 ? ids : undefined;
 }
 
 export type FilterResult =
@@ -80,6 +113,10 @@ export function validateFilters(values: FilterValues): FilterResult {
   }
   if (values.kind !== '') {
     query.kind = values.kind;
+  }
+  const tagIds = parseTagIds(values.tagIds);
+  if (tagIds !== undefined) {
+    query.tagIds = tagIds;
   }
   for (const field of ['from', 'to'] as const) {
     const text = values[field].trim();
@@ -128,6 +165,7 @@ export const URL_KEYS = {
   q: 'q',
   categoryId: 'cat',
   kind: 'kind',
+  tagIds: 'tag',
   from: 'from',
   to: 'to',
   minAmountCents: 'min',
@@ -189,6 +227,10 @@ export function paramsToQuery(params: Record<string, string>): SearchQuery | und
   if (kind !== undefined) {
     query.kind = kind;
   }
+  const tagIds = parseTagIds(params[URL_KEYS.tagIds]);
+  if (tagIds !== undefined) {
+    query.tagIds = tagIds;
+  }
   for (const field of ['from', 'to'] as const) {
     const text = params[URL_KEYS[field]];
     if (text !== undefined && isoDate.safeParse(text).success) {
@@ -225,6 +267,7 @@ export function queryToFilters(query: SearchQuery): FilterValues {
     q: query.q ?? '',
     categoryId: query.categoryId === undefined ? '' : String(query.categoryId),
     kind: query.kind ?? '',
+    tagIds: query.tagIds?.join(',') ?? '',
     from: query.from ?? '',
     to: query.to ?? '',
     minAmount: query.minAmountCents === undefined ? '' : euros(query.minAmountCents),
@@ -247,6 +290,7 @@ export function describeFilters(
   query: SearchQuery,
   categoryName: string | undefined,
   kindLabels: Record<Kind, string>,
+  tagNames: ReadonlyMap<number, string> = new Map(),
 ): string[] {
   const parts: string[] = [];
   if (query.q !== undefined) {
@@ -263,6 +307,11 @@ export function describeFilters(
   }
   if (query.kind !== undefined) {
     parts.push(`tipo ${kindLabels[query.kind].toLowerCase()}`);
+  }
+  // A tag that no longer exists is ignored by the search, so it is not listed either.
+  const marks = (query.tagIds ?? []).flatMap((id) => tagNames.get(id) ?? []);
+  if (marks.length > 0) {
+    parts.push(`${marks.length === 1 ? 'marca' : 'marcas'} ${marks.join(' y ')}`);
   }
   if (query.from !== undefined) {
     parts.push(`desde ${query.from}`);

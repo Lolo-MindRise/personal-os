@@ -571,6 +571,54 @@ td.amount {
   font-size: var(--text-sm);
 }
 
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+}
+
+.tag-chip {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: var(--text-sm);
+  padding: 0 var(--space-2);
+}
+
+.tag-chip button {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 0 0 var(--space-1);
+}
+
+.tag-input {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.tag-filter {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+
+.tag-filter .check {
+  display: inline-block;
+  margin-right: var(--space-3);
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .kind {
   font-size: var(--text-sm);
   font-weight: 600;

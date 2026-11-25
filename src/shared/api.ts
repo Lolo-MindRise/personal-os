@@ -1,6 +1,30 @@
-import type { Kind, MilestoneStatus } from './constants.js';
+import type { AccountType, Kind, MilestoneStatus } from './constants.js';
 
 // Response shapes of the HTTP API, shared with the frontend.
+
+export interface AccountDto {
+  id: number;
+  name: string;
+  type: AccountType;
+  openingBalanceCents: number;
+  openingBalanceDate: string;
+}
+
+/** The balance of one account (opening balance + movements and transfers after its date). */
+export interface AccountBalanceDto {
+  accountId: number;
+  balanceCents: number;
+}
+
+/** Money moved between two accounts; never income, expense or savings. */
+export interface TransferDto {
+  id: number;
+  date: string;
+  amountCents: number;
+  fromAccountId: number;
+  toAccountId: number;
+  notes: string | null;
+}
 
 export interface CategoryDto {
   id: number;
@@ -15,8 +39,17 @@ export interface CategoryUsageDto extends CategoryDto {
   budgetLines: number;
 }
 
+/** A tag ("marca"), with how many movements carry it. */
+export interface TagDto {
+  id: number;
+  name: string;
+  movements: number;
+}
+
 export interface MovementDto {
   id: number;
+  /** Names of its tags, in alphabetical order. */
+  tags: string[];
   date: string;
   kind: Kind;
   categoryId: number;
@@ -25,6 +58,7 @@ export interface MovementDto {
   amountCents: number;
   notes: string | null;
   debtId: number | null;
+  accountId: number;
   /** The recurring item this movement confirms, if any (ADR-0005). */
   recurringItemId: number | null;
 }
@@ -346,6 +380,21 @@ export interface DashboardDto {
     /** The next three milestones not done, overdue first (earliest date first). */
     milestones: DashboardMilestoneDto[];
   };
+  /** One line per account (plan 0002, task 05); same figures as `GET /api/accounts/balances`. */
+  accounts: DashboardAccountDto[];
+  /** What falls due from `today` to `today` + 30 days, both included. */
+  next30Days: {
+    from: string;
+    to: string;
+    /** Pending fixed items (not confirmed, not skipped) with an expected date in the window. */
+    fixed: PendingEntryDto[];
+    /** Milestones not done with a target date in the window. */
+    milestones: MilestoneDto[];
+  };
+}
+
+export interface DashboardAccountDto extends AccountBalanceDto {
+  name: string;
 }
 
 /** "Concept contains `pattern`" → category (task 0013, block 2). */

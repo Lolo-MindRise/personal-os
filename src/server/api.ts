@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import type { CategoryDto, MovementDto } from '../shared/api.js';
+import type { CategoryDto } from '../shared/api.js';
 import { monthOf } from '../shared/recurring.js';
 import {
   isoMonth,
@@ -9,21 +9,29 @@ import {
   movementUpdateSchema,
 } from '../shared/schemas.js';
 import {
+  accountError,
   badRequest,
   categoryError,
   fieldErrors,
   getMovement,
   MESSAGES as COMMON_MESSAGES,
   movementColumns,
+  setMovementTags,
+  withTags,
+  type MovementRow,
   notFound,
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
 import { categories, debts, movements } from './db/schema.js';
+import { registerAccountsApi } from './accountsApi.js';
 import { registerBudgetApi } from './budgetApi.js';
 import { registerDashboardApi } from './dashboardApi.js';
+import { registerReportsApi } from './reportsApi.js';
 import { monthSummary } from './monthSummary.js';
 import { registerCategoriesApi } from './categoriesApi.js';
+import { registerDataExportApi } from './dataExportApi.js';
+import { registerDataImportApi } from './dataImportApi.js';
 import { registerDebtsApi } from './debtsApi.js';
 import { registerImportApi } from './importApi.js';
 import { registerMovementSearchApi } from './movementSearchApi.js';
@@ -31,6 +39,7 @@ import { registerProjectionApi } from './projectionApi.js';
 import { registerMilestonesApi } from './milestonesApi.js';
 import { registerRecurringApi } from './recurringApi.js';
 import { registerSummaryApi } from './summaryApi.js';
+import { registerTagsApi } from './tagsApi.js';
 
 const MESSAGES = {
   ...COMMON_MESSAGES,
@@ -42,9 +51,14 @@ const MESSAGES = {
 /** Checks the references of a validated movement; returns an error message or undefined. */
 function referenceError(
   db: Db,
-  m: { kind: string; categoryId: number; debtId?: number | null | undefined },
+  m: {
+    kind: string;
+    categoryId: number;
+    debtId?: number | null | undefined;
+    accountId?: number | undefined;
+  },
 ): { error: string; field: string } | undefined {
-  const problem = categoryError(db, m.kind, m.categoryId);
+  const problem = categoryError(db, m.kind, m.categoryId) ?? accountError(db, m.accountId);
   if (problem !== undefined) {
     return problem;
   }
@@ -87,7 +101,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     if (!parsed.success) {
       return badRequest(reply, MESSAGES.invalidMonth, { month: MESSAGES.invalidMonth });
     }
-    const rows: MovementDto[] = db
+    const rows: MovementRow[] = db
       .select(movementColumns)
       .from(movements)
       .innerJoin(categories, eq(categories.id, movements.categoryId))
@@ -96,7 +110,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
       )
       .orderBy(desc(movements.date), desc(movements.id))
       .all();
-    return rows;
+    return withTags(db, rows);
   });
 
   app.post('/api/movements', (request, reply) => {
@@ -108,8 +122,15 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     if (refError !== undefined) {
       return badRequest(reply, refError.error, { [refError.field]: refError.error });
     }
-    const created = db.insert(movements).values(parsed.data).returning({ id: movements.id }).get();
-    return reply.code(201).send(getMovement(db, created.id));
+    const { tags: tagNames, ...values } = parsed.data;
+    const createdId = db.transaction((tx) => {
+      const created = tx.insert(movements).values(values).returning({ id: movements.id }).get();
+      if (tagNames !== undefined) {
+        setMovementTags(tx, created.id, tagNames);
+      }
+      return created.id;
+    });
+    return reply.code(201).send(getMovement(db, createdId));
   });
 
   app.patch('/api/movements/:id', (request, reply) => {
@@ -133,6 +154,7 @@ export function registerApi(app: FastifyInstance, db: Db): void {
       amountCents: current.amountCents,
       notes: current.notes,
       debtId: current.debtId,
+      accountId: current.accountId,
       ...patch.data,
     });
     if (!merged.success) {
@@ -146,14 +168,20 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     if (refError !== undefined) {
       return badRequest(reply, refError.error, { [refError.field]: refError.error });
     }
-    db.update(movements)
-      .set({
-        ...merged.data,
-        notes: merged.data.notes ?? null,
-        debtId: merged.data.debtId ?? null,
-      })
-      .where(eq(movements.id, id))
-      .run();
+    const { tags: tagNames, ...values } = merged.data;
+    db.transaction((tx) => {
+      tx.update(movements)
+        .set({
+          ...values,
+          notes: values.notes ?? null,
+          debtId: values.debtId ?? null,
+        })
+        .where(eq(movements.id, id))
+        .run();
+      if (tagNames !== undefined) {
+        setMovementTags(tx, id, tagNames);
+      }
+    });
     return getMovement(db, id);
   });
 
@@ -177,9 +205,13 @@ export function registerApi(app: FastifyInstance, db: Db): void {
     return monthSummary(db, parsed.data);
   });
 
+  registerAccountsApi(app, db);
   registerBudgetApi(app, db);
   registerCategoriesApi(app, db);
   registerDashboardApi(app, db);
+  registerReportsApi(app, db);
+  registerDataExportApi(app, db);
+  registerDataImportApi(app, db);
   registerDebtsApi(app, db);
   registerImportApi(app, db);
   registerMovementSearchApi(app, db);
@@ -187,4 +219,5 @@ export function registerApi(app: FastifyInstance, db: Db): void {
   registerMilestonesApi(app, db);
   registerRecurringApi(app, db);
   registerSummaryApi(app, db);
+  registerTagsApi(app, db);
 }

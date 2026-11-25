@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { KINDS, MILESTONE_STATUSES } from './constants.js';
+import { ACCOUNT_TYPES, KINDS, MILESTONE_STATUSES } from './constants.js';
 
 // Messages reach the UI, which is in Spanish (es-ES): Zod's Spanish locale covers the defaults.
 z.config(z.locales.es());
@@ -29,6 +29,57 @@ const optionalNotes = z.string().trim().min(1).nullish();
 
 export const kindSchema = z.enum(KINDS);
 
+export const accountCreateSchema = z.strictObject({
+  name: text,
+  type: z.enum(ACCOUNT_TYPES),
+  /** Can be zero or negative (an overdrawn account). */
+  openingBalanceCents: z.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER),
+  openingBalanceDate: isoDate,
+});
+
+/** PATCH body: any subset of the account's fields. */
+export const accountUpdateSchema = accountCreateSchema.partial();
+
+const accountRef = z.number().int().positive();
+
+const transferFieldsSchema = z.strictObject({
+  date: isoDate,
+  amountCents: cents,
+  fromAccountId: accountRef,
+  toAccountId: accountRef,
+  notes: optionalNotes,
+});
+
+const differentAccounts = {
+  check: (t: { fromAccountId?: number | undefined; toAccountId?: number | undefined }) =>
+    t.fromAccountId === undefined ||
+    t.toAccountId === undefined ||
+    t.fromAccountId !== t.toAccountId,
+  message: 'La cuenta de origen y la de destino deben ser distintas.',
+  path: ['toAccountId'],
+};
+
+/** A transfer moves money between two different accounts. */
+export const transferCreateSchema = transferFieldsSchema.refine(
+  differentAccounts.check,
+  differentAccounts,
+);
+
+/** PATCH body: any subset; the API re-checks the merged result. */
+export const transferUpdateSchema = transferFieldsSchema
+  .partial()
+  .refine(differentAccounts.check, differentAccounts);
+
+export const MAX_TAG_LENGTH = 30;
+export const MAX_TAGS_PER_MOVEMENT = 10;
+export const tagName = z.string().trim().min(1).max(MAX_TAG_LENGTH);
+
+/** Renaming a tag. */
+export const tagUpdateSchema = z.strictObject({ name: tagName });
+
+/** The key tag names are unique by: lower case, trimmed. */
+export const tagKey = (name: string): string => name.trim().toLowerCase();
+
 export const categoryCreateSchema = z.strictObject({
   name: text,
   kind: kindSchema,
@@ -48,6 +99,10 @@ export const movementFieldsSchema = z.strictObject({
   amountCents: cents,
   notes: optionalNotes,
   debtId: z.number().int().positive().nullish(),
+  /** Omitted on creation = the default account ("Principal"). */
+  accountId: z.number().int().positive().optional(),
+  /** Tag names (created on the fly). Omitted = unchanged on update, none on creation. */
+  tags: z.array(tagName).max(MAX_TAGS_PER_MOVEMENT).optional(),
 });
 
 export const movementCreateSchema = movementFieldsSchema.refine(
@@ -94,6 +149,8 @@ export const confirmOverridesSchema = z.strictObject({
   amountCents: cents.optional(),
   concept: text.optional(),
   notes: optionalNotes,
+  /** The account of the movement created; default "Principal". */
+  accountId: z.number().int().positive().optional(),
 });
 
 export const budgetLineCreateSchema = z.strictObject({
@@ -207,6 +264,16 @@ export const movementSearchSchema = z
     debtId: queryOptional(queryInt(1)),
     recurringItemId: queryOptional(queryInt(1)),
     kind: queryOptional(kindSchema),
+    /**
+     * Tag ids, comma separated. A movement must have all of them (the conservative choice).
+     * Ids that match no tag are ignored.
+     */
+    tagIds: queryOptional(
+      z
+        .string()
+        .regex(/^[1-9]\d{0,9}(,[1-9]\d{0,9}){0,19}$/, 'Las marcas no son válidas.')
+        .transform((list) => [...new Set(list.split(',').map(Number))]),
+    ),
     from: queryOptional(isoDate),
     to: queryOptional(isoDate),
     minAmountCents: queryOptional(queryInt(0)),
@@ -249,6 +316,10 @@ export const milestoneUpdateSchema = z.strictObject({
   notes: optionalNotes,
 });
 
+export type AccountCreate = z.infer<typeof accountCreateSchema>;
+export type AccountUpdate = z.infer<typeof accountUpdateSchema>;
+export type TransferCreate = z.infer<typeof transferCreateSchema>;
+export type TransferUpdate = z.infer<typeof transferUpdateSchema>;
 export type CategoryCreate = z.infer<typeof categoryCreateSchema>;
 export type CategoryUpdate = z.infer<typeof categoryUpdateSchema>;
 export type MovementUpdate = z.infer<typeof movementUpdateSchema>;

@@ -4,11 +4,17 @@ import {
   foreignKey,
   index,
   integer,
+  primaryKey,
   sqliteTable,
   text,
   unique,
 } from 'drizzle-orm/sqlite-core';
-import { KINDS, MILESTONE_STATUSES } from '../../shared/constants.js';
+import {
+  ACCOUNT_TYPES,
+  DEFAULT_ACCOUNT_ID,
+  KINDS,
+  MILESTONE_STATUSES,
+} from '../../shared/constants.js';
 
 // Conventions (ADR-0002, docs/data-model.md):
 // - Money: integer cents, always positive. The kind gives the direction.
@@ -16,6 +22,7 @@ import { KINDS, MILESTONE_STATUSES } from '../../shared/constants.js';
 // - Timestamps: ISO 8601 UTC text.
 
 const kindList = sql.raw(KINDS.map((k) => `'${k}'`).join(', '));
+const accountTypeList = sql.raw(ACCOUNT_TYPES.map((t) => `'${t}'`).join(', '));
 const statusList = sql.raw(MILESTONE_STATUSES.map((s) => `'${s}'`).join(', '));
 
 const DATE_GLOB = sql.raw("'[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'");
@@ -43,6 +50,61 @@ export const categories = sqliteTable(
     unique('categories_id_kind_unique').on(t.id, t.kind),
     check('categories_name_not_empty', sql`length(trim(${t.name})) > 0`),
     check('categories_kind_valid', sql`${t.kind} IN (${kindList})`),
+  ],
+);
+
+/**
+ * Where money is kept (plan 0002). Movements belong to one account. The migration creates
+ * "Principal" (id 1), the default account.
+ */
+export const accounts = sqliteTable(
+  'accounts',
+  {
+    id: id(),
+    name: text('name').notNull().unique(),
+    type: text('type', { enum: ACCOUNT_TYPES }).notNull(),
+    openingBalanceCents: integer('opening_balance_cents').notNull(),
+    openingBalanceDate: text('opening_balance_date').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check('accounts_name_not_empty', sql`length(trim(${t.name})) > 0`),
+    check('accounts_type_valid', sql`${t.type} IN (${accountTypeList})`),
+    check('accounts_opening_balance_integer', isInteger(t.openingBalanceCents)),
+    check('accounts_opening_balance_date', sql`${t.openingBalanceDate} GLOB ${DATE_GLOB}`),
+  ],
+);
+
+/**
+ * Money moved between two accounts (plan 0002). Not income, expense or savings: it only changes
+ * the two account balances. Both accounts are real foreign keys (no action: an account with
+ * transfers cannot be deleted).
+ */
+export const transfers = sqliteTable(
+  'transfers',
+  {
+    id: id(),
+    date: text('date').notNull(),
+    amountCents: integer('amount_cents').notNull(),
+    fromAccountId: integer('from_account_id')
+      .notNull()
+      .references(() => accounts.id),
+    toAccountId: integer('to_account_id')
+      .notNull()
+      .references(() => accounts.id),
+    notes: text('notes'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('transfers_date_idx').on(t.date),
+    index('transfers_from_idx').on(t.fromAccountId),
+    index('transfers_to_idx').on(t.toAccountId),
+    check('transfers_date_format', sql`${t.date} GLOB ${DATE_GLOB}`),
+    check('transfers_amount_integer', isInteger(t.amountCents)),
+    check('transfers_amount_positive', sql`${t.amountCents} > 0`),
+    check('transfers_accounts_differ', sql`${t.fromAccountId} <> ${t.toAccountId}`),
   ],
 );
 
@@ -154,6 +216,9 @@ export const movements = sqliteTable(
     amountCents: integer('amount_cents').notNull(),
     notes: text('notes'),
     debtId: integer('debt_id').references(() => debts.id),
+    // No REFERENCES clause: SQLite cannot add a NOT NULL foreign key column to an existing table
+    // without rebuilding it. Triggers in the migration enforce that the account exists.
+    accountId: integer('account_id').notNull().default(DEFAULT_ACCOUNT_ID),
     // The recurring item this movement confirms. Deleting the item keeps the movement.
     recurringItemId: integer('recurring_item_id').references(() => recurringItems.id, {
       onDelete: 'set null',
@@ -181,6 +246,42 @@ export const movements = sqliteTable(
     check('movements_debt_only_on_repayment', sql`${t.debtId} IS NULL OR ${t.kind} = 'repayment'`),
     index('movements_date_idx').on(t.date),
     index('movements_category_idx').on(t.categoryId),
+  ],
+);
+
+/**
+ * Free marks on movements (plan 0002, task 04; "marcas" in the UI). `name` is what the user typed
+ * (trimmed); `name_key` is the same lower-cased and is unique, so names are unique ignoring
+ * case and surrounding spaces (JS lower-casing; SQLite's lower() only folds ASCII).
+ */
+export const tags = sqliteTable(
+  'tags',
+  {
+    id: id(),
+    name: text('name').notNull(),
+    nameKey: text('name_key').notNull().unique(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check('tags_name_not_empty', sql`length(trim(${t.name})) > 0`),
+    check('tags_name_key_trimmed', sql`${t.nameKey} = trim(${t.nameKey})`),
+  ],
+);
+
+/** Many to many between movements and tags. Deleting either side removes only the links. */
+export const movementTags = sqliteTable(
+  'movement_tags',
+  {
+    movementId: integer('movement_id')
+      .notNull()
+      .references(() => movements.id, { onDelete: 'cascade' }),
+    tagId: integer('tag_id')
+      .notNull()
+      .references(() => tags.id, { onDelete: 'cascade' }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.movementId, t.tagId] }),
+    index('movement_tags_tag_idx').on(t.tagId),
   ],
 );
 
