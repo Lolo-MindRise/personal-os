@@ -101,6 +101,7 @@ describe('formFromMovement', () => {
       notes: null,
       debtId: null,
       accountId: 1,
+      tags: [],
       recurringItemId: null,
     });
     expect(form).toEqual({
@@ -112,6 +113,7 @@ describe('formFromMovement', () => {
       notes: '',
       debtId: '',
       accountId: '1',
+      tags: [],
     });
     expect(validateMovementForm(form).ok).toBe(true);
   });
@@ -135,6 +137,7 @@ describe('formFromMovement', () => {
       notes: null,
       debtId: 3,
       accountId: 1,
+      tags: [],
       recurringItemId: null,
     });
     expect(form.debtId).toBe('3');

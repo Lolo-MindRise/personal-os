@@ -22,6 +22,7 @@ import type {
   PendingEntryDto,
   ProjectionDto,
   RecurringItemDto,
+  TagDto,
 } from '../shared/api.js';
 import type { Kind } from '../shared/constants.js';
 import type { ImportMapping } from '../shared/csvImport.js';
@@ -147,6 +148,11 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
       request<CategoryDto>(fetchFn, `/api/categories/${String(id)}`, json('PATCH', { name })),
     deleteCategory: (id: number) =>
       request<undefined>(fetchFn, `/api/categories/${String(id)}`, { method: 'DELETE' }),
+    tags: () => request<TagDto[]>(fetchFn, '/api/tags'),
+    renameTag: (id: number, name: string) =>
+      request<TagDto>(fetchFn, `/api/tags/${String(id)}`, json('PATCH', { name })),
+    deleteTag: (id: number) =>
+      request<undefined>(fetchFn, `/api/tags/${String(id)}`, { method: 'DELETE' }),
     movements: (month: string) =>
       request<MovementDto[]>(fetchFn, `/api/movements?month=${enc(month)}`),
     projection: (to: string, today: string) =>

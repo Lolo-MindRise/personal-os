@@ -20,6 +20,7 @@ const movements: MovementDto[] = [
     notes: 'Entradas para dos',
     debtId: null,
     accountId: 1,
+    tags: [],
     recurringItemId: null,
   },
   {
@@ -33,6 +34,7 @@ const movements: MovementDto[] = [
     notes: null,
     debtId: null,
     accountId: 1,
+    tags: [],
     recurringItemId: null,
   },
 ];

@@ -24,6 +24,7 @@ test('every sidebar entry opens its screen with its own URL', async ({ page }) =
     ['Hitos', 'Hitos', /#\/milestones/],
     ['Cuentas', 'Cuentas', /#\/accounts/],
     ['Categorías', 'Categorías', /#\/categories/],
+    ['Marcas', 'Marcas', /#\/tags/],
     ['Copias', 'Copias', /#\/backups/],
   ];
   for (const [label, heading, url] of entries) {

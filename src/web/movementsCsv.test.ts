@@ -21,6 +21,7 @@ const movement = (over: Partial<MovementDto> = {}): MovementDto => ({
   notes: null,
   debtId: null,
   accountId: 1,
+  tags: [],
   recurringItemId: null,
   ...over,
 });
@@ -61,26 +62,32 @@ describe('csvText', () => {
 
 describe('movementsToCsv', () => {
   it('has only the BOM and header for an empty list', () => {
-    expect(movementsToCsv([])).toBe('﻿Fecha;Tipo;Categoría;Concepto;Importe;Notas\r\n');
+    expect(movementsToCsv([])).toBe('﻿Fecha;Tipo;Categoría;Concepto;Importe;Notas;Marcas\r\n');
   });
 
-  it('writes one Spanish-formatted row per movement', () => {
+  it('writes one Spanish-formatted row per movement, marcas last', () => {
     const csv = movementsToCsv([
       movement(),
-      movement({ date: '2026-12-31', kind: 'income', concept: 'Pago; "extra"', notes: 'a\nb' }),
+      movement({
+        date: '2026-12-31',
+        kind: 'income',
+        concept: 'Pago; "extra"',
+        notes: 'a\nb',
+        tags: ['viaje', 'casa'],
+      }),
     ]);
     expect(csv.startsWith('﻿')).toBe(true);
     expect(csv.split('\r\n')).toEqual([
-      '﻿Fecha;Tipo;Categoría;Concepto;Importe;Notas',
-      '05/03/2026;Gasto;Supermercado;Compra;1.234,56;',
-      '31/12/2026;Ingreso;Supermercado;"Pago; ""extra""";1.234,56;"a\nb"',
+      '﻿Fecha;Tipo;Categoría;Concepto;Importe;Notas;Marcas',
+      '05/03/2026;Gasto;Supermercado;Compra;1.234,56;;',
+      '31/12/2026;Ingreso;Supermercado;"Pago; ""extra""";1.234,56;"a\nb";viaje, casa',
       '',
     ]);
   });
 
   it('defuses only text cells, never the date or the amount', () => {
     const row = movementsToCsv([movement({ concept: '-cheque', amountCents: 5 })]).split('\r\n')[1];
-    expect(row).toBe("05/03/2026;Gasto;Supermercado;'-cheque;0,05;");
+    expect(row).toBe("05/03/2026;Gasto;Supermercado;'-cheque;0,05;;");
     expect(row?.split(';')[0]).not.toContain("'");
     expect(row?.split(';')[4]).not.toContain("'");
   });

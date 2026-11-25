@@ -1,7 +1,13 @@
 import type { Kind } from '../shared/constants.js';
 import { centsToInput, parseMoney } from '../shared/money.js';
 import type { MovementDto, PendingEntryDto } from '../shared/api.js';
-import { isoDate, kindSchema } from '../shared/schemas.js';
+import {
+  isoDate,
+  kindSchema,
+  MAX_TAG_LENGTH,
+  MAX_TAGS_PER_MOVEMENT,
+  tagKey,
+} from '../shared/schemas.js';
 import { todayISO } from './months.js';
 
 /** What the user typed. Everything is text until `validateMovementForm`. */
@@ -16,10 +22,34 @@ export interface MovementFormValues {
   debtId: string;
   /** The account; '' or absent means the default one ("Principal"), which the API applies. */
   accountId?: string;
+  /** Tag names already chosen. Absent on a new movement; present (maybe empty) when editing. */
+  tags?: string[];
+  /** Text typed in the tag box and not yet turned into a tag (Enter or comma does that). */
+  tagDraft?: string;
 }
 
 export type MovementField =
-  'date' | 'kind' | 'categoryId' | 'concept' | 'amount' | 'notes' | 'debtId' | 'accountId';
+  'date' | 'kind' | 'categoryId' | 'concept' | 'amount' | 'notes' | 'debtId' | 'accountId' | 'tags';
+
+/**
+ * Adds the text of the tag box to the tags (several may come comma-separated). Names that
+ * repeat one already there, ignoring case, are dropped. Returns the new values.
+ */
+export function commitTagDraft(values: MovementFormValues): MovementFormValues {
+  const draft = values.tagDraft ?? '';
+  const tags = [...(values.tags ?? [])];
+  for (const part of draft.split(',')) {
+    const name = part.trim();
+    if (name !== '' && !tags.some((t) => tagKey(t) === tagKey(name))) {
+      tags.push(name);
+    }
+  }
+  return { ...values, tags, tagDraft: '' };
+}
+
+export function removeTag(values: MovementFormValues, name: string): MovementFormValues {
+  return { ...values, tags: (values.tags ?? []).filter((t) => t !== name) };
+}
 
 export interface MovementPayload {
   date: string;
@@ -32,6 +62,8 @@ export interface MovementPayload {
   debtId?: number | null;
   /** Absent: the API uses the default account. */
   accountId?: number;
+  /** Tag names; absent leaves the tags of a saved movement as they are. */
+  tags?: string[];
 }
 
 export type FormResult =
@@ -65,6 +97,8 @@ export const FORM_ERRORS = {
   kind: 'Elige un tipo.',
   categoryId: 'Elige una categoría.',
   concept: 'Escribe un concepto.',
+  tagLength: `Cada marca puede tener como máximo ${String(MAX_TAG_LENGTH)} caracteres.`,
+  tagCount: `Un movimiento puede tener como máximo ${String(MAX_TAGS_PER_MOVEMENT)} marcas.`,
 } as const;
 
 export function emptyForm(today: string = todayISO()): MovementFormValues {
@@ -90,6 +124,7 @@ export function formFromMovement(movement: MovementDto): MovementFormValues {
     amount: centsToInput(movement.amountCents),
     notes: movement.notes ?? '',
     debtId: movement.debtId === null ? '' : String(movement.debtId),
+    tags: [...movement.tags],
   };
 }
 
@@ -128,6 +163,13 @@ export function validateMovementForm(values: MovementFormValues): FormResult {
   if (!amount.ok) {
     errors.amount = amount.error;
   }
+  // Text still in the tag box counts as a tag.
+  const tags = commitTagDraft(values).tags ?? [];
+  if (tags.some((t) => t.length > MAX_TAG_LENGTH)) {
+    errors.tags = FORM_ERRORS.tagLength;
+  } else if (tags.length > MAX_TAGS_PER_MOVEMENT) {
+    errors.tags = FORM_ERRORS.tagCount;
+  }
 
   if (Object.keys(errors).length > 0 || !amount.ok) {
     return { ok: false, errors };
@@ -142,6 +184,7 @@ export function validateMovementForm(values: MovementFormValues): FormResult {
       concept,
       amountCents: amount.cents,
       notes: notes === '' ? null : notes,
+      ...(values.tags === undefined && tags.length === 0 ? {} : { tags }),
       ...(values.accountId === undefined || values.accountId === ''
         ? {}
         : { accountId: Number(values.accountId) }),
@@ -176,6 +219,7 @@ const API_FIELD_TO_FORM: Record<string, MovementField> = {
   notes: 'notes',
   debtId: 'debtId',
   accountId: 'accountId',
+  tags: 'tags',
 };
 
 /** Maps the `fields` of an API error to form fields; unknown keys are dropped. */

@@ -1,13 +1,15 @@
 import { useEffect, useRef, type SubmitEvent } from 'react';
-import type { CategoryDto, MovementDto, MovementSearchDto } from '../shared/api.js';
+import type { CategoryDto, MovementDto, MovementSearchDto, TagDto } from '../shared/api.js';
 import { KINDS } from '../shared/constants.js';
 import { formatCents } from '../shared/money.js';
 import { Field } from './Field.js';
 import { KIND_LABELS } from './labels.js';
 import { formatDate } from './months.js';
+import { TagChips } from './TagChips.js';
 import {
   describeFilters,
   hasFilters,
+  parseTagIds,
   type FilterField,
   type FilterValues,
   type SearchQuery,
@@ -19,6 +21,8 @@ export type FilterErrors = Partial<Record<FilterField, string>>;
 export function MovementFilters(props: {
   values: FilterValues;
   categories: CategoryDto[];
+  /** Tags to filter by; the group is hidden while there are none. */
+  tags?: TagDto[];
   errors: FilterErrors;
   busy: boolean;
   onChange: (values: FilterValues) => void;
@@ -27,6 +31,8 @@ export function MovementFilters(props: {
   onClose: () => void;
 }) {
   const { values, errors } = props;
+  const tags = props.tags ?? [];
+  const selectedTags = parseTagIds(values.tagIds) ?? [];
   // The button that opened the panel disappears: move focus to the panel's heading.
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -99,6 +105,26 @@ export function MovementFilters(props: {
             ))}
           </select>
         </Field>
+        {tags.length > 0 && (
+          <fieldset className="field tag-filter">
+            <legend>Marcas (deben estar todas)</legend>
+            {tags.map((t) => (
+              <label key={t.id} className="check">
+                <input
+                  type="checkbox"
+                  checked={selectedTags.includes(t.id)}
+                  onChange={() => {
+                    const next = selectedTags.includes(t.id)
+                      ? selectedTags.filter((id) => id !== t.id)
+                      : [...selectedTags, t.id];
+                    set('tagIds', next.join(','));
+                  }}
+                />{' '}
+                {t.name}
+              </label>
+            ))}
+          </fieldset>
+        )}
         {text('from', 'Desde (fecha)', { type: 'date' })}
         {text('to', 'Hasta (fecha)', { type: 'date' })}
         {text('minAmount', 'Importe mínimo (€)', { inputMode: 'decimal', placeholder: '0,00' })}
@@ -124,6 +150,8 @@ export function SearchResults(props: {
   result: MovementSearchDto;
   query: SearchQuery;
   categories: CategoryDto[];
+  /** Known tags, to name the active tag filter. */
+  tags?: TagDto[];
   /** A page is loading: paging is disabled meanwhile. */
   busy?: boolean;
   onPage: (page: number) => void;
@@ -145,6 +173,7 @@ export function SearchResults(props: {
     props.query,
     props.categories.find((c) => c.id === props.query.categoryId)?.name,
     KIND_LABELS,
+    new Map((props.tags ?? []).map((t) => [t.id, t.name])),
   );
   return (
     <section aria-label="Resultados de la búsqueda" className="search-results">
@@ -201,6 +230,7 @@ export function SearchResults(props: {
                 <td>
                   {m.concept}
                   {m.notes !== null && <span className="notes">{m.notes}</span>}
+                  <TagChips tags={m.tags} />
                 </td>
                 <td className="amount">{formatCents(m.amountCents)}</td>
                 <td className="actions">

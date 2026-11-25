@@ -3,6 +3,7 @@ import { formatCents } from '../shared/money.js';
 import { KIND_LABELS } from './labels.js';
 import { formatDate } from './months.js';
 import { hrefFor } from './router.js';
+import { TagChips } from './TagChips.js';
 
 interface Props {
   movements: MovementDto[];
@@ -49,6 +50,7 @@ export function MovementList({ movements, accounts = [], onEdit, onDelete }: Pro
             <td>
               {m.concept}
               {m.notes !== null && <span className="notes">{m.notes}</span>}
+              <TagChips tags={m.tags} />
             </td>
             {showAccount && <td>{accountName(m.accountId)}</td>}
             <td className="amount">{formatCents(m.amountCents)}</td>

@@ -1,9 +1,10 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import type { FastifyReply } from 'fastify';
 import type { ZodError } from 'zod';
 import type { ApiErrorBody, MovementDto } from '../shared/api.js';
+import { tagKey } from '../shared/schemas.js';
 import type { Db } from './db/index.js';
-import { accounts, categories, movements } from './db/schema.js';
+import { accounts, categories, movements, movementTags, tags } from './db/schema.js';
 
 // Helpers shared by the API route files (movements, recurring items).
 
@@ -72,6 +73,66 @@ export function accountError(
   return undefined;
 }
 
+/** What a `db.transaction` callback receives. */
+type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+
+/** A movement row as selected with `movementColumns`, before its tags are attached. */
+export type MovementRow = Omit<MovementDto, 'tags'>;
+
+/** Adds each movement's tag names (alphabetical) with one query for the whole list. */
+export function withTags(db: Db, rows: MovementRow[]): MovementDto[] {
+  if (rows.length === 0) {
+    return [];
+  }
+  const links = db
+    .select({ movementId: movementTags.movementId, name: tags.name })
+    .from(movementTags)
+    .innerJoin(tags, eq(tags.id, movementTags.tagId))
+    .where(
+      inArray(
+        movementTags.movementId,
+        rows.map((r) => r.id),
+      ),
+    )
+    .all();
+  const byMovement = new Map<number, string[]>();
+  for (const link of links) {
+    byMovement.set(link.movementId, [...(byMovement.get(link.movementId) ?? []), link.name]);
+  }
+  return rows.map((row) => ({
+    ...row,
+    tags: (byMovement.get(row.id) ?? []).sort((a, b) => a.localeCompare(b, 'es')),
+  }));
+}
+
+/**
+ * Makes `names` the tags of a movement: tags that do not exist yet are created, matching existing
+ * ones ignoring case and surrounding spaces. Replaces the previous links (never touches movements).
+ */
+export function setMovementTags(db: Db | Tx, movementId: number, names: string[]): void {
+  const wanted = new Map<string, string>();
+  for (const name of names) {
+    const key = tagKey(name);
+    if (key !== '' && !wanted.has(key)) {
+      wanted.set(key, name.trim());
+    }
+  }
+  const tagIds: number[] = [];
+  for (const [key, name] of wanted) {
+    const existing = db.select({ id: tags.id }).from(tags).where(eq(tags.nameKey, key)).get();
+    tagIds.push(
+      existing?.id ??
+        db.insert(tags).values({ name, nameKey: key }).returning({ id: tags.id }).get().id,
+    );
+  }
+  db.delete(movementTags).where(eq(movementTags.movementId, movementId)).run();
+  if (tagIds.length > 0) {
+    db.insert(movementTags)
+      .values(tagIds.map((tagId) => ({ movementId, tagId })))
+      .run();
+  }
+}
+
 export const movementColumns = {
   id: movements.id,
   date: movements.date,
@@ -87,10 +148,11 @@ export const movementColumns = {
 };
 
 export function getMovement(db: Db, id: number): MovementDto | undefined {
-  return db
+  const row: MovementRow | undefined = db
     .select(movementColumns)
     .from(movements)
     .innerJoin(categories, eq(categories.id, movements.categoryId))
     .where(eq(movements.id, id))
     .get();
+  return row === undefined ? undefined : withTags(db, [row])[0];
 }
