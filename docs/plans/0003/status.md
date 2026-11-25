@@ -8,7 +8,7 @@ Integration branch: `integration/0003-data-safety-and-daily-use`
 | 01 trash-core | 00 | merged | #64 | 3 rounds (the limit); risk high (migration 0009, soft delete over the whole read path). Round 1 dropped a non-additive index change (orchestrator decision, kept the full unique index; slot handled in code). Round 2: confirm-all skips trash-held items, import preview excludes them (`heldByTrash` on pending entries). Minors left: equivalence test strips `heldByTrash` at any depth, no singular form in the skipped message, no web test for it |
 | 02 csv-account-column | – | merged | #63 | 2 rounds; risk medium; minors left: e2e alert locator not specific to the export error, download count asserted right after the alert |
 | 03 trash-ui | 01 | running | – | |
-| 04 budget-alerts | 01 | running | – | parallel with 03 |
+| 04 budget-alerts | 01 | merged | #65 | 2 rounds; risk medium; fixed: e2e cleanup left a trashed movement in the shared e2e DB, Presupuesto meter now expense rows only; minors left: cleanup error can hide the original failure, no repayment-row test |
 | 05 importer-accounts | 01 | pending | – | shares `importApi.ts` with 01 |
 | 06 reconciliation | 01, 03 | pending | – | owns the migration slot (0010) |
 | 07 quick-add | 01 | pending | – | |
