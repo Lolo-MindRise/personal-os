@@ -322,6 +322,15 @@ export interface DashboardDto {
     totalDebtCents: number;
     /** Savings of the month plus what is still pending (ADR-0005). */
     projectedSavingsCents: number;
+    /**
+     * The same figures one month earlier (month-over-month); null where that month has no data.
+     * Debt and goals have no monthly history, so they have no previous value.
+     */
+    previous: {
+      month: string;
+      accumulatedSavingsCents: number | null;
+      projectedSavingsCents: number | null;
+    };
   };
   /** The 12 months ending at `month`, oldest first. */
   months: DashboardMonthDto[];

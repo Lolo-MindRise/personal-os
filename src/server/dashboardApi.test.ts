@@ -41,6 +41,21 @@ const send = (method: 'POST' | 'PUT', url: string, payload: unknown) =>
 describe('with seed data', () => {
   beforeEach(() => start(true));
 
+  it('previous-month figures: none before the data, the seeded month afterwards', async () => {
+    const january = await dashboard('2026-01');
+    expect(january.keyFigures.previous).toEqual({
+      month: '2025-12',
+      accumulatedSavingsCents: 0,
+      projectedSavingsCents: null,
+    });
+    const february = await dashboard('2026-02');
+    expect(february.keyFigures.previous).toMatchObject({
+      month: '2026-01',
+      accumulatedSavingsCents: 99_930,
+      projectedSavingsCents: 99_930 - 13_000,
+    });
+  });
+
   it('key figures', async () => {
     const { keyFigures, setup } = await dashboard('2026-01');
     expect(keyFigures.accumulatedSavingsCents).toBe(99_930); // no initial balance: all movements
@@ -260,6 +275,7 @@ describe('with an empty database', () => {
       nextGoal: null,
       totalDebtCents: 0,
       projectedSavingsCents: 0,
+      previous: { month: '2026-02', accumulatedSavingsCents: 0, projectedSavingsCents: null },
     });
     expect(data.months).toHaveLength(12);
     expect(data.months.every((m) => m.incomeCents === 0 && m.expenseCents === 0)).toBe(true);

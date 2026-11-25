@@ -5,6 +5,7 @@ import {
   debtProgressPercent,
   monthRows,
   monthsEnding,
+  previousMonth,
   nextGoal,
   upcomingMilestones,
 } from '../shared/dashboard.js';
@@ -45,6 +46,16 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
   const all = allMovements(db);
   const summary = monthSummary(db, month);
   const window = monthRows(monthsEnding(month), settings, all);
+  const prevMonth = previousMonth(month);
+  const prevSummary = monthSummary(db, prevMonth);
+  const prevHasData = [
+    prevSummary.incomeCents,
+    prevSummary.expenseCents,
+    prevSummary.repaymentCents,
+    prevSummary.pendingIncomeCents,
+    prevSummary.pendingExpenseCents,
+    prevSummary.pendingRepaymentCents,
+  ].some((cents) => cents !== 0);
 
   const debtItems = listDebts(db).map((d) => ({
     id: d.id,
@@ -86,6 +97,11 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
       nextGoal: nextGoal(goalDtos(db, today), today),
       totalDebtCents: totalEstimatedCents,
       projectedSavingsCents: summary.projectedSavingsCents,
+      previous: {
+        month: prevMonth,
+        accumulatedSavingsCents: window[window.length - 2]?.accumulatedCents ?? null,
+        projectedSavingsCents: prevHasData ? prevSummary.projectedSavingsCents : null,
+      },
     },
     months: window,
     categories,

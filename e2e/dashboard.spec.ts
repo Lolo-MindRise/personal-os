@@ -22,6 +22,11 @@ test('the dashboard is the default page and shows the key figures', async ({ pag
   ).toHaveText('Inicio');
 
   await expect(page.getByTestId('figure-accumulated')).toContainText(/999,30\s€/);
+  await expect(page.getByTestId('change-accumulated')).toHaveText(
+    /\+999,30\s€ respecto a diciembre/,
+  );
+  // December has no movements: nothing to compare the projected savings with.
+  await expect(page.getByTestId('change-projected')).toHaveCount(0);
   await expect(page.getByTestId('figure-goal')).toContainText('Fondo de emergencia');
   await expect(page.getByTestId('figure-goal')).toContainText('20 %');
   await expect(page.getByTestId('figure-debt')).toContainText(/3\.000,00\s€/);

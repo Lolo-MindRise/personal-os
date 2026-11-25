@@ -19,6 +19,7 @@ const empty: DashboardDto = {
     nextGoal: null,
     totalDebtCents: 0,
     projectedSavingsCents: 0,
+    previous: { month: '2026-02', accumulatedSavingsCents: null, projectedSavingsCents: null },
   },
   months: [],
   categories: [],
@@ -47,6 +48,50 @@ describe('Inicio with no data', () => {
   it('draws no chart without data', () => {
     expect(html).not.toContain('data-testid="chart-months"');
     expect(html).not.toContain('data-testid="chart-categories"');
+  });
+});
+
+describe('Inicio month-over-month', () => {
+  const withPrevious = (
+    previous: DashboardDto['keyFigures']['previous'],
+    over: Partial<DashboardDto['keyFigures']> = {},
+  ): DashboardDto => ({
+    ...empty,
+    month: '2026-01',
+    keyFigures: {
+      ...empty.keyFigures,
+      accumulatedSavingsCents: 10_000,
+      projectedSavingsCents: 4_000,
+      ...over,
+      previous,
+    },
+  });
+
+  it('shows the change against the previous month in neutral words', () => {
+    const html = renderToStaticMarkup(
+      <DashboardView
+        data={withPrevious({
+          month: '2025-12',
+          accumulatedSavingsCents: -2_000,
+          projectedSavingsCents: 4_000,
+        })}
+      />,
+    );
+    expect(html).toMatch(/\+120,00\s€ respecto a diciembre/);
+    expect(html).toContain('Sin cambios respecto a diciembre');
+  });
+
+  it('shows nothing when the previous month has no data', () => {
+    const html = renderToStaticMarkup(
+      <DashboardView
+        data={withPrevious({
+          month: '2025-12',
+          accumulatedSavingsCents: null,
+          projectedSavingsCents: null,
+        })}
+      />,
+    );
+    expect(html).not.toContain('respecto a');
   });
 });
 

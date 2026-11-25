@@ -2,11 +2,43 @@ import { describe, expect, it } from 'vitest';
 import type { GoalDto, MilestoneDto, SettingsDto } from './api.js';
 import {
   debtProgressPercent,
+  monthChangeText,
   monthRows,
   monthsEnding,
   nextGoal,
+  previousMonth,
   upcomingMilestones,
 } from './dashboard.js';
+
+describe('previousMonth', () => {
+  it('goes back one month, January to December of the previous year', () => {
+    expect(previousMonth('2026-03')).toBe('2026-02');
+    expect(previousMonth('2026-01')).toBe('2025-12');
+  });
+});
+
+describe('monthChangeText', () => {
+  it('states an increase with the amount and the Spanish month name', () => {
+    expect(monthChangeText(22_000, 10_000, '2025-10')).toMatch(/^\+120,00\s€ respecto a octubre$/);
+  });
+
+  it('states a decrease with a minus sign and no judgement', () => {
+    expect(monthChangeText(10_000, 15_050, '2026-02')).toMatch(/^-50,50\s€ respecto a febrero$/);
+  });
+
+  it('says there is no change on a zero difference', () => {
+    expect(monthChangeText(500, 500, '2025-12')).toBe('Sin cambios respecto a diciembre');
+  });
+
+  it('crosses a negative balance without floats', () => {
+    expect(monthChangeText(-100, -250, '2025-12')).toMatch(/^\+1,50\s€ respecto a diciembre$/);
+  });
+
+  it('returns null without data on either side', () => {
+    expect(monthChangeText(100, null, '2025-12')).toBeNull();
+    expect(monthChangeText(null, 100, '2025-12')).toBeNull();
+  });
+});
 
 describe('monthsEnding', () => {
   it('gives 12 months ending at the selected one, oldest first', () => {
