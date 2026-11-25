@@ -56,6 +56,42 @@ describe('BackupsView', () => {
     expect(html).toContain('no están activas');
   });
 
+  it('shows retention tiers, oldest copy, mirror oldest and the restore pointer', () => {
+    const t = { recent: 5, daily: 12, monthly: 3, preMigration: 2 };
+    const html = renderToStaticMarkup(
+      <BackupsView
+        status={status({
+          tiers: t,
+          mirror: { ...status().mirror, oldestBackupAt: '2025-11-02T08:00:00', tiers: t },
+        })}
+      />,
+    );
+    expect(html).toContain('Copia más antigua');
+    expect(html).toContain('01/12/2025 08:00');
+    expect(html).toContain('02/11/2025 08:00');
+    expect(html).toContain('Una por día, los últimos 60 días');
+    expect(html).toContain('>12<');
+    expect(html).toContain('Qué se conserva en la copia de reserva');
+    expect(html).toContain('Cómo restaurar');
+    expect(html).toContain('Restore a backup');
+  });
+
+  it('handles no backups yet, with the mirror unavailable', () => {
+    const html = renderToStaticMarkup(
+      <BackupsView
+        status={status({
+          lastBackupAt: null,
+          oldestBackupAt: null,
+          localCount: 0,
+          mirror: { ...status().mirror, state: 'error', count: 0 },
+        })}
+      />,
+    );
+    expect(html).toContain('Ninguna todavía');
+    expect(html).not.toContain('en la copia de reserva');
+    expect(html).toContain('No se puede escribir en ella');
+  });
+
   it('says the mirror is not configured', () => {
     const html = renderToStaticMarkup(
       <BackupsView
