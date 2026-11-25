@@ -55,11 +55,19 @@ the default branch for Manuel. It never needs Manuel during the run.
 
 - When every task is merged or blocked, run the `reviewer` on the whole
   integration branch against the default branch, with the plan as brief.
+- If the plan adds migrations, the PR's manual test starts with the
+  migration rehearsal (ADR-0007 amendment) for Manuel.
 - Open **one** PR from the integration branch to the default branch,
   following the PR template: risk is the highest task risk; the review
   guide summarises every task with its PR link and verdicts; manual tests
   consolidated; blocked tasks and open questions listed.
 - Handoff in `docs/handoffs/`, and a row per task in the review log.
+
+## Guard blocks
+
+Never route around a guard block. Report it in the task PR and the handoff.
+The only allowed alternative is writing a file with Write or Edit when a
+shell write was blocked.
 
 ## Never
 

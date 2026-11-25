@@ -32,3 +32,12 @@ treatment regardless of risk, and manual test steps were sometimes ambiguous
 - The reviewer becomes part of the trust boundary, so it is protected.
 - Revisit: after ~10 PRs, check that risk levels matched reality before
   considering auto-merge for `low`.
+
+## Amendment 2026-11-25: migration rehearsal
+
+A high-risk PR that adds migrations is not deployed until Manuel has run
+`scripts/rehearse-migration.sh` on the branch, against the real instance
+configuration, and every table kept its rows (exit 0). Agents never run it
+(protected command, ADR-0008). If the real database is empty, the rehearsal
+proves only that the migrations apply; data preservation then rests on the
+migration tests with fixtures.
