@@ -75,6 +75,38 @@ export const accounts = sqliteTable(
   ],
 );
 
+/**
+ * Money moved between two accounts (plan 0002). Not income, expense or savings: it only changes
+ * the two account balances. Both accounts are real foreign keys (no action: an account with
+ * transfers cannot be deleted).
+ */
+export const transfers = sqliteTable(
+  'transfers',
+  {
+    id: id(),
+    date: text('date').notNull(),
+    amountCents: integer('amount_cents').notNull(),
+    fromAccountId: integer('from_account_id')
+      .notNull()
+      .references(() => accounts.id),
+    toAccountId: integer('to_account_id')
+      .notNull()
+      .references(() => accounts.id),
+    notes: text('notes'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('transfers_date_idx').on(t.date),
+    index('transfers_from_idx').on(t.fromAccountId),
+    index('transfers_to_idx').on(t.toAccountId),
+    check('transfers_date_format', sql`${t.date} GLOB ${DATE_GLOB}`),
+    check('transfers_amount_integer', isInteger(t.amountCents)),
+    check('transfers_amount_positive', sql`${t.amountCents} > 0`),
+    check('transfers_accounts_differ', sql`${t.fromAccountId} <> ${t.toAccountId}`),
+  ],
+);
+
 export const debts = sqliteTable(
   'debts',
   {

@@ -10,6 +10,22 @@ export interface AccountDto {
   openingBalanceDate: string;
 }
 
+/** The balance of one account (opening balance + movements and transfers after its date). */
+export interface AccountBalanceDto {
+  accountId: number;
+  balanceCents: number;
+}
+
+/** Money moved between two accounts; never income, expense or savings. */
+export interface TransferDto {
+  id: number;
+  date: string;
+  amountCents: number;
+  fromAccountId: number;
+  toAccountId: number;
+  notes: string | null;
+}
+
 export interface CategoryDto {
   id: number;
   name: string;

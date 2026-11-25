@@ -101,9 +101,9 @@ describe('accounts API', () => {
     expect((await send('PATCH', '/api/accounts/999', { name: 'x' })).statusCode).toBe(404);
   });
 
-  it('has no delete route in this task', async () => {
+  it('refuses to delete Principal (deleting other accounts: transfersApi.test.ts)', async () => {
     const response = await app.inject({ method: 'DELETE', url: '/api/accounts/1' });
-    expect(response.statusCode).toBe(404);
+    expect(response.statusCode).toBe(409);
   });
 });
 

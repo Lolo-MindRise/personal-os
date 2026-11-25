@@ -1,6 +1,8 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, count, eq, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import type { AccountDto } from '../shared/api.js';
+import { accountBalance } from '../shared/accountBalance.js';
+import type { AccountBalanceDto, AccountDto } from '../shared/api.js';
+import { DEFAULT_ACCOUNT_ID } from '../shared/constants.js';
 import { accountCreateSchema, accountUpdateSchema } from '../shared/schemas.js';
 import {
   badRequest,
@@ -11,12 +13,15 @@ import {
   parseId,
 } from './apiCommon.js';
 import type { Db } from './db/index.js';
-import { accounts } from './db/schema.js';
+import { accounts, movements, transfers } from './db/schema.js';
+import { registerTransfersApi } from './transfersApi.js';
 
 const MESSAGES = {
   ...COMMON_MESSAGES,
   notFound: 'No se ha encontrado la cuenta.',
   duplicate: 'Ya existe una cuenta con ese nombre.',
+  inUse: 'La cuenta tiene movimientos o transferencias y no se puede eliminar.',
+  isDefault: 'La cuenta Principal no se puede eliminar.',
 } as const;
 
 const columns = {
@@ -42,6 +47,34 @@ function nameTaken(db: Db, name: string, exceptId?: number): boolean {
 }
 
 export function registerAccountsApi(app: FastifyInstance, db: Db): void {
+  registerTransfersApi(app, db);
+
+  app.get('/api/accounts/balances', () => {
+    const all = db.select(columns).from(accounts).orderBy(asc(accounts.id)).all();
+    const moves = db
+      .select({
+        accountId: movements.accountId,
+        date: movements.date,
+        kind: movements.kind,
+        amountCents: movements.amountCents,
+      })
+      .from(movements)
+      .all();
+    const moved = db
+      .select({
+        date: transfers.date,
+        amountCents: transfers.amountCents,
+        fromAccountId: transfers.fromAccountId,
+        toAccountId: transfers.toAccountId,
+      })
+      .from(transfers)
+      .all();
+    const rows: AccountBalanceDto[] = all.map((a) => ({
+      accountId: a.id,
+      balanceCents: accountBalance(a, moves, moved),
+    }));
+    return rows;
+  });
   app.get('/api/accounts', () => {
     const rows: AccountDto[] = db.select(columns).from(accounts).orderBy(asc(accounts.id)).all();
     return rows;
@@ -75,5 +108,30 @@ export function registerAccountsApi(app: FastifyInstance, db: Db): void {
       db.update(accounts).set(parsed.data).where(eq(accounts.id, id)).run();
     }
     return getAccount(db, id);
+  });
+
+  app.delete('/api/accounts/:id', (request, reply) => {
+    const id = parseId((request.params as { id: string }).id);
+    if (id === undefined || getAccount(db, id) === undefined) {
+      return notFound(reply, MESSAGES.notFound);
+    }
+    if (id === DEFAULT_ACCOUNT_ID) {
+      return conflict(reply, MESSAGES.isDefault);
+    }
+    const usedByMovements = db
+      .select({ n: count() })
+      .from(movements)
+      .where(eq(movements.accountId, id))
+      .get();
+    const usedByTransfers = db
+      .select({ n: count() })
+      .from(transfers)
+      .where(or(eq(transfers.fromAccountId, id), eq(transfers.toAccountId, id)))
+      .get();
+    if ((usedByMovements?.n ?? 0) + (usedByTransfers?.n ?? 0) > 0) {
+      return conflict(reply, MESSAGES.inUse);
+    }
+    db.delete(accounts).where(eq(accounts.id, id)).run();
+    return reply.code(204).send();
   });
 }
