@@ -204,8 +204,12 @@ export function createApiClient(fetchFn: typeof fetch = fetch) {
         '/api/import/preview',
         json('POST', { rows }),
       ),
-    importCommit: (rows: CommitRow[]) =>
-      request<ImportSummaryDto>(fetchFn, '/api/import/commit', json('POST', { rows })),
+    importCommit: (rows: CommitRow[], accountId?: number) =>
+      request<ImportSummaryDto>(
+        fetchFn,
+        '/api/import/commit',
+        json('POST', accountId === undefined ? { rows } : { accountId, rows }),
+      ),
 
     // Recurring items (ADR-0005)
     recurringItems: () => request<RecurringItemDto[]>(fetchFn, '/api/recurring-items'),

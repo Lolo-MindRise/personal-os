@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { CategoryRuleDto, ImportPreviewRowDto, ImportSummaryDto } from '../shared/api.js';
 import type { ImportMapping } from '../shared/csvImport.js';
 import { classifyRows, normalizeText } from '../shared/importClassify.js';
+import { DEFAULT_ACCOUNT_ID } from '../shared/constants.js';
 import { isDueInMonth, monthOf } from '../shared/recurring.js';
 import {
   categoryRuleCreateSchema,
@@ -11,6 +12,7 @@ import {
   importPreviewSchema,
 } from '../shared/schemas.js';
 import {
+  accountError,
   badRequest,
   categoryError,
   conflict,
@@ -190,6 +192,11 @@ export function registerImportApi(app: FastifyInstance, db: Db): void {
     if (!parsed.success) {
       return badRequest(reply, MESSAGES.invalid, fieldErrors(parsed.error));
     }
+    const accountId = parsed.data.accountId ?? DEFAULT_ACCOUNT_ID;
+    const accountProblem = accountError(db, accountId);
+    if (accountProblem !== undefined) {
+      return badRequest(reply, accountProblem.error, { accountId: accountProblem.error });
+    }
     try {
       // One transaction: if any row is wrong, nothing is imported.
       const summary = db.transaction((tx): ImportSummaryDto => {
@@ -237,6 +244,7 @@ export function registerImportApi(app: FastifyInstance, db: Db): void {
               amountCents: row.amountCents,
               notes,
               recurringItemId: itemId,
+              accountId,
             })
             .run();
         });

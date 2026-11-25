@@ -225,6 +225,8 @@ export const importPreviewSchema = z.strictObject({
 
 /** The checked rows of the preview: each becomes a movement, or confirms a pending fixed item. */
 export const importCommitSchema = z.strictObject({
+  /** Target account; absent means Principal. */
+  accountId: z.number().int().positive().optional(),
   rows: z
     .array(
       z.strictObject({

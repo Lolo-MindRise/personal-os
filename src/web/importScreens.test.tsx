@@ -172,6 +172,20 @@ describe('PreviewTable', () => {
     expect(box(6)).toContain('disabled');
   });
 
+  it('says a row is outside the account balance and links to Cuentas', () => {
+    const flagged = buildLines(
+      [{ line: 2, date: '2026-02-01', concept: 'COMPRA', amountCents: -4_530, error: null }],
+      [proposal({})],
+      '2026-02-01',
+    );
+    const out = renderToStaticMarkup(
+      <PreviewTable lines={flagged} categories={categories} onChecked={noop} onCategory={noop} />,
+    );
+    expect(out).toContain('Fuera del saldo de la cuenta');
+    expect(out).toContain('href="#/accounts"');
+    expect(html).not.toContain('Fuera del saldo de la cuenta');
+  });
+
   it('offers only categories that fit the sign, and locks a fixed item to its category', () => {
     expect(html).toMatch(/aria-label="Categoría de la fila 2"/);
     const select = /aria-label="Categoría de la fila 5".*?<\/select>/.exec(html)?.[0] ?? '';
