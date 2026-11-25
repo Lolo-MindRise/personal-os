@@ -47,3 +47,13 @@ personal-os paths and `main` written into it.
   real-session tests (bootstrap checklist) are mandatory before agents work.
 - Shipping the new guard without its `guard.conf` would switch a project to
   supervised mode: they always travel together.
+
+## Amendment 2026-11-25: protected commands
+
+During plan 0001 an implementer ran `scripts/restore.sh` while debugging. It
+only listed backup names, but it read the real data directory through the
+instance configuration, so no protected path appeared in the command text
+and the guard allowed it. `guard.conf` gains `PROTECTED_COMMANDS` (scripts
+that operate on real instances) and the instance configuration folder joins
+`PROTECTED_PATHS`. Lesson: a text-based guard blocks direct mistakes, not
+indirect access; real isolation needs OS permissions (bootstrap checklist).
