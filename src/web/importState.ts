@@ -77,13 +77,16 @@ export function buildLines(
   return openingDate === undefined ? built : applyOpeningDate(built, openingDate);
 }
 
+/** Why a preview cannot start yet: the account's opening date is needed to flag rows. */
+export function previewBlockedMessage(accountsLoaded: boolean): string | null {
+  return accountsLoaded
+    ? null
+    : 'Esperando a que carguen las cuentas: hace falta la fecha del saldo inicial de la cuenta de destino.';
+}
+
 /** The default selection of a row before any manual choice, ignoring the account. */
 function defaultChecked(line: PreviewLine): boolean {
-  return (
-    line.proposal !== null &&
-    line.categoryId !== null &&
-    (line.proposal.status === 'new' || line.proposal.status === 'recurring')
-  );
+  return line.proposal !== null && line.categoryId !== null && line.proposal.status !== 'duplicate';
 }
 
 /**
@@ -122,16 +125,17 @@ export function withCategory(line: PreviewLine, categoryId: number | null): Prev
   if (line.proposal === null || line.proposal.status === 'recurring') {
     return line;
   }
-  const waiting = line.categoryId === null;
-  // Picking a category for a waiting row checks it (unless the account will not count it), and
-  // clearing it unchecks it: both are the user's choice and survive a change of account.
-  const changesCheck = waiting || categoryId === null;
-  return {
-    ...line,
-    categoryId,
-    checked: categoryId === null ? false : waiting ? !line.outOfBalance : line.checked,
-    touched: line.touched || changesCheck,
-  };
+  // Filling in a missing category is not a manual check choice: the row is checked by default
+  // (unless duplicate or outside the account balance), so a later account change re-evaluates it.
+  // Clearing the category unchecks the row; that is not a manual choice either.
+  const next = { ...line, categoryId, touched: categoryId === null ? false : line.touched };
+  if (categoryId === null) {
+    return { ...next, checked: false };
+  }
+  if (line.touched) {
+    return { ...next, checked: line.checked };
+  }
+  return { ...next, checked: defaultChecked(next) && !line.outOfBalance };
 }
 
 export function withChecked(line: PreviewLine, checked: boolean): PreviewLine {

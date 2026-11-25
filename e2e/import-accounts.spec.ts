@@ -98,6 +98,7 @@ test('importing into a second account flags and unchecks rows on or before its o
 
     await test.step('changing the account re-evaluates the flags and keeps manual choices', async () => {
       await row('antes').getByRole('checkbox').check(); // manual choice on a flagged row
+      // Assumes Principal's opening date in the e2e database is before 2027-08-10.
       await page.getByLabel('Cuenta de destino').selectOption({ label: 'Principal' });
       await expect(row('mismo dia')).not.toContainText('Fuera del saldo de la cuenta');
       await expect(row('mismo dia').getByRole('checkbox')).toBeChecked();

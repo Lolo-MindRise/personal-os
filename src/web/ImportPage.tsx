@@ -24,6 +24,7 @@ import {
   countLines,
   decodeCsvBytes,
   kindOf,
+  previewBlockedMessage,
   STATUS_LABELS,
   withCategory,
   withChecked,
@@ -406,6 +407,7 @@ export function ImportPage({ api = defaultApi }: { api?: ApiClient }) {
   const [ruleError, setRuleError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
   const [accounts, setAccounts] = useState<AccountDto[]>([]);
+  const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [accountId, setAccountId] = useState<number>(DEFAULT_ACCOUNT_ID);
   const input = useRef<HTMLInputElement>(null);
   /** The parsed rows behind the preview, kept so a rule change can recompute it. */
@@ -417,8 +419,16 @@ export function ImportPage({ api = defaultApi }: { api?: ApiClient }) {
       (list) => {
         setAccounts(list);
         // Principal when it exists, otherwise the first account.
-        setAccountId((current) =>
-          list.some((a) => a.id === current) ? current : (list[0]?.id ?? current),
+        const chosen = list.some((a) => a.id === DEFAULT_ACCOUNT_ID)
+          ? DEFAULT_ACCOUNT_ID
+          : (list[0]?.id ?? DEFAULT_ACCOUNT_ID);
+        setAccountId((current) => (list.some((a) => a.id === current) ? current : chosen));
+        setAccountsLoaded(list.length > 0);
+        // Flag any rows built before the accounts arrived.
+        setLines(
+          (current) =>
+            current &&
+            applyOpeningDate(current, list.find((a) => a.id === chosen)?.openingBalanceDate),
         );
       },
       (e: unknown) => {
@@ -487,6 +497,11 @@ export function ImportPage({ api = defaultApi }: { api?: ApiClient }) {
 
   const preview = async () => {
     if (mapping === undefined || problems.length > 0) {
+      return;
+    }
+    const blocked = previewBlockedMessage(accountsLoaded);
+    if (blocked !== null) {
+      setError(blocked);
       return;
     }
     setBusy(true);
@@ -646,11 +661,14 @@ export function ImportPage({ api = defaultApi }: { api?: ApiClient }) {
             <button
               type="button"
               className="primary"
-              disabled={busy || problems.length > 0}
+              disabled={busy || problems.length > 0 || !accountsLoaded}
               onClick={() => void preview()}
             >
               Ver vista previa
             </button>
+            {previewBlockedMessage(accountsLoaded) !== null && (
+              <p className="hint">{previewBlockedMessage(accountsLoaded)}</p>
+            )}
           </div>
         </>
       )}

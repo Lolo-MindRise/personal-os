@@ -9,6 +9,7 @@ import {
   countLines,
   decodeCsvBytes,
   kindOf,
+  previewBlockedMessage,
   withCategory,
   withChecked,
 } from './importState.js';
@@ -263,6 +264,50 @@ describe('opening date flags', () => {
     const picked = withCategory(waiting ?? ({} as never), 2);
     expect(picked.checked).toBe(false);
     expect(picked.outOfBalance).toBe(true);
+  });
+});
+
+describe('a category picked by hand is not a check choice', () => {
+  const waiting = (openingDate: string) => {
+    const [line] = buildLines(
+      [parsed({ date: '2026-01-10' })],
+      [proposal({ status: 'noCategory', categoryId: null })],
+      openingDate,
+    );
+    return line as NonNullable<typeof line>;
+  };
+
+  it('checks the row under an account that counts it, then unchecks it where it is flagged', () => {
+    const picked = withCategory(waiting('2025-12-31'), 2);
+    expect(picked.checked).toBe(true);
+    expect(picked.touched).toBe(false);
+    const [other] = applyOpeningDate([picked], '2026-01-10');
+    expect(other?.outOfBalance).toBe(true);
+    expect(other?.checked).toBe(false);
+  });
+
+  it('checks a row picked while flagged once the account counts it', () => {
+    const picked = withCategory(waiting('2026-01-10'), 2);
+    expect(picked.checked).toBe(false);
+    const [other] = applyOpeningDate([picked], '2025-12-31');
+    expect(other?.outOfBalance).toBe(false);
+    expect(other?.checked).toBe(true);
+  });
+
+  it('keeps an explicit tick or untick across account switches', () => {
+    const ticked = withChecked(withCategory(waiting('2026-01-10'), 2), true);
+    expect(applyOpeningDate([ticked], '2026-01-10')[0]?.checked).toBe(true);
+    expect(applyOpeningDate([ticked], '2025-12-31')[0]?.checked).toBe(true);
+    const unticked = withChecked(withCategory(waiting('2025-12-31'), 2), false);
+    expect(applyOpeningDate([unticked], '2025-12-31')[0]?.checked).toBe(false);
+    expect(applyOpeningDate([unticked], '2026-01-10')[0]?.checked).toBe(false);
+  });
+});
+
+describe('previewBlockedMessage', () => {
+  it('asks to wait until the accounts have loaded', () => {
+    expect(previewBlockedMessage(false)).toContain('cuentas');
+    expect(previewBlockedMessage(true)).toBeNull();
   });
 });
 
