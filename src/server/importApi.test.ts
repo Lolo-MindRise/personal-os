@@ -371,6 +371,57 @@ describe('POST /api/import/commit', () => {
     expect(await movementsOf('2026-03')).toEqual([]);
   });
 
+  it('puts the rows in the chosen account, in Principal when none is given, refuses an unknown one', async () => {
+    const food = await category('Supermercado', 'expense');
+    const account = (
+      await call('POST', '/api/accounts', {
+        name: 'Ahorro ficticio',
+        type: 'savings',
+        openingBalanceCents: 0,
+        openingBalanceDate: '2026-01-01',
+      })
+    ).json<{ id: number }>();
+    const row = (concept: string) => ({
+      date: '2026-02-03',
+      concept,
+      amountCents: 1_000,
+      kind: 'expense',
+      categoryId: food,
+    });
+    const accountOf = async (concept: string) =>
+      (await movementsOf('2026-02')).find((m) => m.concept === concept)?.accountId;
+
+    expect(
+      (await call('POST', '/api/import/commit', { accountId: account.id, rows: [row('A')] }))
+        .statusCode,
+    ).toBe(201);
+    expect(await accountOf('A')).toBe(account.id);
+
+    expect((await call('POST', '/api/import/commit', { rows: [row('B')] })).statusCode).toBe(201);
+    expect(await accountOf('B')).toBe(1);
+
+    const unknown = await call('POST', '/api/import/commit', { accountId: 999, rows: [row('C')] });
+    expect(unknown.statusCode).toBe(400);
+    expect(unknown.json<{ fields: Record<string, string> }>().fields).toHaveProperty('accountId');
+    expect(await accountOf('C')).toBeUndefined();
+  });
+
+  it('imports a row dated before the account opening date when asked to (the server enforces nothing)', async () => {
+    const food = await category('Supermercado', 'expense');
+    const response = await call('POST', '/api/import/commit', {
+      rows: [
+        {
+          date: '2020-01-01',
+          concept: 'Antigua',
+          amountCents: 100,
+          kind: 'expense',
+          categoryId: food,
+        },
+      ],
+    });
+    expect(response.statusCode).toBe(201);
+  });
+
   it('validates the body: empty list, zero or negative amounts, bad dates', async () => {
     const food = await category('Supermercado', 'expense');
     const row = {

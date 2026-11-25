@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type SubmitEvent } from 'react';
-import type { CategoryDto, CategoryRuleDto, ImportSummaryDto } from '../shared/api.js';
+import type { AccountDto, CategoryDto, CategoryRuleDto, ImportSummaryDto } from '../shared/api.js';
+import { DEFAULT_ACCOUNT_ID } from '../shared/constants.js';
 import {
   detectDelimiter,
   guessMapping,
@@ -14,7 +15,9 @@ import {
 import { formatCents } from '../shared/money.js';
 import { ApiError, createApiClient, NETWORK_ERROR, type ApiClient } from './api.js';
 import { Field } from './Field.js';
+import { hrefFor } from './router.js';
 import {
+  applyOpeningDate,
   buildLines,
   categoriesFor,
   commitRows,
@@ -260,6 +263,12 @@ export function PreviewTable(props: {
                 {line.proposal.reason !== null && (
                   <span className="notes">{line.proposal.reason}</span>
                 )}
+                {line.outOfBalance && (
+                  <span className="notes">
+                    Fuera del saldo de la cuenta: el saldo no contará esta fila.{' '}
+                    <a href={hrefFor('accounts')}>Editar la fecha del saldo inicial de la cuenta</a>
+                  </span>
+                )}
               </td>
             </tr>
           );
@@ -396,11 +405,26 @@ export function ImportPage({ api = defaultApi }: { api?: ApiClient }) {
   const [error, setError] = useState<string | undefined>();
   const [ruleError, setRuleError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  const [accounts, setAccounts] = useState<AccountDto[]>([]);
+  const [accountId, setAccountId] = useState<number>(DEFAULT_ACCOUNT_ID);
   const input = useRef<HTMLInputElement>(null);
   /** The parsed rows behind the preview, kept so a rule change can recompute it. */
   const parsedRef = useRef<ParsedImportRow[]>([]);
+  const openingDate = accounts.find((a) => a.id === accountId)?.openingBalanceDate;
 
   useEffect(() => {
+    api.accounts().then(
+      (list) => {
+        setAccounts(list);
+        // Principal when it exists, otherwise the first account.
+        setAccountId((current) =>
+          list.some((a) => a.id === current) ? current : (list[0]?.id ?? current),
+        );
+      },
+      (e: unknown) => {
+        setError(messageOf(e));
+      },
+    );
     api.categories().then(setCategories, (e: unknown) => {
       setError(messageOf(e));
     });
@@ -458,7 +482,7 @@ export function ImportPage({ api = defaultApi }: { api?: ApiClient }) {
     );
     const result = readable.length === 0 ? { rows: [] } : await api.importPreview(readable);
     parsedRef.current = rows;
-    setLines(buildLines(rows, result.rows));
+    setLines(buildLines(rows, result.rows, openingDate));
   };
 
   const preview = async () => {
@@ -532,7 +556,7 @@ export function ImportPage({ api = defaultApi }: { api?: ApiClient }) {
     setBusy(true);
     setError(undefined);
     try {
-      setSummary(await api.importCommit(rows));
+      setSummary(await api.importCommit(rows, accountId));
       setLines(undefined);
       setText('');
       setMapping(undefined);
@@ -566,6 +590,27 @@ export function ImportPage({ api = defaultApi }: { api?: ApiClient }) {
           fijos confirmados.
         </p>
       )}
+
+      <Field id="import-account" label="Cuenta de destino" error={undefined}>
+        <select
+          id="import-account"
+          value={String(accountId)}
+          onChange={(e) => {
+            const next = Number(e.target.value);
+            setAccountId(next);
+            // The preview stays; only the flags are re-evaluated, keeping the manual choices.
+            const date = accounts.find((a) => a.id === next)?.openingBalanceDate;
+            setLines((current) => current && applyOpeningDate(current, date));
+          }}
+        >
+          {accounts.length === 0 && <option value={String(accountId)}>Principal</option>}
+          {accounts.map((a) => (
+            <option key={a.id} value={String(a.id)}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+      </Field>
 
       <div className="field">
         <label htmlFor="import-file">Archivo CSV</label>
@@ -618,6 +663,13 @@ export function ImportPage({ api = defaultApi }: { api?: ApiClient }) {
             {counts.duplicate} duplicadas, {counts.noCategory} sin categoría y {counts.errors} con
             errores. Marcadas para importar: {counts.selected}.
           </p>
+          {counts.outOfBalance > 0 && (
+            <p className="hint" data-testid="import-out-of-balance">
+              {counts.outOfBalance} filas están fuera del saldo de la cuenta: tienen fecha igual o
+              anterior a la fecha del saldo inicial de la cuenta. Si las marcas, se guardarán como
+              movimientos, pero el saldo de la cuenta no las contará.
+            </p>
+          )}
           <PreviewTable
             lines={lines}
             categories={categories}

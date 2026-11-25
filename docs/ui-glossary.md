@@ -31,6 +31,8 @@ screen needs a concept, add it here first.
 | Amount an account starts with (not the savings "saldo inicial") | saldo inicial de la cuenta | |
 | Date of that opening balance | fecha del saldo inicial de la cuenta | fecha del saldo inicial |
 | Account a transfer takes money from / puts money into | cuenta de origen / cuenta de destino | |
+| Account an import puts its movements into | cuenta de destino | |
+| Import row dated on or before the account's opening date (not counted in its balance) | fuera del saldo de la cuenta | |
 | The account every movement gets unless another is chosen | Principal | por defecto, general |
 | Download every piece of data as one file, to move to a new installation | Exportar datos | descargar copia, backup |
 | Load such a file into an empty installation (not a restore) | Importar datos | restaurar |

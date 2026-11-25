@@ -1,6 +1,7 @@
 import type { CategoryDto, ImportPreviewRowDto } from '../shared/api.js';
 import type { Kind } from '../shared/constants.js';
 import type { ParsedImportRow } from '../shared/csvImport.js';
+import { isOutsideAccountBalance } from '../shared/importAccount.js';
 import { kindsForAmount } from '../shared/importClassify.js';
 
 // State of the import preview, as plain data so it can be tested without a browser.
@@ -20,6 +21,10 @@ export interface PreviewLine {
   checked: boolean;
   /** The category that will be used: the proposal's, or the one the user picked. */
   categoryId: number | null;
+  /** Dated on or before the target account's opening date: its balance will not count the row. */
+  outOfBalance: boolean;
+  /** The user checked or unchecked the row by hand; a change of account keeps that choice. */
+  touched: boolean;
 }
 
 export const STATUS_LABELS: Record<ImportPreviewRowDto['status'], string> = {
@@ -37,9 +42,10 @@ export const STATUS_LABELS: Record<ImportPreviewRowDto['status'], string> = {
 export function buildLines(
   parsed: ParsedImportRow[],
   proposals: ImportPreviewRowDto[],
+  openingDate?: string,
 ): PreviewLine[] {
   let next = 0;
-  return parsed.map((row): PreviewLine => {
+  const built = parsed.map((row): PreviewLine => {
     if (row.error !== null || row.date === null || row.amountCents === null) {
       return {
         line: row.line,
@@ -50,6 +56,8 @@ export function buildLines(
         proposal: null,
         checked: false,
         categoryId: null,
+        outOfBalance: false,
+        touched: false,
       };
     }
     const proposal = proposals[next++] ?? null;
@@ -62,7 +70,41 @@ export function buildLines(
       proposal,
       checked: proposal !== null && (proposal.status === 'new' || proposal.status === 'recurring'),
       categoryId: proposal?.categoryId ?? null,
+      outOfBalance: false,
+      touched: false,
     };
+  });
+  return openingDate === undefined ? built : applyOpeningDate(built, openingDate);
+}
+
+/** The default selection of a row before any manual choice, ignoring the account. */
+function defaultChecked(line: PreviewLine): boolean {
+  return (
+    line.proposal !== null &&
+    line.categoryId !== null &&
+    (line.proposal.status === 'new' || line.proposal.status === 'recurring')
+  );
+}
+
+/**
+ * Evaluates every row against the target account's opening date. Rows the balance would not count
+ * are flagged and unchecked by default; rows whose check the user set by hand keep it. Call it
+ * again when the account changes. `undefined` clears every flag (no account known yet).
+ */
+export function applyOpeningDate(
+  lines: PreviewLine[],
+  openingDate: string | undefined,
+): PreviewLine[] {
+  return lines.map((line) => {
+    if (line.proposal === null) {
+      return line;
+    }
+    const outOfBalance =
+      openingDate !== undefined &&
+      line.date !== null &&
+      isOutsideAccountBalance(line.date, openingDate);
+    const checked = line.touched ? line.checked : defaultChecked(line) && !outOfBalance;
+    return { ...line, outOfBalance, checked };
   });
 }
 
@@ -81,17 +123,21 @@ export function withCategory(line: PreviewLine, categoryId: number | null): Prev
     return line;
   }
   const waiting = line.categoryId === null;
+  // Picking a category for a waiting row checks it (unless the account will not count it), and
+  // clearing it unchecks it: both are the user's choice and survive a change of account.
+  const changesCheck = waiting || categoryId === null;
   return {
     ...line,
     categoryId,
-    checked: categoryId === null ? false : waiting ? true : line.checked,
+    checked: categoryId === null ? false : waiting ? !line.outOfBalance : line.checked,
+    touched: line.touched || changesCheck,
   };
 }
 
 export function withChecked(line: PreviewLine, checked: boolean): PreviewLine {
   return line.proposal === null || (checked && line.categoryId === null)
     ? line
-    : { ...line, checked };
+    : { ...line, checked, touched: true };
 }
 
 /** The kind the row will have: the category's, or the fixed item's. */
@@ -151,6 +197,8 @@ export interface LineCounts {
   recurring: number;
   noCategory: number;
   selected: number;
+  /** Rows the target account's balance will not count. */
+  outOfBalance: number;
 }
 
 export function countLines(lines: PreviewLine[], categories: CategoryDto[]): LineCounts {
@@ -162,8 +210,12 @@ export function countLines(lines: PreviewLine[], categories: CategoryDto[]): Lin
     recurring: 0,
     noCategory: 0,
     selected: 0,
+    outOfBalance: 0,
   };
   for (const line of lines) {
+    if (line.outOfBalance) {
+      counts.outOfBalance++;
+    }
     if (line.proposal === null) {
       counts.errors++;
     } else {

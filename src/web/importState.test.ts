@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CategoryDto, ImportPreviewRowDto } from '../shared/api.js';
 import type { ParsedImportRow } from '../shared/csvImport.js';
 import {
+  applyOpeningDate,
   buildLines,
   categoriesFor,
   commitRows,
@@ -202,6 +203,7 @@ describe('commitRows and countLines', () => {
       recurring: 1,
       noCategory: 0,
       selected: 3,
+      outOfBalance: 0,
     });
   });
 
@@ -216,6 +218,51 @@ describe('commitRows and countLines', () => {
     // An income category forced onto money out (not reachable from the UI) is dropped.
     const forced = { ...(line ?? ({} as never)), categoryId: 1, checked: true };
     expect(commitRows([forced], categories)).toEqual([]);
+  });
+});
+
+describe('opening date flags', () => {
+  const rows = [
+    parsed({ line: 1, date: '2026-01-09' }),
+    parsed({ line: 2, date: '2026-01-10' }),
+    parsed({ line: 3, date: '2026-01-11' }),
+  ];
+  const proposals = [proposal(), proposal(), proposal()];
+
+  it('flags and unchecks the opening date itself and earlier days, not the next day', () => {
+    const lines = buildLines(rows, proposals, '2026-01-10');
+    expect(lines.map((l) => l.outOfBalance)).toEqual([true, true, false]);
+    expect(lines.map((l) => l.checked)).toEqual([false, false, true]);
+    expect(countLines(lines, categories)).toMatchObject({ outOfBalance: 2, selected: 1 });
+  });
+
+  it('flags nothing without a known account', () => {
+    expect(buildLines(rows, proposals).some((l) => l.outOfBalance)).toBe(false);
+  });
+
+  it('re-evaluates when the account changes and keeps the manual choices', () => {
+    let lines = buildLines(rows, proposals, '2026-01-10');
+    // The user checks a flagged row and unchecks a normal one.
+    lines = lines.map((l, i) => (i === 0 ? withChecked(l, true) : l));
+    lines = lines.map((l, i) => (i === 2 ? withChecked(l, false) : l));
+    const later = applyOpeningDate(lines, '2026-01-11');
+    expect(later.map((l) => l.outOfBalance)).toEqual([true, true, true]);
+    expect(later.map((l) => l.checked)).toEqual([true, false, false]);
+    const earlier = applyOpeningDate(later, '2025-12-31');
+    expect(earlier.map((l) => l.outOfBalance)).toEqual([false, false, false]);
+    // Untouched row 2 becomes checked again; the touched ones stay as the user left them.
+    expect(earlier.map((l) => l.checked)).toEqual([true, true, false]);
+  });
+
+  it('does not check a row picked a category for when the account will not count it', () => {
+    const [waiting] = buildLines(
+      [parsed({ date: '2026-01-10' })],
+      [proposal({ status: 'noCategory', categoryId: null })],
+      '2026-01-10',
+    );
+    const picked = withCategory(waiting ?? ({} as never), 2);
+    expect(picked.checked).toBe(false);
+    expect(picked.outOfBalance).toBe(true);
   });
 });
 
