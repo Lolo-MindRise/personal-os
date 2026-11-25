@@ -1,4 +1,4 @@
-import type { MovementDto, MovementSearchDto } from '../shared/api.js';
+import type { AccountDto, MovementDto, MovementSearchDto } from '../shared/api.js';
 import { KIND_LABELS } from './labels.js';
 import { formatDate } from './months.js';
 
@@ -8,7 +8,16 @@ import { formatDate } from './months.js';
 const SEPARATOR = ';';
 const BOM = '﻿';
 
-export const CSV_HEADER = ['Fecha', 'Tipo', 'Categoría', 'Concepto', 'Importe', 'Notas', 'Marcas'];
+export const CSV_HEADER = [
+  'Fecha',
+  'Tipo',
+  'Categoría',
+  'Concepto',
+  'Importe',
+  'Notas',
+  'Marcas',
+  'Cuenta',
+];
 
 /** Integer cents as `1.234,56` (no currency sign). Negative amounts get a leading `-`. */
 export function formatCsvAmount(cents: number): string {
@@ -28,7 +37,11 @@ export function csvText(value: string): string {
 }
 
 /** The whole file: BOM, header and one row per movement, lines ending in CRLF. */
-export function movementsToCsv(movements: MovementDto[]): string {
+export function movementsToCsv(
+  movements: MovementDto[],
+  accounts: Pick<AccountDto, 'id' | 'name'>[] = [],
+): string {
+  const accountNames = new Map(accounts.map((a) => [a.id, a.name]));
   const rows = movements.map((m) =>
     [
       formatDate(m.date),
@@ -38,6 +51,7 @@ export function movementsToCsv(movements: MovementDto[]): string {
       formatCsvAmount(m.amountCents),
       csvText(m.notes ?? ''),
       csvText(m.tags.join(', ')),
+      csvText(accountNames.get(m.accountId) ?? ''),
     ].join(SEPARATOR),
   );
   return BOM + [CSV_HEADER.join(SEPARATOR), ...rows].join('\r\n') + '\r\n';

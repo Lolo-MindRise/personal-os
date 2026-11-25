@@ -424,14 +424,15 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
     setExporting(true);
     setExportError(undefined);
     try {
+      const accountList = await api.accounts();
       if (search === undefined) {
         downloadCsv(
           monthCsvFilename(month, categoryFilter === undefined ? undefined : categoryName),
-          movementsToCsv(shownMovements),
+          movementsToCsv(shownMovements, accountList),
         );
       } else {
         const rows = await fetchAllSearchRows((page) => api.searchMovements(search.query, page));
-        downloadCsv('movimientos-busqueda.csv', movementsToCsv(rows));
+        downloadCsv('movimientos-busqueda.csv', movementsToCsv(rows, accountList));
       }
     } catch (error) {
       setExportError(messageOf(error));

@@ -50,9 +50,11 @@ test('exports the month and every search result as a Spanish CSV', async ({ page
       ]);
       expect(download.suggestedFilename()).toBe('movimientos-2027-11.csv');
       const text = readFileSync(await download.path(), 'utf8');
-      expect(text.startsWith('﻿Fecha;Tipo;Categoría;Concepto;Importe;Notas;Marcas\r\n')).toBe(true);
+      expect(
+        text.startsWith('﻿Fecha;Tipo;Categoría;Concepto;Importe;Notas;Marcas;Cuenta\r\n'),
+      ).toBe(true);
       expect(text).toContain(
-        '03/11/2027;Gasto;Supermercado;"zzexporta ""Compra""; con ñ";1.234,56;',
+        '03/11/2027;Gasto;Supermercado;"zzexporta ""Compra""; con ñ";1.234,56;;;Principal\r\n',
       );
       expect(text.trim().split('\r\n')).toHaveLength(54);
     });
@@ -69,7 +71,7 @@ test('exports the month and every search result as a Spanish CSV', async ({ page
       expect(download.suggestedFilename()).toBe('movimientos-busqueda.csv');
       const text = readFileSync(await download.path(), 'utf8');
       expect(text.trim().split('\r\n')).toHaveLength(54);
-      expect(text).toContain('10/11/2027;Gasto;Supermercado;zzexporta pan 52;1,00;');
+      expect(text).toContain('10/11/2027;Gasto;Supermercado;zzexporta pan 52;1,00;;;Principal\r\n');
     });
   } finally {
     await cleanUp(request);
