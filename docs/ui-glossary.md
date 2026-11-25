@@ -44,6 +44,8 @@ screen needs a concept, add it here first.
 | A dated step towards the goals | hito | tarea |
 | Year table of monthly figures | resumen (del año) | informe |
 | Screen with spending charts over several months | Informes | reportes, estadísticas |
+| One category's spending month by month, as a line chart | evolución de una categoría | tendencia, histórico |
+| Table with the figures of a chart, folded under it | Ver los datos | detalle, tabla de datos |
 | Number of months an Informes screen covers | periodo | rango |
 | Average spending of a category per month over the period | media mensual | promedio |
 | Spending change of a category versus the previous period | cambio respecto al periodo anterior | variación, desvío |

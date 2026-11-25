@@ -99,7 +99,8 @@ test('12-month totals of two months equal the movements screen totals per catego
     }
   } finally {
     for (const id of created) {
-      await request.delete(`/api/movements/${String(id)}`);
+      const res = await request.delete(`/api/movements/${String(id)}`);
+      expect(res.ok(), `delete movement ${String(id)}`).toBe(true);
     }
   }
 });

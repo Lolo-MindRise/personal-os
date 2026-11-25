@@ -34,7 +34,15 @@ import {
 } from './DashboardCharts.js';
 import { monthLabel } from './months.js';
 import { PageHeader } from './PageHeader.js';
-import { getSelectedMonth, hrefFor, isMonth, navigate, updateParams, useRoute } from './router.js';
+import {
+  buildHash,
+  getSelectedMonth,
+  hrefFor,
+  isMonth,
+  navigate,
+  updateParams,
+  useRoute,
+} from './router.js';
 
 const defaultApi = createApiClient();
 
@@ -58,6 +66,50 @@ export const colorOf = (index: number) => PALETTE[index % PALETTE.length] ?? '#7
 /** The movements of one category in one month (the existing URL filters). */
 export const movementsHref = (month: string, categoryId: number) =>
   hrefFor('movements', { month, category: String(categoryId) });
+
+/**
+ * The movements of one category over the whole period of the report: from the first day of its
+ * first month to the last day of its last month (the Movimientos filters `cat`, `from`, `to`).
+ */
+export function movementsPeriodHref(
+  firstMonth: string,
+  lastMonth: string,
+  categoryId: number,
+): string {
+  const [year, mon] = lastMonth.split('-').map(Number);
+  const lastDay = new Date(Date.UTC(year ?? 1970, mon ?? 1, 0)).getUTCDate();
+  return buildHash('movements', {
+    cat: String(categoryId),
+    from: `${firstMonth}-01`,
+    to: `${lastMonth}-${String(lastDay).padStart(2, '0')}`,
+  });
+}
+
+/**
+ * Chart data key of a category. Not its name: Recharts reads string keys as object paths, so a
+ * name with "." or "[" would draw nothing.
+ */
+export const seriesKey = (categoryId: number) => `c${String(categoryId)}`;
+
+/** One row per month for the stacked chart, with the amount of each category under its key. */
+export function stackedData(report: ExpenseReport): Record<string, number | string>[] {
+  return report.months.map((month, i) => {
+    const row: Record<string, number | string> = { month, name: shortMonth(month) };
+    for (const s of report.series) {
+      row[seriesKey(s.categoryId)] = s.monthlyCents[i] ?? 0;
+    }
+    return row;
+  });
+}
+
+/** One row per month for the trend chart of a single category. */
+export function trendData(report: ExpenseReport, series: CategorySeries) {
+  return report.months.map((month, i) => ({
+    month,
+    name: shortMonth(month),
+    [seriesKey(series.categoryId)]: series.monthlyCents[i] ?? 0,
+  }));
+}
 
 /** Neutral wording for a change: amount and direction, no judgement. */
 export function changeText(c: CategoryChange): string {
@@ -83,13 +135,7 @@ function StackedChart({ report }: { report: ExpenseReport }) {
       navigate('movements', { month, category: String(categoryId) });
     }
   };
-  const data = report.months.map((month, i) => {
-    const row: Record<string, number | string> = { month, name: shortMonth(month) };
-    for (const s of report.series) {
-      row[s.name] = s.monthlyCents[i] ?? 0;
-    }
-    return row;
-  });
+  const data = stackedData(report);
   const summary = reportSummaryText(report);
   return (
     <figure className="chart" data-testid="chart-stacked">
@@ -114,7 +160,8 @@ function StackedChart({ report }: { report: ExpenseReport }) {
             {report.series.map((s, i) => (
               <Bar
                 key={s.categoryId}
-                dataKey={s.name}
+                dataKey={seriesKey(s.categoryId)}
+                name={s.name}
                 stackId="gastos"
                 fill={colorOf(i)}
                 cursor="pointer"
@@ -184,11 +231,7 @@ function TrendChart({
   if (series === undefined) {
     return <p className="empty">No hay gastos en este periodo.</p>;
   }
-  const data = report.months.map((month, i) => ({
-    month,
-    name: shortMonth(month),
-    [series.name]: series.monthlyCents[i] ?? 0,
-  }));
+  const data = trendData(report, series);
   const openIndex = (state: { activeTooltipIndex?: unknown }) => {
     const index = Number(state.activeTooltipIndex);
     const month = Number.isInteger(index) ? report.months[index] : undefined;
@@ -238,7 +281,8 @@ function TrendChart({
             <Tooltip formatter={tooltipAmount} {...tooltipStyles} />
             <Line
               type="monotone"
-              dataKey={series.name}
+              dataKey={seriesKey(series.categoryId)}
+              name={series.name}
               stroke="var(--accent)"
               strokeWidth={2}
               dot={{ r: 4, fill: 'var(--accent)', cursor: 'pointer' }}
@@ -273,8 +317,9 @@ function TrendChart({
 }
 
 function Averages({ report }: { report: ExpenseReport }) {
+  const first = report.months[0];
   const last = report.months[report.months.length - 1];
-  if (report.series.length === 0 || last === undefined) {
+  if (report.series.length === 0 || first === undefined || last === undefined) {
     return <p className="empty">No hay gastos en este periodo.</p>;
   }
   return (
@@ -290,7 +335,7 @@ function Averages({ report }: { report: ExpenseReport }) {
         {report.series.map((s) => (
           <tr key={s.categoryId}>
             <th scope="row">
-              <a href={movementsHref(last, s.categoryId)}>{s.name}</a>
+              <a href={movementsPeriodHref(first, last, s.categoryId)}>{s.name}</a>
             </th>
             <td className="amount">{formatCents(s.averageCents)}</td>
             <td className="amount">{formatCents(s.totalCents)}</td>
@@ -302,8 +347,9 @@ function Averages({ report }: { report: ExpenseReport }) {
 }
 
 function Changes({ report }: { report: ExpenseReport }) {
+  const first = report.months[0];
   const last = report.months[report.months.length - 1];
-  if (report.changes.length === 0 || last === undefined) {
+  if (report.changes.length === 0 || first === undefined || last === undefined) {
     return (
       <p className="empty" data-testid="changes-empty">
         No hay datos suficientes del periodo anterior para comparar.
@@ -314,7 +360,7 @@ function Changes({ report }: { report: ExpenseReport }) {
     <ul className="upcoming" data-testid="list-changes">
       {report.changes.map((c) => (
         <li key={c.categoryId}>
-          <a href={movementsHref(last, c.categoryId)}>{c.name}</a>: {changeText(c)} (
+          <a href={movementsPeriodHref(first, last, c.categoryId)}>{c.name}</a>: {changeText(c)} (
           {formatCents(c.previousCents)} → {formatCents(c.currentCents)})
         </li>
       ))}
