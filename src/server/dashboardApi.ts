@@ -9,15 +9,19 @@ import {
   previousMonth,
   nextGoal,
   upcomingMilestones,
+  inWindow,
+  next30DaysWindow,
+  windowMonths,
 } from '../shared/dashboard.js';
 import { isoDate, isoMonth } from '../shared/schemas.js';
 import { accumulatedAt, goalProgress } from '../shared/summary.js';
 import { badRequest, MESSAGES as COMMON_MESSAGES } from './apiCommon.js';
+import { accountBalances } from './accountsApi.js';
 import { budgetMonth } from './budgetApi.js';
 import { listDebts, totalDebtAt } from './debtsApi.js';
 import type { Db } from './db/index.js';
 import { dueEntries } from './db/recurring.js';
-import { budgetLines, debts, goals, movements } from './db/schema.js';
+import { accounts, budgetLines, debts, goals, movements } from './db/schema.js';
 import { listMilestones } from './milestonesApi.js';
 import { monthSummary } from './monthSummary.js';
 import { allMovements, goalDtos, localToday, readSettings } from './summaryApi.js';
@@ -99,6 +103,15 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
       overBudget: r.budgetCents !== null && r.actualCents > r.budgetCents,
     }));
 
+  const ahead = next30DaysWindow(today);
+  const accountNames = new Map(
+    db
+      .select({ id: accounts.id, name: accounts.name })
+      .from(accounts)
+      .all()
+      .map((a) => [a.id, a.name]),
+  );
+
   return {
     month,
     today,
@@ -128,6 +141,16 @@ export function buildDashboard(db: Db, month: string, today: string): DashboardD
     upcoming: {
       pending: dueEntries(db, month).pending,
       milestones: upcomingMilestones(listMilestones(db), today),
+    },
+    accounts: accountBalances(db).map((a) => ({ ...a, name: accountNames.get(a.accountId) ?? '' })),
+    next30Days: {
+      ...ahead,
+      fixed: windowMonths(ahead)
+        .flatMap((m) => dueEntries(db, m).pending)
+        .filter((e) => inWindow(e.date, ahead)),
+      milestones: listMilestones(db)
+        .filter((m) => m.status !== 'done' && inWindow(m.targetDate, ahead))
+        .sort((a, b) => a.targetDate.localeCompare(b.targetDate) || a.id - b.id),
     },
   };
 }

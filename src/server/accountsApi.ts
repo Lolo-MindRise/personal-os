@@ -46,35 +46,34 @@ function nameTaken(db: Db, name: string, exceptId?: number): boolean {
     .some((a) => a.id !== exceptId && a.name.trim().toLowerCase() === wanted);
 }
 
+/** Balance of every account (opening balance plus movements and transfers after its date). */
+export function accountBalances(db: Db): AccountBalanceDto[] {
+  const all = db.select(columns).from(accounts).orderBy(asc(accounts.id)).all();
+  const moves = db
+    .select({
+      accountId: movements.accountId,
+      date: movements.date,
+      kind: movements.kind,
+      amountCents: movements.amountCents,
+    })
+    .from(movements)
+    .all();
+  const moved = db
+    .select({
+      date: transfers.date,
+      amountCents: transfers.amountCents,
+      fromAccountId: transfers.fromAccountId,
+      toAccountId: transfers.toAccountId,
+    })
+    .from(transfers)
+    .all();
+  return all.map((a) => ({ accountId: a.id, balanceCents: accountBalance(a, moves, moved) }));
+}
+
 export function registerAccountsApi(app: FastifyInstance, db: Db): void {
   registerTransfersApi(app, db);
 
-  app.get('/api/accounts/balances', () => {
-    const all = db.select(columns).from(accounts).orderBy(asc(accounts.id)).all();
-    const moves = db
-      .select({
-        accountId: movements.accountId,
-        date: movements.date,
-        kind: movements.kind,
-        amountCents: movements.amountCents,
-      })
-      .from(movements)
-      .all();
-    const moved = db
-      .select({
-        date: transfers.date,
-        amountCents: transfers.amountCents,
-        fromAccountId: transfers.fromAccountId,
-        toAccountId: transfers.toAccountId,
-      })
-      .from(transfers)
-      .all();
-    const rows: AccountBalanceDto[] = all.map((a) => ({
-      accountId: a.id,
-      balanceCents: accountBalance(a, moves, moved),
-    }));
-    return rows;
-  });
+  app.get('/api/accounts/balances', () => accountBalances(db));
   app.get('/api/accounts', () => {
     const rows: AccountDto[] = db.select(columns).from(accounts).orderBy(asc(accounts.id)).all();
     return rows;

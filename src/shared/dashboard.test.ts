@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { GoalDto, MilestoneDto, SettingsDto } from './api.js';
 import {
+  addDays,
   debtProgressPercent,
+  inWindow,
+  next30DaysWindow,
+  windowMonths,
   monthChangePointsText,
   monthChangeText,
   monthEnd,
@@ -184,6 +188,32 @@ describe('upcomingMilestones', () => {
   it('the target day itself is not overdue', () => {
     const [only] = upcomingMilestones([milestone(1, '2026-06-15', 'pending')], '2026-06-15');
     expect(only?.overdue).toBe(false);
+  });
+});
+
+describe('next 30 days window', () => {
+  it('addDays crosses month, year and leap-day boundaries', () => {
+    expect(addDays('2026-01-31', 1)).toBe('2026-02-01');
+    expect(addDays('2026-12-20', 30)).toBe('2027-01-19');
+    expect(addDays('2028-02-28', 1)).toBe('2028-02-29');
+    expect(addDays('2026-02-28', 1)).toBe('2026-03-01');
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28');
+  });
+
+  it('runs from today to today + 30, both included', () => {
+    const window = next30DaysWindow('2026-11-25');
+    expect(window).toEqual({ from: '2026-11-25', to: '2026-12-25' });
+    expect(inWindow('2026-11-24', window)).toBe(false);
+    expect(inWindow('2026-11-25', window)).toBe(true);
+    expect(inWindow('2026-12-25', window)).toBe(true);
+    expect(inWindow('2026-12-26', window)).toBe(false);
+  });
+
+  it('lists the months it touches, across a year end and across three months', () => {
+    expect(windowMonths(next30DaysWindow('2026-11-25'))).toEqual(['2026-11', '2026-12']);
+    expect(windowMonths(next30DaysWindow('2026-12-20'))).toEqual(['2026-12', '2027-01']);
+    expect(windowMonths(next30DaysWindow('2026-01-31'))).toEqual(['2026-01', '2026-02', '2026-03']);
+    expect(windowMonths(next30DaysWindow('2026-06-01'))).toEqual(['2026-06', '2026-07']);
   });
 });
 

@@ -139,6 +139,33 @@ export function upcomingMilestones(
     .map((m) => ({ ...m, overdue: isOverdue(m, today) }));
 }
 
+/** `addDays('2026-01-31', 1)` → `'2026-02-01'`; works across month and year ends. */
+export function addDays(date: string, days: number): string {
+  const day = new Date(`${date}T00:00:00Z`);
+  day.setUTCDate(day.getUTCDate() + days);
+  return day.toISOString().slice(0, 10);
+}
+
+/** Days ahead the "Próximos 30 días" block looks. */
+export const UPCOMING_DAYS = 30;
+
+/** The window starting at `today` and ending 30 days later, both included. */
+export function next30DaysWindow(today: string): { from: string; to: string } {
+  return { from: today, to: addDays(today, UPCOMING_DAYS) };
+}
+
+/** The months (`YYYY-MM`) touched by the window, oldest first. */
+export function windowMonths(window: { from: string; to: string }): string[] {
+  const first = window.from.slice(0, 7);
+  const last = window.to.slice(0, 7);
+  return monthsEnding(last, 3).filter((m) => m >= first);
+}
+
+/** True when `date` is inside the window, both ends included. */
+export function inWindow(date: string, window: { from: string; to: string }): boolean {
+  return date >= window.from && date <= window.to;
+}
+
 /** Whole percent of the recorded balance repaid since its date; null without a baseline. */
 export function debtProgressPercent(recordedBalanceCents: number, repaidSinceCents: number) {
   if (recordedBalanceCents <= 0) {

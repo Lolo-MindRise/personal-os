@@ -107,6 +107,68 @@ describe('with seed data', () => {
     expect(pastFeb.keyFigures.previous.totalDebtCents).toBeNull();
   });
 
+  it('next 30 days: pending fixed items and milestones, both ends of the window included', async () => {
+    for (const [title, targetDate] of [
+      ['Dentro', '2026-02-10'],
+      ['Fuera', '2026-02-11'],
+      ['Hoy', '2026-01-11'],
+      ['Ayer', '2026-01-10'],
+    ] as const) {
+      await send('POST', '/api/milestones', { title, targetDate, status: 'pending' });
+    }
+    const { next30Days } = await dashboard('2026-01', '2026-01-11');
+    expect(next30Days.from).toBe('2026-01-11');
+    expect(next30Days.to).toBe('2026-02-10');
+    // January's Electricidad and Gimnasio (Internet, the 10th, is before today) and February's
+    // Nómina, Alquiler and Internet (the 10th is the last day of the window).
+    expect(next30Days.fixed.map((e) => `${e.date} ${e.concept}`)).toEqual([
+      '2026-01-12 Electricidad',
+      '2026-01-15 Gimnasio',
+      '2026-02-01 Nómina',
+      '2026-02-02 Alquiler',
+      '2026-02-10 Internet',
+    ]);
+    expect(next30Days.milestones.map((m) => m.title)).toEqual(['Hoy', 'Dentro']);
+  });
+
+  it('next 30 days wraps the year and leaves out confirmed items', async () => {
+    const wrapped = await dashboard('2026-12', '2026-12-20');
+    expect(wrapped.next30Days.to).toBe('2027-01-19');
+    // December's items are all before the 20th; January 2027's five fall inside the window.
+    expect(wrapped.next30Days.fixed.map((e) => e.date)).toEqual([
+      '2027-01-01',
+      '2027-01-02',
+      '2027-01-10',
+      '2027-01-12',
+      '2027-01-15',
+    ]);
+    // January 2026: the seed confirmed Nómina and Alquiler, so they are not listed.
+    const jan = await dashboard('2026-01', '2026-01-01');
+    expect(jan.next30Days.fixed.map((e) => e.concept)).toEqual([
+      'Internet',
+      'Electricidad',
+      'Gimnasio',
+    ]);
+  });
+
+  it('accounts: one line per account with its balance; transfers move it, not the key figures', async () => {
+    const before = await dashboard('2026-01');
+    expect(before.accounts.map((a) => a.name)).toEqual(['Principal', 'Efectivo']);
+    const [principal, cash] = before.accounts;
+    const ids = { from: principal?.accountId, to: cash?.accountId };
+    const res = await send('POST', '/api/transfers', {
+      date: '2026-01-20',
+      amountCents: 10_000,
+      fromAccountId: ids.from,
+      toAccountId: ids.to,
+    });
+    expect(res.statusCode).toBe(201);
+    const after = await dashboard('2026-01');
+    expect(after.accounts[0]?.balanceCents).toBe((principal?.balanceCents ?? 0) - 10_000);
+    expect(after.accounts[1]?.balanceCents).toBe((cash?.balanceCents ?? 0) + 10_000);
+    expect({ ...after, accounts: [] }).toEqual({ ...before, accounts: [] });
+  });
+
   it('key figures', async () => {
     const { keyFigures, setup } = await dashboard('2026-01');
     expect(keyFigures.accumulatedSavingsCents).toBe(99_930); // no initial balance: all movements
@@ -311,6 +373,17 @@ describe('with seed data', () => {
 
 describe('with an empty database', () => {
   beforeEach(() => start(false));
+
+  it('shows Principal alone and an empty next 30 days', async () => {
+    const data = await dashboard('2026-03');
+    expect(data.accounts).toEqual([{ accountId: 1, name: 'Principal', balanceCents: 0 }]);
+    expect(data.next30Days).toEqual({
+      from: '2026-01-31',
+      to: '2026-03-02',
+      fixed: [],
+      milestones: [],
+    });
+  });
 
   it('every block is empty but well-formed', async () => {
     const data = await dashboard('2026-03');
