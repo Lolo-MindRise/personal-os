@@ -182,10 +182,22 @@ test('filter movements across months, page through the results and jump to a mon
       await expect(page.getByLabel('Tipo')).toHaveValue('');
     });
 
+    await test.step('clearing every filter and searching drops the search from the URL', async () => {
+      await page.getByLabel('Texto en concepto o notas').fill('');
+      await page.getByLabel('Tipo').selectOption({ label: 'Todos' });
+      await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+      await expect(page).not.toHaveURL(/q=/);
+      await expect(page).not.toHaveURL(/kind=/);
+      await expect(page.getByTestId('search-totals')).toBeVisible();
+      await page.reload();
+      await expect(page.getByRole('button', { name: 'Buscar y filtrar' })).toBeVisible();
+    });
+
     await test.step('invalid params in the URL are ignored', async () => {
       await page.goto('/#/movements?month=2027-10&cat=abc&kind=zzz&from=hoy&min=-1');
       await expect(page.getByRole('heading', { name: 'Movimientos', level: 1 })).toBeVisible();
       await expect(results(page)).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Buscar y filtrar' })).toBeVisible();
     });
   } finally {
     await cleanUp(request);

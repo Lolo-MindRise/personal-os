@@ -149,8 +149,27 @@ export function queryToParams(query: SearchQuery): Record<string, string> {
   return params;
 }
 
+/** Any amount `parseMoney` accepts (up to Number.MAX_SAFE_INTEGER cents) survives a reload. */
 const isCents = (text: string | undefined): text is string =>
-  text !== undefined && /^\d{1,12}$/.test(text);
+  text !== undefined && /^\d{1,16}$/.test(text) && Number.isSafeInteger(Number(text));
+
+export type SearchAction = 'rerun' | 'navigate' | 'clear-url' | 'run-in-place';
+
+/**
+ * What "Buscar" must do given the search held by the URL (if any) and the validated query:
+ * same filters re-run without a new history entry; a different non-empty search is pushed to the
+ * URL; an empty search drops the search params from a URL that holds one, or runs in place.
+ */
+export function searchAction(urlQuery: SearchQuery | undefined, query: SearchQuery): SearchAction {
+  const next = queryToParams(query);
+  if (urlQuery !== undefined && JSON.stringify(queryToParams(urlQuery)) === JSON.stringify(next)) {
+    return 'rerun';
+  }
+  if (Object.keys(next).length > 0) {
+    return 'navigate';
+  }
+  return urlQuery !== undefined ? 'clear-url' : 'run-in-place';
+}
 
 /**
  * Reads the panel's filters back from URL params. Invalid or unknown values are ignored one by

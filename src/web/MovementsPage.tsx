@@ -16,6 +16,7 @@ import {
   queryToFilters,
   queryToParams,
   SEARCH_URL_KEYS,
+  searchAction,
   validateFilters,
   type FilterValues,
 } from './movementSearch.js';
@@ -196,10 +197,15 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
   // and the search follows the URL, so reload and the back button restore it.
   // Adjusted while rendering, as React recommends for state derived from other state.
   const [syncedQuery, setSyncedQuery] = useState<SearchQuery | undefined>();
+  const [keepEmptySearch, setKeepEmptySearch] = useState(false);
   if (urlQuery !== syncedQuery) {
     setSyncedQuery(urlQuery);
     if (urlQuery === undefined) {
-      dispatch({ type: 'leave' });
+      if (keepEmptySearch) {
+        setKeepEmptySearch(false);
+      } else {
+        dispatch({ type: 'leave' });
+      }
     } else {
       setFilters(queryToFilters(urlQuery));
       setFilterErrors({});
@@ -217,25 +223,24 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
       setFilterErrors(result.errors);
       return;
     }
-    const next = queryToParams(result.query);
-    if (
-      urlQuery !== undefined &&
-      JSON.stringify(queryToParams(urlQuery)) === JSON.stringify(next)
-    ) {
-      // Same filters as the URL: no new history entry, just run it again.
-      dispatch({ type: 'search', query: result.query });
-    } else if (Object.keys(next).length === 0) {
-      // Every filter empty: nothing to search for.
-      dispatch({ type: 'search', query: result.query });
-    } else {
-      navigate('movements', { ...paramsWithoutSearch(), ...next });
+    const action = searchAction(urlQuery, result.query);
+    if (action === 'navigate') {
+      navigate('movements', { ...paramsWithoutSearch(), ...queryToParams(result.query) });
+      return;
     }
+    if (action === 'clear-url') {
+      // The URL held a search and every filter is now empty: drop it so reload and back agree
+      // with what is shown. The empty search stays visible (the sync below must not close it).
+      setKeepEmptySearch(true);
+      navigate('movements', paramsWithoutSearch());
+    }
+    dispatch({ type: 'search', query: result.query });
   };
 
   /** Back to the monthly view, with focus on the page heading (the clicked button disappears). */
   const leaveSearch = () => {
     if (urlQuery !== undefined) {
-      navigate('movements', paramsWithoutSearch());
+      navigate('movements', paramsWithoutSearch(), { replace: true });
     }
     dispatch({ type: 'leave' });
     headingRef.current?.focus();
@@ -444,7 +449,7 @@ export function MovementsPage({ api = defaultApi }: { api?: ApiClient }) {
           }}
           onClose={() => {
             if (urlQuery !== undefined) {
-              navigate('movements', paramsWithoutSearch());
+              navigate('movements', paramsWithoutSearch(), { replace: true });
             }
             dispatch({ type: 'close' });
             headingRef.current?.focus();
