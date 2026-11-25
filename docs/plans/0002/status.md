@@ -5,7 +5,7 @@ Integration branch: `integration/0002-insights-and-accounts`
 | Task | Depends on | State | PR | Notes |
 |------|-----------|-------|----|-------|
 | 00 housekeeping | – | merged | #53 | approve (1 round); plain lint passes with 9 worktrees |
-| 01 accounts-model | 00 | pending | – | owns the migration slot |
+| 01 accounts-model | 00 | merged | #54 | approve (1 round); risk high (migration); PR body wrong on GitHub, `gh pr edit` fails |
 | 02 reports | 00 | pending | – | no migration |
 | 03 transfers-cuentas | 01 | pending | – | owns the migration slot |
 | 04 tags | 03 | pending | – | owns the migration slot |
